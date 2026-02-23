@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Card styles */
+.card {
+  @apply relative w-16 h-24 rounded-lg border-2 border-gray-300 bg-white shadow-md flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
+}
+
+.card:hover {
+  @apply -translate-y-1 shadow-lg;
+}
+
+.card.selected {
+  @apply -translate-y-3 border-yellow-400 shadow-yellow-200 shadow-lg;
+}
+
+.card.suit-jade {
+  @apply text-green-700;
+}
+
+.card.suit-sword {
+  @apply text-gray-800;
+}
+
+.card.suit-pagoda {
+  @apply text-blue-600;
+}
+
+.card.suit-star {
+  @apply text-red-600;
+}
+
+.card.special-mahjong {
+  @apply bg-yellow-50 border-yellow-500 text-yellow-700;
+}
+
+.card.special-dog {
+  @apply bg-gray-100 border-gray-500 text-gray-600;
+}
+
+.card.special-phoenix {
+  @apply bg-gradient-to-br from-red-100 to-orange-100 border-orange-400 text-orange-600;
+}
+
+.card.special-dragon {
+  @apply bg-gradient-to-br from-purple-100 to-indigo-100 border-purple-500 text-purple-700;
+}
+
+.card-back {
+  @apply w-10 h-14 rounded-md bg-gradient-to-br from-red-700 to-red-900 border border-red-600 shadow-sm;
+}
+
+/* Animations */
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(234, 179, 8, 0.6); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
