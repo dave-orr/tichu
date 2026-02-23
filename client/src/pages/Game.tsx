@@ -255,6 +255,7 @@ export default function Game({ socket }: Props) {
           onToggleCard={toggleCard}
           disabled={phase !== 'playing'}
         />
+        <div className="text-center text-sm text-gray-400 mt-1">{myPlayer.name}</div>
 
         {/* Action buttons */}
         {phase === 'playing' && (

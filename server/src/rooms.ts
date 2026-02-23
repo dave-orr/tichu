@@ -12,6 +12,8 @@ export type Room = {
   playerSockets: Map<string, Seat>; // socket.id -> seat
   seatPlayers: Map<Seat, string>;   // seat -> socket.id
   passes: Map<Seat, PassInfo>;      // pending card passes
+  randomPartners: boolean;
+  organizer: string;                // socket.id of room creator
 };
 
 const rooms = new Map<string, Room>();
@@ -27,7 +29,7 @@ function generateRoomCode(): string {
   return code;
 }
 
-export function createRoom(socketId: string, playerName: string): Room {
+export function createRoom(socketId: string, playerName: string, randomPartners: boolean): Room {
   const code = generateRoomCode();
   const state = createInitialState();
   state.players[0].id = socketId;
@@ -39,6 +41,8 @@ export function createRoom(socketId: string, playerName: string): Room {
     playerSockets: new Map([[socketId, 0]]),
     seatPlayers: new Map([[0, socketId]]),
     passes: new Map(),
+    randomPartners,
+    organizer: socketId,
   };
 
   rooms.set(code, room);
@@ -137,7 +141,61 @@ export function canStartGame(room: Room): boolean {
 }
 
 export function startGame(room: Room): void {
+  if (room.randomPartners) {
+    shuffleSeats(room);
+  }
   room.state = startNewRound(room.state);
+}
+
+/** Randomly assign players to seats */
+function shuffleSeats(room: Room): void {
+  // Collect all players
+  const playerInfos = room.state.players.map(p => ({ id: p.id, name: p.name }));
+  // Fisher-Yates shuffle
+  for (let i = playerInfos.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [playerInfos[i], playerInfos[j]] = [playerInfos[j], playerInfos[i]];
+  }
+  // Reassign
+  room.playerSockets.clear();
+  room.seatPlayers.clear();
+  for (let i = 0; i < 4; i++) {
+    const seat = i as Seat;
+    const { id: socketId, name } = playerInfos[i];
+    room.state.players[seat].id = socketId;
+    room.state.players[seat].name = name;
+    room.playerSockets.set(socketId, seat);
+    room.seatPlayers.set(seat, socketId);
+  }
+}
+
+/** Swap two players' seats (organizer only) */
+export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
+  if (room.state.phase !== 'waiting') return false;
+  if (seatA === seatB) return false;
+
+  const socketA = room.seatPlayers.get(seatA);
+  const socketB = room.seatPlayers.get(seatB);
+  if (!socketA || !socketB) return false;
+
+  // Swap in state
+  const nameA = room.state.players[seatA].name;
+  const nameB = room.state.players[seatB].name;
+  const idA = room.state.players[seatA].id;
+  const idB = room.state.players[seatB].id;
+
+  room.state.players[seatA].name = nameB;
+  room.state.players[seatA].id = idB;
+  room.state.players[seatB].name = nameA;
+  room.state.players[seatB].id = idA;
+
+  // Swap socket mappings
+  room.playerSockets.set(socketA, seatB);
+  room.playerSockets.set(socketB, seatA);
+  room.seatPlayers.set(seatA, socketB);
+  room.seatPlayers.set(seatB, socketA);
+
+  return true;
 }
 
 export function handleGrandTichu(room: Room, seat: Seat, call: boolean): void {

@@ -5,17 +5,17 @@ import {
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, applyPlayResult,
-  startNextRound, Room,
+  startNextRound, swapSeats, Room,
 } from './rooms.js';
 
 export function setupHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on('create-room', ({ playerName }: { playerName: string }) => {
-      const room = createRoom(socket.id, playerName);
+    socket.on('create-room', ({ playerName, randomPartners }: { playerName: string; randomPartners?: boolean }) => {
+      const room = createRoom(socket.id, playerName, randomPartners ?? false);
       socket.join(room.code);
-      socket.emit('room-created', { roomCode: room.code });
+      socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
     });
 
@@ -149,6 +149,19 @@ export function setupHandlers(io: Server): void {
       const { room } = found;
       if (room.state.phase === 'roundEnd') {
         startNextRound(room);
+        broadcastState(io, room);
+      }
+    });
+
+    socket.on('swap-seats', ({ seatA, seatB }: { seatA: Seat; seatB: Seat }) => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can rearrange seats' });
+        return;
+      }
+      if (swapSeats(room, seatA, seatB)) {
         broadcastState(io, room);
       }
     });
