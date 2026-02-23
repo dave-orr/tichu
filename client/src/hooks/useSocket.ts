@@ -13,6 +13,8 @@ export function useSocket() {
   const [needMahJongWish, setNeedMahJongWish] = useState(false);
   const [needDragonChoice, setNeedDragonChoice] = useState(false);
   const [roundResult, setRoundResult] = useState<any>(null);
+  const [isOrganizer, setIsOrganizer] = useState(false);
+  const [randomPartners, setRandomPartners] = useState(false);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -30,8 +32,10 @@ export function useSocket() {
       setConnectionState('disconnected');
     });
 
-    socket.on('room-created', ({ roomCode }: { roomCode: string }) => {
+    socket.on('room-created', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
+      setIsOrganizer(true);
+      setRandomPartners(randomPartners);
     });
 
     socket.on('player-joined', ({ playerName, seat }: { playerName: string; seat: number }) => {
@@ -66,8 +70,8 @@ export function useSocket() {
     };
   }, []);
 
-  const createRoom = useCallback((playerName: string) => {
-    socketRef.current?.emit('create-room', { playerName });
+  const createRoom = useCallback((playerName: string, randomPartners: boolean) => {
+    socketRef.current?.emit('create-room', { playerName, randomPartners });
   }, []);
 
   const joinRoom = useCallback((roomCode: string, playerName: string) => {
@@ -118,6 +122,10 @@ export function useSocket() {
     setRoundResult(null);
   }, []);
 
+  const swapSeatsAction = useCallback((seatA: Seat, seatB: Seat) => {
+    socketRef.current?.emit('swap-seats', { seatA, seatB });
+  }, []);
+
   return {
     connectionState,
     gameState,
@@ -126,6 +134,8 @@ export function useSocket() {
     needMahJongWish,
     needDragonChoice,
     roundResult,
+    isOrganizer,
+    randomPartners,
     createRoom,
     joinRoom,
     startGame,
@@ -138,5 +148,6 @@ export function useSocket() {
     giveDragonTrick,
     mahJongWish,
     nextRound,
+    swapSeats: swapSeatsAction,
   };
 }

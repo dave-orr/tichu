@@ -176,10 +176,10 @@ export const RANK_NAMES: Record<NormalRank, string> = {
 };
 
 export const SUIT_SYMBOLS: Record<Suit, string> = {
-  jade: '♣',
-  sword: '♠',
-  pagoda: '♦',
-  star: '♥',
+  jade: '🀅',
+  sword: '⚔',
+  pagoda: '🏯',
+  star: '★',
 };
 
 export const SPECIAL_NAMES: Record<SpecialCardName, string> = {
