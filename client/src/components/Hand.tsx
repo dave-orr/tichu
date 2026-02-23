@@ -9,17 +9,20 @@ type Props = {
 };
 
 export default function Hand({ cards, selectedCards, onToggleCard, disabled }: Props) {
+  // Overlap cards so all 14 fit on one line
+  const overlap = cards.length > 10 ? -12 : cards.length > 7 ? -6 : 0;
   return (
-    <div className="flex justify-center flex-wrap gap-1">
-      {cards.map((card) => {
+    <div className="flex justify-center">
+      {cards.map((card, i) => {
         const id = cardId(card);
         return (
-          <CardComponent
-            key={id}
-            card={card}
-            selected={selectedCards.has(id)}
-            onClick={disabled ? undefined : () => onToggleCard(card)}
-          />
+          <div key={id} style={{ marginLeft: i > 0 ? `${overlap}px` : '0' }}>
+            <CardComponent
+              card={card}
+              selected={selectedCards.has(id)}
+              onClick={disabled ? undefined : () => onToggleCard(card)}
+            />
+          </div>
         );
       })}
     </div>

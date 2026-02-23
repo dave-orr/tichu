@@ -107,6 +107,14 @@ export function useSocket() {
     socketRef.current?.emit('bomb', { cards });
   }, []);
 
+  const bombAnnounce = useCallback(() => {
+    socketRef.current?.emit('bomb-announce');
+  }, []);
+
+  const bombCancel = useCallback(() => {
+    socketRef.current?.emit('bomb-cancel');
+  }, []);
+
   const giveDragonTrick = useCallback((to: Seat) => {
     socketRef.current?.emit('give-dragon-trick', { to });
     setNeedDragonChoice(false);
@@ -145,6 +153,8 @@ export function useSocket() {
     playCards,
     passTurn: passTurnAction,
     bomb: bombAction,
+    bombAnnounce,
+    bombCancel,
     giveDragonTrick,
     mahJongWish,
     nextRound,

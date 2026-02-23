@@ -35,6 +35,10 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can start the game' });
+        return;
+      }
       if (!canStartGame(room)) {
         socket.emit('error', { message: 'Cannot start game yet' });
         return;
@@ -107,12 +111,31 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
+    socket.on('bomb-announce', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      if (room.state.phase !== 'playing') return;
+      room.state = { ...room.state, bombWindow: true };
+      broadcastState(io, room);
+    });
+
+    socket.on('bomb-cancel', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      room.state = { ...room.state, bombWindow: false };
+      broadcastState(io, room);
+    });
+
     socket.on('bomb', ({ cards }: { cards: Card[] }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
       const result = handleBomb(room, seat, cards);
       applyPlayResult(room, result);
+      // Clear bomb window
+      room.state = { ...room.state, bombWindow: false };
 
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });

@@ -377,6 +377,17 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
   if (state.turnIndex !== seat) return { state };
   if (state.currentTrick === null) return { state }; // Can't pass on lead
 
+  // Cannot pass if you have the wished card and can legally play it
+  if (state.mahJongWish != null) {
+    const player = state.players[seat];
+    const hasWishedRank = player.hand.some(c =>
+      c.type === 'normal' && c.rank === state.mahJongWish
+    );
+    if (hasWishedRank && canPlayWishedRank(state, seat)) {
+      return { state }; // Must play the wished card (or bomb)
+    }
+  }
+
   const newPassCount = state.passCount + 1;
   const activePlayers = state.players.filter(p => !p.isOut).length;
 
@@ -492,6 +503,48 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
 
 export function setMahJongWish(state: GameState, rank: NormalRank): GameState {
   return { ...state, mahJongWish: rank };
+}
+
+/** Check if a player can make any legal play that includes the wished rank */
+export function canPlayWishedRank(state: GameState, seat: Seat): boolean {
+  return canPlayWishedRankFromHand(
+    state.players[seat].hand,
+    state.mahJongWish,
+    state.currentTrick,
+  );
+}
+
+/** Check if a hand can make any legal play that includes the wished rank */
+export function canPlayWishedRankFromHand(
+  hand: Card[], wish: NormalRank | null, trick: Combo | null
+): boolean {
+  if (wish == null) return false;
+
+  const hasWishedRank = hand.some(c => c.type === 'normal' && c.rank === wish);
+  if (!hasWishedRank) return false;
+
+  if (!trick) return true; // Leading — can always play the wished rank
+
+  // For singles: can play if wished rank beats current
+  if (trick.type === 'single') {
+    return wish > trick.rank;
+  }
+
+  // For pairs: can play if player has a pair of the wished rank that beats current
+  if (trick.type === 'pair') {
+    const wishedCards = hand.filter(c => c.type === 'normal' && c.rank === wish);
+    return wishedCards.length >= 2 && wish > trick.rank;
+  }
+
+  // For triples: can play if player has a triple of the wished rank
+  if (trick.type === 'triple' || trick.type === 'fullHouse') {
+    const wishedCards = hand.filter(c => c.type === 'normal' && c.rank === wish);
+    return wishedCards.length >= 3 && wish > trick.rank;
+  }
+
+  // For other combo types (straights, consecutive pairs), checking is complex.
+  // Conservatively return false (allow passing) for non-trivial combos.
+  return false;
 }
 
 /** Check if a player must play the wished rank and isn't doing so */

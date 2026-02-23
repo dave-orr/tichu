@@ -97,13 +97,16 @@ export default function Lobby({ socket }: Props) {
             )}
           </div>
 
-          {playerCount === 4 && (
+          {playerCount === 4 && isOrganizer && (
             <button
               onClick={() => socket.startGame()}
               className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
             >
               Start Game
             </button>
+          )}
+          {playerCount === 4 && !isOrganizer && (
+            <p className="text-gray-400 text-sm">Waiting for host to start the game...</p>
           )}
         </div>
       </div>

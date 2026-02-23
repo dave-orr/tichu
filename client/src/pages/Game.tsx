@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import Hand from '../components/Hand.js';
-import { CardBack } from '../components/Card.js';
+import CardComponent, { CardBack } from '../components/Card.js';
 import PlayArea from '../components/PlayArea.js';
 import ScoreBoard from '../components/ScoreBoard.js';
 import GrandTichuPrompt from '../components/GrandTichuPrompt.js';
@@ -16,9 +16,17 @@ type Props = {
   socket: ReturnType<typeof useSocket>;
 };
 
+type PassRecord = {
+  left: { card: CardType; playerName: string };
+  partner: { card: CardType; playerName: string };
+  right: { card: CardType; playerName: string };
+};
+
 export default function Game({ socket }: Props) {
   const { gameState, needMahJongWish, roundResult } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
+  const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
+  const [bombMode, setBombMode] = useState(false);
 
   if (!gameState) return null;
 
@@ -30,6 +38,7 @@ export default function Game({ socket }: Props) {
   const isMyTurn = turnIndex === mySeat && phase === 'playing';
   const myPlayer = players[mySeat];
   const playerNames = players.map(p => p.name);
+  const mustPlayWish = canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick);
 
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
@@ -107,10 +116,23 @@ export default function Game({ socket }: Props) {
     setSelectedCards(new Set());
   };
 
-  const handleBomb = () => {
+  const enterBombMode = () => {
+    setBombMode(true);
+    setSelectedCards(new Set());
+    socket.bombAnnounce();
+  };
+
+  const cancelBombMode = () => {
+    setBombMode(false);
+    setSelectedCards(new Set());
+    socket.bombCancel();
+  };
+
+  const confirmBomb = () => {
     if (!canBombNow) return;
     socket.bomb(selectedCardList);
     setSelectedCards(new Set());
+    setBombMode(false);
   };
 
   const handlePass = () => {
@@ -138,6 +160,19 @@ export default function Game({ socket }: Props) {
 
   // Card passing phase
   if (phase === 'passing' && !myPlayer.passedCards) {
+    const leftSeat = ((mySeat + 3) % 4) as Seat;
+    const partnerSeat = ((mySeat + 2) % 4) as Seat;
+    const rightSeat = ((mySeat + 1) % 4) as Seat;
+
+    const handlePass = (left: CardType, partner: CardType, right: CardType) => {
+      setPassRecord({
+        left: { card: left, playerName: playerNames[leftSeat] },
+        partner: { card: partner, playerName: playerNames[partnerSeat] },
+        right: { card: right, playerName: playerNames[rightSeat] },
+      });
+      socket.passCards(left, partner, right);
+    };
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-3xl w-full">
@@ -147,7 +182,7 @@ export default function Game({ socket }: Props) {
               hand={myHand}
               mySeat={mySeat}
               playerNames={playerNames}
-              onPass={socket.passCards}
+              onPass={handlePass}
             />
           </div>
         </div>
@@ -158,9 +193,26 @@ export default function Game({ socket }: Props) {
   if (phase === 'passing' && myPlayer.passedCards) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
+        <div className="max-w-3xl w-full text-center">
           <ScoreBoard gameState={gameState} />
-          <p className="mt-6 text-gray-300">Waiting for other players to pass cards...</p>
+          <p className="mt-6 mb-4 text-gray-300">Waiting for other players to pass cards...</p>
+          {passRecord && (
+            <div className="flex justify-center gap-6 mb-4">
+              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
+                <div key={p.playerName} className="text-center">
+                  <div className="text-xs text-gray-400 mb-1">To {p.playerName}</div>
+                  <CardComponent card={p.card} small />
+                </div>
+              ))}
+            </div>
+          )}
+          <Hand
+            cards={myHand}
+            selectedCards={new Set()}
+            onToggleCard={() => {}}
+            disabled
+          />
+          <div className="text-center text-sm text-gray-400 mt-1">{myPlayer.name}</div>
         </div>
       </div>
     );
@@ -257,10 +309,17 @@ export default function Game({ socket }: Props) {
         />
         <div className="text-center text-sm text-gray-400 mt-1">{myPlayer.name}</div>
 
+        {/* Bomb mode banner */}
+        {gameState.bombWindow && !bombMode && (
+          <div className="text-center text-red-400 font-bold animate-pulse mb-2">
+            A player is considering a bomb...
+          </div>
+        )}
+
         {/* Action buttons */}
-        {phase === 'playing' && (
+        {phase === 'playing' && !bombMode && (
           <div className="flex justify-center gap-3 mt-3">
-            {isMyTurn && (
+            {isMyTurn && !gameState.bombWindow && (
               <>
                 <button
                   onClick={handlePlay}
@@ -269,7 +328,7 @@ export default function Game({ socket }: Props) {
                 >
                   Play
                 </button>
-                {currentTrick && (
+                {currentTrick && !mustPlayWish && (
                   <button
                     onClick={handlePass}
                     disabled={selectedCards.size > 0}
@@ -279,18 +338,41 @@ export default function Game({ socket }: Props) {
                     Pass
                   </button>
                 )}
+                {currentTrick && mustPlayWish && (
+                  <div className="text-sm text-yellow-400 flex items-center px-4">
+                    You must play the wished rank!
+                  </div>
+                )}
               </>
             )}
-            {hasBombInHand && (
+            {hasBombInHand && !gameState.bombWindow && (
               <button
-                onClick={handleBomb}
-                disabled={!canBombNow}
-                className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-red-900 disabled:text-red-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
-                title={canBombNow ? 'Play bomb!' : 'Select your bomb cards'}
+                onClick={enterBombMode}
+                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
               >
-                💣 Bomb
+                Bomb!
               </button>
             )}
+          </div>
+        )}
+
+        {/* Bomb selection mode */}
+        {bombMode && (
+          <div className="flex justify-center gap-3 mt-3">
+            <div className="text-sm text-red-400 flex items-center">Select your bomb cards</div>
+            <button
+              onClick={confirmBomb}
+              disabled={!canBombNow}
+              className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-red-900 disabled:text-red-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+            >
+              Confirm Bomb
+            </button>
+            <button
+              onClick={cancelBombMode}
+              className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         )}
       </div>
