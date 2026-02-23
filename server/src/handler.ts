@@ -94,6 +94,12 @@ export function setupHandlers(io: Server): void {
       const result = handlePassTurn(room, seat);
       applyPlayResult(room, result);
 
+      if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
+        const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
+        if (dragonWinnerSocketId) {
+          io.to(dragonWinnerSocketId).emit('need-dragon-choice');
+        }
+      }
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
       }

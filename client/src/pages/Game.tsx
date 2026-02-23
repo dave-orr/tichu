@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat } from '@tichu/shared';
+import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import Hand from '../components/Hand.js';
 import { CardBack } from '../components/Card.js';
@@ -16,7 +17,7 @@ type Props = {
 };
 
 export default function Game({ socket }: Props) {
-  const { gameState, needMahJongWish, needDragonChoice, roundResult } = socket;
+  const { gameState, needMahJongWish, roundResult } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
 
   if (!gameState) return null;
@@ -68,6 +69,37 @@ export default function Game({ socket }: Props) {
     if (currentTrick && !canBeat(currentTrick, combo)) return false;
     return true;
   }, [phase, selectedCardList, currentTrick]);
+
+  // Detect if player has any bomb available in hand
+  const hasBombInHand = useMemo(() => {
+    if (phase !== 'playing') return false;
+    const normalCards = myHand.filter((c): c is NormalCard => c.type === 'normal');
+    // Check four-of-a-kind
+    const byRank: Record<number, number> = {};
+    for (const c of normalCards) {
+      byRank[c.rank] = (byRank[c.rank] || 0) + 1;
+    }
+    if (Object.values(byRank).some(count => count >= 4)) return true;
+    // Check straight flush (5+ same suit consecutive)
+    const bySuit: Record<string, number[]> = {};
+    for (const c of normalCards) {
+      if (!bySuit[c.suit]) bySuit[c.suit] = [];
+      bySuit[c.suit].push(c.rank);
+    }
+    for (const ranks of Object.values(bySuit)) {
+      ranks.sort((a, b) => a - b);
+      let consecutive = 1;
+      for (let i = 1; i < ranks.length; i++) {
+        if (ranks[i] === ranks[i - 1] + 1) {
+          consecutive++;
+          if (consecutive >= 5) return true;
+        } else {
+          consecutive = 1;
+        }
+      }
+    }
+    return false;
+  }, [phase, myHand]);
 
   const handlePlay = () => {
     if (!canPlay) return;
@@ -139,7 +171,7 @@ export default function Game({ socket }: Props) {
     <div className="min-h-screen flex flex-col relative">
       {/* Modals */}
       {needMahJongWish && <MahJongWish onWish={socket.mahJongWish} />}
-      {needDragonChoice && (
+      {gameState.dragonGiveaway && gameState.dragonGiveawayBy === mySeat && (
         <DragonGiveaway
           mySeat={mySeat}
           players={[...players]}
@@ -239,19 +271,23 @@ export default function Game({ socket }: Props) {
                 {currentTrick && (
                   <button
                     onClick={handlePass}
-                    className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+                    disabled={selectedCards.size > 0}
+                    title={selectedCards.size > 0 ? 'Unselect cards to pass' : undefined}
+                    className="py-2 px-6 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
                   >
                     Pass
                   </button>
                 )}
               </>
             )}
-            {!isMyTurn && canBombNow && (
+            {hasBombInHand && (
               <button
                 onClick={handleBomb}
-                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors animate-pulse"
+                disabled={!canBombNow}
+                className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-red-900 disabled:text-red-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                title={canBombNow ? 'Play bomb!' : 'Select your bomb cards'}
               >
-                BOMB!
+                💣 Bomb
               </button>
             )}
           </div>
