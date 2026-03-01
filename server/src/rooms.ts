@@ -18,6 +18,17 @@ export type Room = {
 
 const rooms = new Map<string, Room>();
 
+// Map socket.id -> Firebase uid for authenticated players
+const socketUids = new Map<string, string>();
+
+export function setSocketUid(socketId: string, uid: string): void {
+  socketUids.set(socketId, uid);
+}
+
+export function getSocketUid(socketId: string): string | null {
+  return socketUids.get(socketId) ?? null;
+}
+
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
   let code = '';
@@ -118,6 +129,7 @@ export function getRoomBySocket(socketId: string): { room: Room; seat: Seat } | 
 }
 
 export function removePlayer(socketId: string): void {
+  socketUids.delete(socketId);
   for (const [code, room] of rooms.entries()) {
     const seat = room.playerSockets.get(socketId);
     if (seat !== undefined) {

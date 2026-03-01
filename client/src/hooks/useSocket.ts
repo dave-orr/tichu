@@ -4,7 +4,7 @@ import { ClientGameState, Card, NormalRank, Seat, GameSettings } from '@tichu/sh
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
-export function useSocket() {
+export function useSocket(idToken: string | null) {
   const socketRef = useRef<Socket | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
@@ -21,6 +21,7 @@ export function useSocket() {
       ? 'http://localhost:3000'
       : window.location.origin, {
       transports: ['websocket', 'polling'],
+      auth: idToken ? { token: idToken } : undefined,
     });
     socketRef.current = socket;
 
@@ -68,7 +69,7 @@ export function useSocket() {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [idToken]);
 
   const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>) => {
     socketRef.current?.emit('create-room', { playerName, randomPartners, settings });
