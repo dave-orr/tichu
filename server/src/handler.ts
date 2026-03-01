@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -12,8 +12,8 @@ export function setupHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on('create-room', ({ playerName, randomPartners }: { playerName: string; randomPartners?: boolean }) => {
-      const room = createRoom(socket.id, playerName, randomPartners ?? false);
+    socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
+      const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);

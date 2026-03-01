@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -70,8 +70,8 @@ export function useSocket() {
     };
   }, []);
 
-  const createRoom = useCallback((playerName: string, randomPartners: boolean) => {
-    socketRef.current?.emit('create-room', { playerName, randomPartners });
+  const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>) => {
+    socketRef.current?.emit('create-room', { playerName, randomPartners, settings });
   }, []);
 
   const joinRoom = useCallback((roomCode: string, playerName: string) => {

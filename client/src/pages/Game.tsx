@@ -11,6 +11,7 @@ import PassCards from '../components/PassCards.js';
 import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
 import RoundResults from '../components/RoundResults.js';
+import CardsSeen from '../components/CardsSeen.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -245,6 +246,7 @@ export default function Game({ socket }: Props) {
           player={players[relativeSeats[2]]}
           isCurrentTurn={turnIndex === relativeSeats[2]}
           label="Partner"
+          showPoints={gameState.settings.countPoints}
         />
       </div>
 
@@ -256,6 +258,7 @@ export default function Game({ socket }: Props) {
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
             label="Left"
+            showPoints={gameState.settings.countPoints}
           />
         </div>
 
@@ -283,12 +286,20 @@ export default function Game({ socket }: Props) {
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
             label="Right"
+            showPoints={gameState.settings.countPoints}
           />
         </div>
       </div>
 
       {/* Bottom area: player's hand and controls */}
       <div className="p-4 bg-gray-900/50">
+        {/* Cards seen tracker */}
+        {gameState.settings.cardsSeen && phase === 'playing' && (
+          <div className="mb-2 max-w-lg mx-auto">
+            <CardsSeen myHand={myHand} playedCards={gameState.playedCards} />
+          </div>
+        )}
+
         {/* Tichu call button */}
         {!myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none' && phase === 'playing' && (
           <div className="text-center mb-2">
@@ -307,7 +318,12 @@ export default function Game({ socket }: Props) {
           onToggleCard={toggleCard}
           disabled={phase !== 'playing'}
         />
-        <div className="text-center text-sm text-gray-400 mt-1">{myPlayer.name}</div>
+        <div className="text-center text-sm text-gray-400 mt-1">
+          {myPlayer.name}
+          {gameState.settings.countPoints && myPlayer.trickCount > 0 && (
+            <span className="ml-1 text-green-400">({myPlayer.capturedPoints}pts)</span>
+          )}
+        </div>
 
         {/* Bomb mode banner */}
         {gameState.bombWindow && !bombMode && (
@@ -384,16 +400,21 @@ function OpponentInfo({
   player,
   isCurrentTurn,
   label,
+  showPoints,
 }: {
-  player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number };
+  player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
   label: string;
+  showPoints?: boolean;
 }) {
   return (
     <div className={`text-center ${isCurrentTurn ? 'pulse-glow rounded-lg p-2' : 'p-2'}`}>
       <div className="text-xs text-gray-400">{label}</div>
       <div className={`font-bold text-sm ${isCurrentTurn ? 'text-yellow-400' : ''}`}>
         {player.name}
+        {showPoints && player.trickCount > 0 && (
+          <span className="ml-1 text-green-400 font-normal">({player.capturedPoints}pts)</span>
+        )}
       </div>
       {player.tichuCall !== 'none' && (
         <div className={`text-xs ${player.tichuCall === 'grand' ? 'text-red-400' : 'text-orange-400'}`}>

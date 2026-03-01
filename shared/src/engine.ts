@@ -2,13 +2,13 @@ import { identifyCombo, canBeat, isBomb, singleCardRank } from './combinations.j
 import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, getWinner } from './scoring.js';
 import {
-  Card, Combo, GameState, NormalRank, Phase, Player, RoundResult, Seat,
+  Card, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
   Team, cardsEqual, cardId, getPartnerSeat, getRightSeat, getTeamForSeat,
 } from './types.js';
 
 // ===== State Creation =====
 
-export function createInitialState(): GameState {
+export function createInitialState(settings?: GameSettings): GameState {
   return {
     phase: 'waiting',
     players: [
@@ -33,6 +33,8 @@ export function createInitialState(): GameState {
     bombWindow: false,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
+    settings: settings ?? DEFAULT_SETTINGS,
+    playedCards: [],
   };
 }
 
@@ -73,6 +75,7 @@ export function startNewRound(state: GameState): GameState {
     bombWindow: false,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
+    playedCards: [],
     players: state.players.map((p, i) => ({
       ...p,
       hand: sortHand(deck.slice(i * 14, i * 14 + 8)), // first 8 cards
@@ -317,6 +320,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     mahJongWish: newWish,
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
+    playedCards: [...state.playedCards, ...cards],
   };
 
   // Check if round ended (3 players out)
@@ -354,7 +358,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
   }
 
   if (newOutCount >= 3) {
-    return endRound({ ...state, players: newPlayers, outCount: newOutCount });
+    return endRound({ ...state, players: newPlayers, outCount: newOutCount, playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card] });
   }
 
   return {
@@ -366,6 +370,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
       currentTrickCards: [],
       passCount: 0,
       outCount: newOutCount,
+      playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card],
     },
   };
 }
@@ -637,6 +642,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     lastPlayedBy: seat,
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
+    playedCards: [...state.playedCards, ...cards],
   };
 
   if (newOutCount >= 3) {
@@ -693,6 +699,7 @@ function getNextActiveSeat(
 // ===== Client View =====
 
 import { ClientGameState, ClientPlayer } from './types.js';
+import { sumPoints } from './scoring.js';
 
 export function toClientState(state: GameState, forSeat: Seat): ClientGameState {
   const clientPlayers = state.players.map(p => ({
@@ -707,6 +714,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     passedCards: p.passedCards,
     cardCount: p.hand.length,
     trickCount: p.tricksWon.length,
+    capturedPoints: sumPoints(p.tricksWon.flat()),
   })) as [ClientPlayer, ClientPlayer, ClientPlayer, ClientPlayer];
 
   return {
@@ -724,6 +732,8 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     bombWindow: state.bombWindow,
     dragonGiveaway: state.dragonGiveaway,
     dragonGiveawayBy: state.dragonGiveawayBy,
+    settings: state.settings,
+    playedCards: state.playedCards,
     myHand: state.players[forSeat].hand,
     mySeat: forSeat,
   };
