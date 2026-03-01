@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
+import type { useAuth } from '../hooks/useAuth.js';
 import Hand from '../components/Hand.js';
 import { CardBack } from '../components/Card.js';
 import PlayArea from '../components/PlayArea.js';
@@ -14,9 +15,10 @@ import RoundResults from '../components/RoundResults.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
+  auth: ReturnType<typeof useAuth>;
 };
 
-export default function Game({ socket }: Props) {
+export default function Game({ socket, auth }: Props) {
   const { gameState, needMahJongWish, roundResult } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
 
