@@ -5,12 +5,24 @@ import {
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, applyPlayResult,
-  startNextRound, swapSeats, Room,
+  startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
 } from './rooms.js';
+import { verifyIdToken } from './firebase.js';
+import { updateStatsForRound, updateStatsForGameEnd } from './stats.js';
 
 export function setupHandlers(io: Server): void {
-  io.on('connection', (socket: Socket) => {
+  io.on('connection', async (socket: Socket) => {
     console.log(`Player connected: ${socket.id}`);
+
+    // Verify Firebase token if provided
+    const token = socket.handshake.auth?.token;
+    if (token) {
+      const decoded = await verifyIdToken(token);
+      if (decoded) {
+        setSocketUid(socket.id, decoded.uid);
+        console.log(`Authenticated user: ${decoded.uid}`);
+      }
+    }
 
     socket.on('create-room', ({ playerName, randomPartners }: { playerName: string; randomPartners?: boolean }) => {
       const room = createRoom(socket.id, playerName, randomPartners ?? false);
@@ -82,6 +94,7 @@ export function setupHandlers(io: Server): void {
       }
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
+        handleRoundResult(room);
       }
 
       broadcastState(io, room);
@@ -102,6 +115,7 @@ export function setupHandlers(io: Server): void {
       }
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
+        handleRoundResult(room);
       }
 
       broadcastState(io, room);
@@ -116,6 +130,7 @@ export function setupHandlers(io: Server): void {
 
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
+        handleRoundResult(room);
       }
 
       broadcastState(io, room);
@@ -130,6 +145,7 @@ export function setupHandlers(io: Server): void {
 
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
+        handleRoundResult(room);
       }
 
       broadcastState(io, room);
@@ -177,5 +193,30 @@ function broadcastState(io: Server, room: Room): void {
   for (const [socketId, seat] of room.playerSockets) {
     const clientState = toClientState(room.state, seat);
     io.to(socketId).emit('game-state', { state: clientState });
+  }
+}
+
+function handleRoundResult(room: Room): void {
+  const state = room.state;
+  if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') return;
+
+  // Collect uid -> seat mapping for authenticated players
+  const uidMap = new Map<string, Seat>();
+  for (const [socketId, seat] of room.playerSockets) {
+    const uid = getSocketUid(socketId);
+    if (uid) uidMap.set(uid, seat);
+  }
+  if (uidMap.size === 0) return;
+
+  // Update round stats for each authenticated player
+  updateStatsForRound(uidMap, state).catch(err =>
+    console.error('Failed to update round stats:', err)
+  );
+
+  // If game is over, also update game-level stats
+  if (state.phase === 'gameEnd') {
+    updateStatsForGameEnd(uidMap, state).catch(err =>
+      console.error('Failed to update game stats:', err)
+    );
   }
 }
