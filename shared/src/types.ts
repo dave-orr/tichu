@@ -39,6 +39,18 @@ export type Combo = {
   length: number;    // number of cards (for straights/consecutive pairs matching)
 };
 
+// ===== Game Settings =====
+
+export type GameSettings = {
+  countPoints: boolean;   // show captured point totals by player names
+  cardsSeen: boolean;     // show remaining card counts (cards not yet played)
+};
+
+export const DEFAULT_SETTINGS: GameSettings = {
+  countPoints: false,
+  cardsSeen: false,
+};
+
 // ===== Game State =====
 
 export type Phase =
@@ -95,6 +107,8 @@ export type GameState = {
   bombWindow: boolean;         // true = waiting for bomb responses
   dragonGiveaway: boolean;     // true = dragon winner must choose opponent
   dragonGiveawayBy: Seat | null;
+  settings: GameSettings;
+  playedCards: Card[];         // all cards played/discarded this round (for cards-seen tracking)
 };
 
 // ===== Socket Events =====
@@ -132,6 +146,7 @@ export type ClientGameState = Omit<GameState, 'players' | 'deck'> & {
 export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
   cardCount: number;       // how many cards they hold
   trickCount: number;      // how many tricks they've won
+  capturedPoints: number;  // total card points captured so far
 };
 
 export type RoundResult = {

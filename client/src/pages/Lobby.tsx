@@ -17,6 +17,8 @@ export default function Lobby({ socket, auth }: Props) {
   const [joinCode, setJoinCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [randomPartners, setRandomPartners] = useState(false);
+  const [countPoints, setCountPoints] = useState(false);
+  const [cardsSeen, setCardsSeen] = useState(false);
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showStats, setShowStats] = useState(false);
 
@@ -109,13 +111,16 @@ export default function Lobby({ socket, auth }: Props) {
             )}
           </div>
 
-          {playerCount === 4 && (
+          {playerCount === 4 && isOrganizer && (
             <button
               onClick={() => socket.startGame()}
               className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
             >
               Start Game
             </button>
+          )}
+          {playerCount === 4 && !isOrganizer && (
+            <p className="text-gray-400 text-sm">Waiting for host to start the game...</p>
           )}
         </div>
       </div>
@@ -236,9 +241,33 @@ export default function Lobby({ socket, auth }: Props) {
                 <p className="text-sm text-gray-400">Randomly assign teams when the game starts</p>
               </div>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
+              <input
+                type="checkbox"
+                checked={countPoints}
+                onChange={e => setCountPoints(e.target.checked)}
+                className="w-5 h-5 rounded accent-yellow-500"
+              />
+              <div>
+                <span className="font-semibold">Count Points</span>
+                <p className="text-sm text-gray-400">Show captured point totals by each player's name</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
+              <input
+                type="checkbox"
+                checked={cardsSeen}
+                onChange={e => setCardsSeen(e.target.checked)}
+                className="w-5 h-5 rounded accent-yellow-500"
+              />
+              <div>
+                <span className="font-semibold">Cards Seen</span>
+                <p className="text-sm text-gray-400">Show how many of each card remain unplayed</p>
+              </div>
+            </label>
             <button
               onClick={() => {
-                socket.createRoom(playerName.trim(), randomPartners);
+                socket.createRoom(playerName.trim(), randomPartners, { countPoints, cardsSeen });
               }}
               className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
             >

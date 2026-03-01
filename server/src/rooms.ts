@@ -1,5 +1,5 @@
 import {
-  GameState, Seat, createInitialState, startNewRound,
+  GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound,
   callGrandTichu, callSmallTichu, passCards as passCardsEngine,
   applyPasses, playCards, passTurn, playBomb,
   giveDragonTrick, setMahJongWish, toClientState,
@@ -40,9 +40,10 @@ function generateRoomCode(): string {
   return code;
 }
 
-export function createRoom(socketId: string, playerName: string, randomPartners: boolean): Room {
+export function createRoom(socketId: string, playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>): Room {
   const code = generateRoomCode();
-  const state = createInitialState();
+  const gameSettings: GameSettings = { ...DEFAULT_SETTINGS, ...settings };
+  const state = createInitialState(gameSettings);
   state.players[0].id = socketId;
   state.players[0].name = playerName;
 

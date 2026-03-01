@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -71,8 +71,8 @@ export function useSocket(idToken: string | null) {
     };
   }, [idToken]);
 
-  const createRoom = useCallback((playerName: string, randomPartners: boolean) => {
-    socketRef.current?.emit('create-room', { playerName, randomPartners });
+  const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>) => {
+    socketRef.current?.emit('create-room', { playerName, randomPartners, settings });
   }, []);
 
   const joinRoom = useCallback((roomCode: string, playerName: string) => {
@@ -106,6 +106,14 @@ export function useSocket(idToken: string | null) {
 
   const bombAction = useCallback((cards: Card[]) => {
     socketRef.current?.emit('bomb', { cards });
+  }, []);
+
+  const bombAnnounce = useCallback(() => {
+    socketRef.current?.emit('bomb-announce');
+  }, []);
+
+  const bombCancel = useCallback(() => {
+    socketRef.current?.emit('bomb-cancel');
   }, []);
 
   const giveDragonTrick = useCallback((to: Seat) => {
@@ -146,6 +154,8 @@ export function useSocket(idToken: string | null) {
     playCards,
     passTurn: passTurnAction,
     bomb: bombAction,
+    bombAnnounce,
+    bombCancel,
     giveDragonTrick,
     mahJongWish,
     nextRound,

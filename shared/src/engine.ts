@@ -2,13 +2,13 @@ import { identifyCombo, canBeat, isBomb, singleCardRank } from './combinations.j
 import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, getWinner } from './scoring.js';
 import {
-  Card, Combo, GameState, NormalRank, Phase, Player, RoundResult, Seat,
+  Card, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
   Team, cardsEqual, cardId, getPartnerSeat, getRightSeat, getTeamForSeat,
 } from './types.js';
 
 // ===== State Creation =====
 
-export function createInitialState(): GameState {
+export function createInitialState(settings?: GameSettings): GameState {
   return {
     phase: 'waiting',
     players: [
@@ -33,6 +33,8 @@ export function createInitialState(): GameState {
     bombWindow: false,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
+    settings: settings ?? DEFAULT_SETTINGS,
+    playedCards: [],
   };
 }
 
@@ -73,6 +75,7 @@ export function startNewRound(state: GameState): GameState {
     bombWindow: false,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
+    playedCards: [],
     players: state.players.map((p, i) => ({
       ...p,
       hand: sortHand(deck.slice(i * 14, i * 14 + 8)), // first 8 cards
@@ -317,6 +320,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     mahJongWish: newWish,
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
+    playedCards: [...state.playedCards, ...cards],
   };
 
   // Check if round ended (3 players out)
@@ -354,7 +358,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
   }
 
   if (newOutCount >= 3) {
-    return endRound({ ...state, players: newPlayers, outCount: newOutCount });
+    return endRound({ ...state, players: newPlayers, outCount: newOutCount, playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card] });
   }
 
   return {
@@ -366,6 +370,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
       currentTrickCards: [],
       passCount: 0,
       outCount: newOutCount,
+      playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card],
     },
   };
 }
@@ -376,6 +381,17 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
   if (state.phase !== 'playing') return { state };
   if (state.turnIndex !== seat) return { state };
   if (state.currentTrick === null) return { state }; // Can't pass on lead
+
+  // Cannot pass if you have the wished card and can legally play it
+  if (state.mahJongWish != null) {
+    const player = state.players[seat];
+    const hasWishedRank = player.hand.some(c =>
+      c.type === 'normal' && c.rank === state.mahJongWish
+    );
+    if (hasWishedRank && canPlayWishedRank(state, seat)) {
+      return { state }; // Must play the wished card (or bomb)
+    }
+  }
 
   const newPassCount = state.passCount + 1;
   const activePlayers = state.players.filter(p => !p.isOut).length;
@@ -494,6 +510,48 @@ export function setMahJongWish(state: GameState, rank: NormalRank): GameState {
   return { ...state, mahJongWish: rank };
 }
 
+/** Check if a player can make any legal play that includes the wished rank */
+export function canPlayWishedRank(state: GameState, seat: Seat): boolean {
+  return canPlayWishedRankFromHand(
+    state.players[seat].hand,
+    state.mahJongWish,
+    state.currentTrick,
+  );
+}
+
+/** Check if a hand can make any legal play that includes the wished rank */
+export function canPlayWishedRankFromHand(
+  hand: Card[], wish: NormalRank | null, trick: Combo | null
+): boolean {
+  if (wish == null) return false;
+
+  const hasWishedRank = hand.some(c => c.type === 'normal' && c.rank === wish);
+  if (!hasWishedRank) return false;
+
+  if (!trick) return true; // Leading — can always play the wished rank
+
+  // For singles: can play if wished rank beats current
+  if (trick.type === 'single') {
+    return wish > trick.rank;
+  }
+
+  // For pairs: can play if player has a pair of the wished rank that beats current
+  if (trick.type === 'pair') {
+    const wishedCards = hand.filter(c => c.type === 'normal' && c.rank === wish);
+    return wishedCards.length >= 2 && wish > trick.rank;
+  }
+
+  // For triples: can play if player has a triple of the wished rank
+  if (trick.type === 'triple' || trick.type === 'fullHouse') {
+    const wishedCards = hand.filter(c => c.type === 'normal' && c.rank === wish);
+    return wishedCards.length >= 3 && wish > trick.rank;
+  }
+
+  // For other combo types (straights, consecutive pairs), checking is complex.
+  // Conservatively return false (allow passing) for non-trivial combos.
+  return false;
+}
+
 /** Check if a player must play the wished rank and isn't doing so */
 function checkWishCompliance(state: GameState, seat: Seat, cards: Card[]): boolean {
   const wish = state.mahJongWish;
@@ -584,6 +642,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     lastPlayedBy: seat,
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
+    playedCards: [...state.playedCards, ...cards],
   };
 
   if (newOutCount >= 3) {
@@ -640,6 +699,7 @@ function getNextActiveSeat(
 // ===== Client View =====
 
 import { ClientGameState, ClientPlayer } from './types.js';
+import { sumPoints } from './scoring.js';
 
 export function toClientState(state: GameState, forSeat: Seat): ClientGameState {
   const clientPlayers = state.players.map(p => ({
@@ -654,6 +714,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     passedCards: p.passedCards,
     cardCount: p.hand.length,
     trickCount: p.tricksWon.length,
+    capturedPoints: sumPoints(p.tricksWon.flat()),
   })) as [ClientPlayer, ClientPlayer, ClientPlayer, ClientPlayer];
 
   return {
@@ -671,6 +732,8 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     bombWindow: state.bombWindow,
     dragonGiveaway: state.dragonGiveaway,
     dragonGiveawayBy: state.dragonGiveawayBy,
+    settings: state.settings,
+    playedCards: state.playedCards,
     myHand: state.players[forSeat].hand,
     mySeat: forSeat,
   };

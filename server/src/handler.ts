@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -24,8 +24,8 @@ export function setupHandlers(io: Server): void {
       }
     }
 
-    socket.on('create-room', ({ playerName, randomPartners }: { playerName: string; randomPartners?: boolean }) => {
-      const room = createRoom(socket.id, playerName, randomPartners ?? false);
+    socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
+      const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
@@ -47,6 +47,10 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can start the game' });
+        return;
+      }
       if (!canStartGame(room)) {
         socket.emit('error', { message: 'Cannot start game yet' });
         return;
@@ -121,12 +125,31 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
+    socket.on('bomb-announce', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      if (room.state.phase !== 'playing') return;
+      room.state = { ...room.state, bombWindow: true };
+      broadcastState(io, room);
+    });
+
+    socket.on('bomb-cancel', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      room.state = { ...room.state, bombWindow: false };
+      broadcastState(io, room);
+    });
+
     socket.on('bomb', ({ cards }: { cards: Card[] }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
       const result = handleBomb(room, seat, cards);
       applyPlayResult(room, result);
+      // Clear bomb window
+      room.state = { ...room.state, bombWindow: false };
 
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
