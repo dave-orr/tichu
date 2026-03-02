@@ -1,4 +1,4 @@
-import { RoundResult, ClientPlayer } from '@tichu/shared';
+import { RoundResult, ClientPlayer, Seat } from '@tichu/shared';
 
 type Props = {
   result: RoundResult;
@@ -7,7 +7,22 @@ type Props = {
   isGameOver: boolean;
 };
 
+function tichuLabel(call: 'small' | 'grand', made: boolean) {
+  const letter = call === 'grand' ? 'G' : 'T';
+  const color = made ? 'text-green-400' : 'text-red-400';
+  return <span className={`${color} font-bold ml-1`}>{letter}</span>;
+}
+
 export default function RoundResults({ result, players, onNextRound, isGameOver }: Props) {
+  const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
+
+  function renderTichuIndicator(seat: Seat) {
+    const call = players[seat].tichuCall;
+    if (call === 'none') return null;
+    const made = result.outOrder[0] === seat;
+    return tichuLabel(call, made);
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full">
@@ -27,36 +42,59 @@ export default function RoundResults({ result, players, onNextRound, isGameOver 
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          {[0, 1].map(team => (
-            <div key={team} className="text-center">
-              <div className="text-sm text-gray-400">
-                {players[team === 0 ? 0 : 1].name} & {players[team === 0 ? 2 : 3].name}
-              </div>
-              <div className="mt-2 space-y-1">
-                <div className="text-sm">
+        {/* Scoring table with aligned rows */}
+        <table className="w-full mb-6 text-sm">
+          <thead>
+            <tr>
+              {[0, 1].map(team => (
+                <th key={team} className="text-white font-semibold pb-2 w-1/2">
+                  {players[team === 0 ? 0 : 1].name} & {players[team === 0 ? 2 : 3].name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="text-center">
+            <tr>
+              {[0, 1].map(team => (
+                <td key={team} className="py-1 text-gray-200">
                   Card points: <span className="font-bold">{result.teamScores[team]}</span>
-                </div>
-                {result.tichuBonuses[team] !== 0 && (
-                  <div className={`text-sm ${result.tichuBonuses[team] > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    Tichu: {result.tichuBonuses[team] > 0 ? '+' : ''}{result.tichuBonuses[team]}
-                  </div>
-                )}
-                <div className="text-lg font-bold border-t border-gray-600 pt-1 mt-1">
-                  Total: {result.totalScores[team]}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                </td>
+              ))}
+            </tr>
+            {hasTichuBonus && (
+              <tr>
+                {[0, 1].map(team => (
+                  <td key={team} className={`py-1 ${
+                    result.tichuBonuses[team] > 0 ? 'text-green-400' :
+                    result.tichuBonuses[team] < 0 ? 'text-red-400' : 'text-gray-500'
+                  }`}>
+                    {result.tichuBonuses[team] !== 0
+                      ? `Tichu: ${result.tichuBonuses[team] > 0 ? '+' : ''}${result.tichuBonuses[team]}`
+                      : '—'}
+                  </td>
+                ))}
+              </tr>
+            )}
+            <tr>
+              {[0, 1].map(team => (
+                <td key={team} className="pt-2 border-t border-gray-600">
+                  <span className="text-lg font-bold text-white">
+                    {result.totalScores[team]}
+                  </span>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
 
-        <div className="text-center mb-4">
-          <div className="text-sm text-gray-400">Out order</div>
-          <div className="flex justify-center gap-2 mt-1">
+        {/* Out order with tichu indicators */}
+        <div className="text-center mb-6">
+          <div className="text-sm text-gray-400 mb-2">Out order</div>
+          <div className="flex flex-col items-center gap-1">
             {result.outOrder.map((seat, i) => (
-              <span key={seat} className={`text-sm ${i === 0 ? 'text-yellow-400 font-bold' : 'text-gray-300'}`}>
-                {i + 1}. {players[seat].name}
-              </span>
+              <div key={seat} className={`text-sm ${i === 0 ? 'text-yellow-400 font-bold' : 'text-gray-200'}`}>
+                {i + 1}. {players[seat].name}{renderTichuIndicator(seat)}
+              </div>
             ))}
           </div>
         </div>

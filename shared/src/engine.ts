@@ -1,9 +1,9 @@
-import { identifyCombo, canBeat, isBomb, singleCardRank } from './combinations.js';
+import { identifyCombo, canBeat, isBomb, singleCardRank, findPlayableCombos } from './combinations.js';
 import { createDeck, shuffle, sortHand } from './deck.js';
-import { scoreRound, isGameOver, getWinner } from './scoring.js';
+import { scoreRound, isGameOver, getWinner, sumPoints } from './scoring.js';
 import {
-  Card, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
-  Team, cardsEqual, cardId, getPartnerSeat, getRightSeat, getTeamForSeat,
+  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
+  Team, cardsEqual, cardId, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
 // ===== State Creation =====
@@ -76,36 +76,31 @@ export function startNewRound(state: GameState): GameState {
     dragonGiveaway: false,
     dragonGiveawayBy: null,
     playedCards: [],
-    players: state.players.map((p, i) => ({
+    players: toPlayers(state.players.map((p, i) => ({
       ...p,
       hand: sortHand(deck.slice(i * 14, i * 14 + 8)), // first 8 cards
       tricksWon: [],
-      tichuCall: p.tichuCall === 'grand' ? 'grand' : 'none' as const, // preserve grand calls... actually reset
+      tichuCall: 'none',
       hasPlayedFirstCard: false,
       isOut: false,
       outOrder: 0,
       grandTichuDecided: false,
       passedCards: false,
-    })) as unknown as [Player, Player, Player, Player],
+    }))),
   };
-
-  // Reset tichu calls for new round
-  for (const p of newState.players) {
-    p.tichuCall = 'none';
-  }
 
   return newState;
 }
 
 /** Give remaining 6 cards to each player after Grand Tichu window */
 export function dealRemainingCards(state: GameState): GameState {
-  const newPlayers = state.players.map((p, i) => ({
+  const newPlayers = toPlayers(state.players.map((p, i) => ({
     ...p,
     hand: sortHand([
       ...p.hand,
       ...state.deck.slice(i * 14 + 8, i * 14 + 14),
     ]),
-  })) as [Player, Player, Player, Player];
+  })));
 
   return {
     ...state,
@@ -121,7 +116,7 @@ export function callGrandTichu(state: GameState, seat: Seat, call: boolean): Gam
   if (state.phase !== 'grandTichuWindow') return state;
   if (state.players[seat].grandTichuDecided) return state;
 
-  const newPlayers = [...state.players] as [Player, Player, Player, Player];
+  const newPlayers = toPlayers([...state.players]);
   newPlayers[seat] = {
     ...newPlayers[seat],
     tichuCall: call ? 'grand' : 'none',
@@ -148,7 +143,7 @@ export function callSmallTichu(state: GameState, seat: Seat): GameState {
   if (player.hasPlayedFirstCard) return state;
   if (player.tichuCall !== 'none') return state;
 
-  const newPlayers = [...state.players] as [Player, Player, Player, Player];
+  const newPlayers = toPlayers([...state.players]);
   newPlayers[seat] = { ...newPlayers[seat], tichuCall: 'small' };
 
   return { ...state, players: newPlayers };
@@ -171,7 +166,7 @@ export function passCards(
   if (state.players[seat].passedCards) return state;
 
   // Store the pass selections (we'll apply them all at once when everyone has passed)
-  const newPlayers = [...state.players] as [Player, Player, Player, Player];
+  const newPlayers = toPlayers([...state.players]);
   newPlayers[seat] = {
     ...newPlayers[seat],
     passedCards: true,
@@ -185,10 +180,10 @@ export function applyPasses(
   state: GameState,
   passes: Record<Seat, PassInfo>
 ): GameState {
-  const newPlayers = state.players.map(p => ({
+  const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
     hand: [...p.hand],
-  })) as [Player, Player, Player, Player];
+  })));
 
   // Remove passed cards and add received cards
   for (let seat = 0; seat < 4; seat++) {
@@ -284,7 +279,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   }
 
   // Apply the play
-  let newPlayers = state.players.map(p => ({ ...p, hand: [...p.hand] })) as [Player, Player, Player, Player];
+  let newPlayers = toPlayers(state.players.map(p => ({ ...p, hand: [...p.hand] })));
   const newPlayer = newPlayers[seat];
 
   // Remove cards from hand
@@ -343,7 +338,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
   // Dog can only be played on your lead (no current trick)
   if (state.currentTrick !== null) return { state };
 
-  const newPlayers = state.players.map(p => ({ ...p, hand: [...p.hand] })) as [Player, Player, Player, Player];
+  const newPlayers = toPlayers(state.players.map(p => ({ ...p, hand: [...p.hand] })));
   removeCard(newPlayers[seat].hand, { type: 'special', name: 'dog' });
   newPlayers[seat].hasPlayedFirstCard = true;
 
@@ -441,10 +436,10 @@ function winTrick(state: GameState): PlayResult {
   }
 
   // Give trick to winner
-  const newPlayers = state.players.map(p => ({
+  const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
     tricksWon: [...p.tricksWon],
-  })) as [Player, Player, Player, Player];
+  })));
   newPlayers[winner].tricksWon.push(trickCards);
 
   // Determine next leader
@@ -479,10 +474,10 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
   if (myTeam === theirTeam) return { state };
 
   const trickCards = state.currentTrickCards.flat();
-  const newPlayers = state.players.map(p => ({
+  const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
     tricksWon: [...p.tricksWon],
-  })) as [Player, Player, Player, Player];
+  })));
   newPlayers[toOpponent].tricksWon.push(trickCards);
 
   let nextLeader: Seat = seat;
@@ -533,28 +528,16 @@ export function canPlayWishedRankFromHand(
   const hasWishedRank = hand.some(c => c.type === 'normal' && c.rank === wish);
   if (!hasWishedRank) return false;
 
-  if (!trick) return true; // Leading — can always play the wished rank
+  if (!trick) return true; // Leading — can always play the wished rank as a single
 
-  // For singles: can play if wished rank beats current
-  if (trick.type === 'single') {
-    return wish > trick.rank;
-  }
+  // Use findPlayableCombos to find all legal plays, then check if any contain the wished rank
+  const combos = findPlayableCombos(hand, trick);
+  return combos.some(combo => comboContainsRank(combo, wish));
+}
 
-  // For pairs: can play if player has a pair of the wished rank that beats current
-  if (trick.type === 'pair') {
-    const wishedCards = hand.filter(c => c.type === 'normal' && c.rank === wish);
-    return wishedCards.length >= 2 && wish > trick.rank;
-  }
-
-  // For triples: can play if player has a triple of the wished rank
-  if (trick.type === 'triple' || trick.type === 'fullHouse') {
-    const wishedCards = hand.filter(c => c.type === 'normal' && c.rank === wish);
-    return wishedCards.length >= 3 && wish > trick.rank;
-  }
-
-  // For other combo types (straights, consecutive pairs), checking is complex.
-  // Conservatively return false (allow passing) for non-trivial combos.
-  return false;
+/** Check if a combo contains a normal card of the given rank */
+function comboContainsRank(combo: Combo, rank: NormalRank): boolean {
+  return combo.cards.some(c => c.type === 'normal' && c.rank === rank);
 }
 
 /** Check if a player must play the wished rank and isn't doing so */
@@ -564,39 +547,24 @@ function checkWishCompliance(state: GameState, seat: Seat, cards: Card[]): boole
 
   const player = state.players[seat];
 
-  // Check if player has the wished rank (wishes are for normal ranks 2-14 only)
+  // Check if player has the wished rank
   const hasWishedRank = player.hand.some(c =>
     c.type === 'normal' && c.rank === wish
   );
-
   if (!hasWishedRank) return true; // Don't have it, no constraint
 
   // Player has the wished rank. They must include it IF they can make a legal play with it.
   const playIncludesWish = cards.some(c =>
     c.type === 'normal' && c.rank === wish
   );
-
   if (playIncludesWish) return true; // They're playing it, good
 
   // They're not playing it. Check if they COULD make a legal play that includes it.
-  // Simplified: only enforce for singles and when leading.
-  if (state.currentTrick == null) {
-    return true;
+  if (!canPlayWishedRankFromHand(player.hand, wish, state.currentTrick)) {
+    return true; // Can't make any legal play with the wished rank, so no constraint
   }
 
-  if (state.currentTrick.type === 'single') {
-    // Must play the wished rank as a single if it beats current
-    const wishedCard = player.hand.find(c =>
-      c.type === 'normal' && c.rank === wish
-    );
-    if (wishedCard) {
-      if (wish > state.currentTrick.rank) {
-        return false; // Must play the wished card
-      }
-    }
-  }
-
-  return true; // For non-single combos, wish enforcement is complex; allow for now
+  return false; // Must play the wished rank but aren't
 }
 
 // ===== Bomb (out of turn) =====
@@ -621,10 +589,10 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
   }
 
   // Apply the bomb
-  const newPlayers = state.players.map(p => ({
+  const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
     hand: [...p.hand],
-  })) as [Player, Player, Player, Player];
+  })));
 
   for (const c of cards) {
     removeCard(newPlayers[seat].hand, c);
@@ -702,19 +670,17 @@ function getNextActiveSeat(
   state: GameState, currentSeat: Seat,
   players: Player[]
 ): Seat {
-  let next = getRightSeat(currentSeat);
+  const advance = state.settings.clockwise ? getLeftSeat : getRightSeat;
+  let next = advance(currentSeat);
   let attempts = 0;
   while (players[next].isOut && attempts < 4) {
-    next = getRightSeat(next);
+    next = advance(next);
     attempts++;
   }
   return next;
 }
 
 // ===== Client View =====
-
-import { ClientGameState, ClientPlayer } from './types.js';
-import { sumPoints } from './scoring.js';
 
 export function toClientState(state: GameState, forSeat: Seat): ClientGameState {
   const clientPlayers = state.players.map(p => ({
@@ -730,11 +696,11 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     cardCount: p.hand.length,
     trickCount: p.tricksWon.length,
     capturedPoints: sumPoints(p.tricksWon.flat()),
-  })) as [ClientPlayer, ClientPlayer, ClientPlayer, ClientPlayer];
+  }));
 
   return {
     phase: state.phase,
-    players: clientPlayers,
+    players: toPlayers(clientPlayers),
     teams: state.teams,
     currentTrick: state.currentTrick,
     currentTrickCards: state.currentTrickCards,

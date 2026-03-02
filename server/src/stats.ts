@@ -92,7 +92,7 @@ export async function updateStatsForRound(
     // Track who this player has played with (all other authenticated players)
     const otherUids = [...uidMap.keys()].filter(u => u !== uid);
     if (otherUids.length > 0) {
-      (updates as Record<string, any>).playedWith = arrayUnion(...otherUids);
+      updates['playedWith'] = arrayUnion(...otherUids);
     }
 
     batch.update(docRef, updates);
@@ -307,6 +307,8 @@ export async function saveRoundLog(
     .set(log);
 }
 
+const MAX_INVITABLE_USERS = 50;
+
 export async function fetchInvitableUsers(
   requestingUid: string
 ): Promise<{
@@ -316,25 +318,51 @@ export async function fetchInvitableUsers(
   if (!firebaseAdmin) return { allUsers: [], playedWithUids: new Set() };
   const db = firebaseAdmin.firestore();
 
-  // Fetch requesting user's playedWith array and all users in one go
-  const usersSnap = await db.collection('users').get();
-  const allUsers: Array<{ uid: string; displayName: string; photoURL: string | null }> = [];
+  // 1. Fetch the requesting user's doc to get their playedWith list
+  const userDoc = await db.collection('users').doc(requestingUid).get();
   const playedWithUids = new Set<string>();
+  if (userDoc.exists) {
+    const played: string[] = userDoc.data()?.playedWith ?? [];
+    for (const uid of played) playedWithUids.add(uid);
+  }
 
-  for (const doc of usersSnap.docs) {
-    if (doc.id === requestingUid) {
-      // Extract playedWith from the requesting user's doc
-      const data = doc.data();
-      const played: string[] = data.playedWith ?? [];
-      for (const uid of played) playedWithUids.add(uid);
-      continue;
+  // 2. Fetch played-with users by ID (if any), plus recent users up to the limit
+  const allUsers: Array<{ uid: string; displayName: string; photoURL: string | null }> = [];
+  const seenUids = new Set<string>();
+
+  // Fetch played-with users first (batch reads, max 30 per getAll call)
+  const playedWithList = [...playedWithUids];
+  for (let i = 0; i < playedWithList.length; i += 30) {
+    const batch = playedWithList.slice(i, i + 30);
+    const refs = batch.map(uid => db.collection('users').doc(uid));
+    const docs = await db.getAll(...refs);
+    for (const doc of docs) {
+      if (!doc.exists || doc.id === requestingUid) continue;
+      const data = doc.data()!;
+      allUsers.push({
+        uid: doc.id,
+        displayName: data.displayName || 'Player',
+        photoURL: data.photoURL || null,
+      });
+      seenUids.add(doc.id);
     }
-    const data = doc.data();
-    allUsers.push({
-      uid: doc.id,
-      displayName: data.displayName || 'Player',
-      photoURL: data.photoURL || null,
-    });
+  }
+
+  // Fill remaining slots with recent users (by last activity / doc order)
+  const remaining = MAX_INVITABLE_USERS - allUsers.length;
+  if (remaining > 0) {
+    const recentSnap = await db.collection('users')
+      .limit(remaining + 1) // +1 to account for self
+      .get();
+    for (const doc of recentSnap.docs) {
+      if (doc.id === requestingUid || seenUids.has(doc.id)) continue;
+      const data = doc.data();
+      allUsers.push({
+        uid: doc.id,
+        displayName: data.displayName || 'Player',
+        photoURL: data.photoURL || null,
+      });
+    }
   }
 
   return { allUsers, playedWithUids };

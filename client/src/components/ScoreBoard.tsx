@@ -1,4 +1,4 @@
-import { ClientGameState } from '@tichu/shared';
+import { ClientGameState, RANK_NAMES } from '@tichu/shared';
 
 type Props = {
   gameState: ClientGameState;
@@ -45,7 +45,7 @@ export default function ScoreBoard({ gameState }: Props) {
       {gameState.mahJongWish && (
         <div className="mt-2 pt-2 border-t border-gray-700 text-center">
           <span className="text-xs text-yellow-300">
-            Wish: {gameState.mahJongWish === 11 ? 'J' : gameState.mahJongWish === 12 ? 'Q' : gameState.mahJongWish === 13 ? 'K' : gameState.mahJongWish === 14 ? 'A' : gameState.mahJongWish}
+            Wish: {RANK_NAMES[gameState.mahJongWish]}
           </span>
         </div>
       )}

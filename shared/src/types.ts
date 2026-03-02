@@ -56,12 +56,14 @@ export type GameSettings = {
   countPoints: boolean;   // show captured point totals by player names
   cardsSeen: boolean;     // show remaining card counts (cards not yet played)
   showPassedCards: boolean; // show cards you passed during play
+  clockwise: boolean;     // play direction: true = clockwise, false = counterclockwise
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
   countPoints: false,
   cardsSeen: false,
   showPassedCards: false,
+  clockwise: false,
 };
 
 // ===== Game State =====
@@ -201,6 +203,13 @@ export type RoundLog = {
   dragonGiveaways: Array<{ fromSeat: Seat; toSeat: Seat }>;
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
 };
+
+// ===== Type Helpers =====
+
+/** Cast an array to a fixed-length 4-tuple. Avoids `as unknown as [T,T,T,T]` throughout. */
+export function toPlayers<T>(arr: T[]): [T, T, T, T] {
+  return arr as unknown as [T, T, T, T];
+}
 
 // ===== Helpers =====
 

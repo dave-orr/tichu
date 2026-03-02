@@ -3,7 +3,7 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine,
   applyPasses, playCards, passTurn, playBomb,
   giveDragonTrick, setMahJongWish, toClientState,
-  Card, NormalRank, PlayResult, RoundResult, PassInfo,
+  Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
@@ -30,6 +30,8 @@ export type Room = {
 };
 
 const rooms = new Map<string, Room>();
+// Reverse map: socket.id -> room code for O(1) room lookups
+const socketRooms = new Map<string, string>();
 
 // Map socket.id -> Firebase uid for authenticated players
 const socketUids = new Map<string, string>();
@@ -162,12 +164,13 @@ function createAccumulator(gameId: string, scores: [number, number], prevWasDown
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  // Ensure unique
-  if (rooms.has(code)) return generateRoomCode();
+  let code: string;
+  do {
+    code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+  } while (rooms.has(code));
   return code;
 }
 
@@ -192,6 +195,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
   };
 
   rooms.set(code, room);
+  socketRooms.set(socketId, code);
   return room;
 }
 
@@ -216,6 +220,7 @@ export function joinRoom(
   room.state.players[seat].name = playerName;
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
+  socketRooms.set(socketId, room.code);
 
   return { room, seat };
 }
@@ -240,10 +245,18 @@ export function reconnectToRoom(
   const oldSocketId = room.seatPlayers.get(seat);
   if (oldSocketId) {
     room.playerSockets.delete(oldSocketId);
+    socketRooms.delete(oldSocketId);
   }
   room.state.players[seat].id = socketId;
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
+  socketRooms.set(socketId, room.code);
+
+  // Cancel any pending cleanup timer since a player reconnected
+  if (roomCleanupTimers.has(room.code)) {
+    clearTimeout(roomCleanupTimers.get(room.code)!);
+    roomCleanupTimers.delete(room.code);
+  }
 
   return { room, seat };
 }
@@ -253,36 +266,64 @@ export function getRoom(code: string): Room | undefined {
 }
 
 export function getRoomBySocket(socketId: string): { room: Room; seat: Seat } | null {
-  for (const room of rooms.values()) {
-    const seat = room.playerSockets.get(socketId);
-    if (seat !== undefined) {
-      return { room, seat };
-    }
-  }
-  return null;
+  const code = socketRooms.get(socketId);
+  if (!code) return null;
+  const room = rooms.get(code);
+  if (!room) return null;
+  const seat = room.playerSockets.get(socketId);
+  if (seat === undefined) return null;
+  return { room, seat };
 }
+
+const ABANDONED_ROOM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const roomCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function removePlayer(socketId: string): void {
   const uid = socketUids.get(socketId);
   if (uid) uidSockets.delete(uid);
   socketUids.delete(socketId);
-  for (const [code, room] of rooms.entries()) {
-    const seat = room.playerSockets.get(socketId);
-    if (seat !== undefined) {
-      room.playerSockets.delete(socketId);
-      // Don't remove from seatPlayers during a game (allow reconnect)
-      if (room.state.phase === 'waiting') {
-        room.seatPlayers.delete(seat);
-        room.state.players[seat].id = '';
-        room.state.players[seat].name = '';
-      }
-      // Clean up empty rooms
-      if (room.playerSockets.size === 0 && room.state.phase === 'waiting') {
-        clearInvitesForRoom(code);
+
+  const code = socketRooms.get(socketId);
+  if (!code) return;
+  socketRooms.delete(socketId);
+
+  const room = rooms.get(code);
+  if (!room) return;
+
+  const seat = room.playerSockets.get(socketId);
+  if (seat === undefined) return;
+
+  room.playerSockets.delete(socketId);
+
+  // Don't remove from seatPlayers during a game (allow reconnect)
+  if (room.state.phase === 'waiting') {
+    room.seatPlayers.delete(seat);
+    room.state.players[seat].id = '';
+    room.state.players[seat].name = '';
+  }
+
+  // Clean up empty rooms immediately in waiting phase
+  if (room.playerSockets.size === 0 && room.state.phase === 'waiting') {
+    clearInvitesForRoom(code);
+    rooms.delete(code);
+    return;
+  }
+
+  // For in-progress games, schedule cleanup if all players disconnected
+  if (room.playerSockets.size === 0 && room.state.phase !== 'waiting') {
+    const timer = setTimeout(() => {
+      roomCleanupTimers.delete(code);
+      const r = rooms.get(code);
+      if (r && r.playerSockets.size === 0) {
         rooms.delete(code);
+        console.log(`Cleaned up abandoned room: ${code}`);
       }
-      return;
-    }
+    }, ABANDONED_ROOM_TIMEOUT_MS);
+    roomCleanupTimers.set(code, timer);
+  } else if (roomCleanupTimers.has(code)) {
+    // Someone reconnected, cancel the cleanup timer
+    clearTimeout(roomCleanupTimers.get(code)!);
+    roomCleanupTimers.delete(code);
   }
 }
 
@@ -364,18 +405,14 @@ export function handleSmallTichu(room: Room, seat: Seat): void {
   room.state = callSmallTichu(room.state, seat);
 }
 
-function cardKey(c: Card): string {
-  return c.type === 'normal' ? `${c.suit}-${c.rank}` : c.name;
-}
-
 export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean {
   // Verify all three passed cards are actually in the player's hand
   const hand = room.state.players[seat].hand;
-  const handKeys = new Set(hand.map(cardKey));
+  const handKeys = new Set(hand.map(cardId));
   const passCards = [pass.left, pass.partner, pass.right];
   // Also verify the three cards are distinct
-  const passKeys = new Set(passCards.map(cardKey));
-  if (passKeys.size !== 3 || !passCards.every(c => handKeys.has(cardKey(c)))) {
+  const passKeys = new Set(passCards.map(cardId));
+  if (passKeys.size !== 3 || !passCards.every(c => handKeys.has(cardId(c)))) {
     return false;
   }
 
@@ -388,7 +425,10 @@ export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean
     for (const [s, p] of room.passes) {
       room.accumulator.passes.set(s, p);
     }
-    const passes = Object.fromEntries(room.passes) as Record<Seat, PassInfo>;
+    const passes = {} as Record<Seat, PassInfo>;
+    for (const [seat, info] of room.passes) {
+      passes[seat] = info;
+    }
     room.state = applyPasses(room.state, passes);
     room.passes.clear();
     return true; // all passes applied

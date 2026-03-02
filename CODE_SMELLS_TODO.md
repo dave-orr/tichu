@@ -1,0 +1,166 @@
+# Code Smells & Improvement TODO
+
+Identified during a full codebase review. Items are grouped by severity.
+
+---
+
+## BUGS (Likely Incorrect Behavior)
+
+### 1. `scoreRound` outOrder sort is wrong — scoring/double victory broken
+**File:** `shared/src/scoring.ts:30-36`
+
+The player who never went out has `outOrder === 0`. Sorting ascending puts them
+first in the array, but the code treats index 0 as "first out":
+
+```ts
+const outOrder = [...players]
+  .sort((a, b) => a.outOrder - b.outOrder)  // outOrder=0 sorts first!
+  .map(p => p.seat);
+
+const firstOut = outOrder[0];    // BUG: this is the player who NEVER went out
+const secondOut = outOrder[1];   // BUG: this is actually the first-out player
+const lastPlayer = outOrder[3];  // BUG: this is the third-out player
+```
+
+**Consequences:**
+- Double victory is **never detected** (checks wrong pair of players)
+- Last player's hand cards are **not** given to the opposing team
+- Last player's tricks are **not** given to the first-out player
+- The `RoundResult.outOrder` array shown in the UI is in the wrong order
+
+**Fix:** Sort players with `outOrder > 0` ascending first, then `outOrder === 0`
+last. Something like:
+```ts
+.sort((a, b) => (a.outOrder || 999) - (b.outOrder || 999))
+```
+
+### ~~2. Mah Jong wish enforcement is incomplete~~ FIXED
+
+---
+
+## SIGNIFICANT CODE SMELLS
+
+### ~~3. Dead code: `dealAll` and `dealFirstEight` in deck.ts~~ FIXED
+
+### ~~4. `getRoomBySocket` is O(n) linear scan~~ FIXED
+
+### ~~5. Rate limiter memory leak~~ FIXED
+
+### ~~6. No room cleanup for in-progress games~~ FIXED
+
+### ~~7. `fetchInvitableUsers` fetches ALL user documents~~ FIXED
+
+### ~~8. `roundResult` typed as `any`~~ FIXED
+
+### ~~9. `needDragonChoice` state is tracked but unused~~ FIXED
+
+### ~~10. `as unknown as` double assertions for tuple types~~ FIXED
+
+### ~~11. Duplicated invite-push logic in handler.ts~~ FIXED
+
+### ~~12. `handleRoundResult` uses inline type import~~ FIXED
+
+### ~~13. Unsafe `any` type assertion in stats.ts~~ FIXED
+
+---
+
+## MINOR CODE SMELLS
+
+### ~~14. `findPlayableCombos` can return duplicate combos~~ FIXED
+
+### ~~15. `addConsecutivePairs` doesn't handle phoenix~~ FIXED
+
+### ~~16. `generateRoomCode` uses recursion for collision~~ FIXED
+
+### ~~17. Game.tsx and Lobby.tsx are very large single components~~ FIXED
+
+### ~~18. `selectedCards` state not reset on phase transitions~~ FIXED
+
+### ~~19. `useEffect` dependency array incomplete~~ FIXED
+
+### 20. Prop drilling through `ReturnType<typeof useSocket>`
+**Files:** `client/src/pages/Game.tsx:17-20`, `client/src/pages/Lobby.tsx:8-11`
+
+The entire socket hook return value is passed as props. A React context provider
+would be cleaner and avoid threading the large object through component trees.
+
+### ~~21. `cardKey` duplicates `cardId` from shared~~ FIXED
+
+### ~~22. `Object.fromEntries` with Map coerces numeric keys to strings~~ FIXED
+
+### ~~23. Pre-existing build issues: vitest not in tsconfig exclude~~ FIXED
+
+---
+
+## FIXED (Trivial — done during review)
+
+- **ScoreBoard.tsx**: Replaced inline ternary chain for wish rank display with
+  `RANK_NAMES[gameState.mahJongWish]` (was duplicating shared constant logic).
+- **engine.ts**: Moved `ClientGameState`, `ClientPlayer`, and `sumPoints` imports
+  from bottom of file to top with other imports.
+- **engine.ts**: Removed dead code in `startNewRound` — tichu call was set to a
+  conditional value then immediately overridden to `'none'` in a loop. Simplified
+  to just `'none'` and removed the redundant loop.
+- **useSocket.ts**: Removed no-op `player-joined` event handler (state updates
+  come via the `game-state` event).
+
+## FIXED (Minor smells)
+
+- **#8 useSocket.ts**: Typed `roundResult` as `RoundResult | null` instead of `any`.
+- **#9 useSocket.ts**: Removed unused `needDragonChoice` state and its
+  `need-dragon-choice` event handler. Game.tsx uses gameState directly.
+- **#12 handler.ts**: Replaced inline `import('@tichu/shared').RoundResult` with
+  the `RoundResult` type already in the imports.
+- **#14 combinations.ts**: Added deduplication to `findPlayableCombos` by sorted
+  card IDs, preventing duplicate combos in the results.
+- **#15 combinations.ts**: Added phoenix support to `addConsecutivePairs` — the
+  phoenix can now fill one pair slot in a consecutive pairs sequence.
+- **#16 rooms.ts**: Converted `generateRoomCode` from recursive to iterative
+  (do/while loop) to avoid theoretical stack overflow.
+- **#18 Game.tsx**: Added `useEffect` to reset `selectedCards` and `bombMode`
+  when the game phase changes.
+- **#19 Lobby.tsx**: Used a `useRef` flag to make the "pre-fill name once"
+  intent explicit, rather than relying on stale closure over `playerName`.
+- **#21 rooms.ts**: Replaced local `cardKey` function with `cardId` from
+  `@tichu/shared` (they were identical).
+- **#22 rooms.ts**: Built the passes `Record<Seat, PassInfo>` via a for-of loop
+  instead of `Object.fromEntries(map)` which coerced numeric keys to strings.
+- **#23 shared/tsconfig.json**: Added `"exclude": ["src/**/*.test.ts"]` so test
+  files are excluded from the TypeScript build (fixes pre-existing vitest errors).
+
+## FIXED (Bug #2 + Significant smells)
+
+- **#2 engine.ts**: Rewrote `canPlayWishedRankFromHand` and `checkWishCompliance`
+  to use `findPlayableCombos` for proper wish enforcement across all combo types
+  (singles, pairs, straights, consecutive pairs, full houses, etc.).
+- **#3 deck.ts**: Removed unused `dealAll` and `dealFirstEight` functions.
+- **#4 rooms.ts**: Added `socketRooms` reverse map (`socketId -> roomCode`) for
+  O(1) lookups in `getRoomBySocket` instead of iterating all rooms.
+- **#5 handler.ts**: Added `cleanup()` method to rate limiter, called on socket
+  disconnect to prevent memory leak from accumulating stale entries.
+- **#6 rooms.ts**: Added 10-minute timeout cleanup for abandoned in-progress game
+  rooms. Timer is cancelled if a player reconnects.
+- **#7 stats.ts**: Rewrote `fetchInvitableUsers` to fetch the requesting user's
+  `playedWith` list first, then batch-fetch those users, then fill remaining slots
+  with a limited query (max 50 users) instead of loading all user documents.
+- **#10 types.ts + engine.ts**: Added `toPlayers<T>()` helper in types.ts and
+  replaced all `as unknown as [Player, Player, Player, Player]` and
+  `as [Player, ...]` casts throughout engine.ts.
+- **#11 handler.ts**: Extracted `pushPendingInvites()` helper to deduplicate the
+  invite-push logic between the connection handler and `authenticate` handler.
+- **#13 stats.ts**: Removed the `as Record<string, any>` cast — the `playedWith`
+  field is assigned directly to the `updates` record (the key was the issue, not
+  the value type).
+
+## FIXED (Component splits)
+
+- **#17 Game.tsx**: Extracted three sub-components:
+  - `GrandTichuPhase.tsx` — the grand tichu window phase (score + prompt)
+  - `PassingPhase.tsx` — both passing states (selecting cards to pass + waiting)
+  - `OpponentInfo.tsx` — opponent card count / tichu call display (was already a
+    separate function, moved to its own file)
+- **#17 Lobby.tsx**: Extracted two sub-components:
+  - `WaitingRoom.tsx` — the in-room view (seat grid, setup options, invite panel,
+    start game button). Owns its own `swapFrom` and `showInvitePanel` state.
+  - `CreateRoomForm.tsx` — room creation form with all game setting checkboxes.
+    Owns its own checkbox state, initialized from profile preferences.
