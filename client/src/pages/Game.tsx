@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -295,6 +295,21 @@ export default function Game({ socket, auth }: Props) {
 
       {/* Bottom area: player's hand and controls */}
       <div className="p-4 bg-gray-900/50">
+        {/* Passed cards display */}
+        {gameState.settings.showPassedCards && passRecord && phase === 'playing' && (
+          <div className="mb-2 max-w-lg mx-auto">
+            <div className="flex justify-center items-end gap-4">
+              <span className="text-xs text-gray-400">You passed:</span>
+              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
+                <div key={p.playerName} className="text-center">
+                  <CardComponent card={p.card} small />
+                  <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
           <div className="mb-2 max-w-lg mx-auto">
@@ -356,9 +371,9 @@ export default function Game({ socket, auth }: Props) {
                     Pass
                   </button>
                 )}
-                {currentTrick && mustPlayWish && (
+                {currentTrick && mustPlayWish && gameState.mahJongWish && (
                   <div className="text-sm text-yellow-400 flex items-center px-4">
-                    You must play the wished rank!
+                    You must play a {RANK_NAMES[gameState.mahJongWish]}!
                   </div>
                 )}
               </>

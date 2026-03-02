@@ -19,6 +19,7 @@ export default function Lobby({ socket, auth }: Props) {
   const [randomPartners, setRandomPartners] = useState(false);
   const [countPoints, setCountPoints] = useState(false);
   const [cardsSeen, setCardsSeen] = useState(false);
+  const [showPassedCards, setShowPassedCards] = useState(false);
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showStats, setShowStats] = useState(false);
 
@@ -110,6 +111,35 @@ export default function Lobby({ socket, auth }: Props) {
               </p>
             )}
           </div>
+
+          {/* Setup options */}
+          {gameState && (
+            <div className="mb-4 space-y-2">
+              <h3 className="text-sm font-semibold text-gray-400 text-left">Setup Options</h3>
+              {[
+                { key: 'countPoints' as const, label: 'Count Points', desc: 'Show captured point totals by each player\'s name' },
+                { key: 'cardsSeen' as const, label: 'Cards Seen', desc: 'Show how many of each card remain unplayed' },
+                { key: 'showPassedCards' as const, label: 'Show Passed Cards', desc: 'Show which cards you passed during play' },
+              ].map(opt => (
+                <label
+                  key={opt.key}
+                  className={`flex items-center gap-3 p-2 rounded-lg bg-gray-800 border border-gray-600 ${isOrganizer ? 'cursor-pointer' : 'opacity-70'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={gameState.settings[opt.key]}
+                    onChange={e => isOrganizer && socket.updateSettings({ [opt.key]: e.target.checked })}
+                    disabled={!isOrganizer}
+                    className="w-4 h-4 rounded accent-yellow-500"
+                  />
+                  <div className="text-left">
+                    <span className="text-sm font-semibold">{opt.label}</span>
+                    <p className="text-xs text-gray-400">{opt.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
 
           {playerCount === 4 && isOrganizer && (
             <button
@@ -265,9 +295,21 @@ export default function Lobby({ socket, auth }: Props) {
                 <p className="text-sm text-gray-400">Show how many of each card remain unplayed</p>
               </div>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
+              <input
+                type="checkbox"
+                checked={showPassedCards}
+                onChange={e => setShowPassedCards(e.target.checked)}
+                className="w-5 h-5 rounded accent-yellow-500"
+              />
+              <div>
+                <span className="font-semibold">Show Passed Cards</span>
+                <p className="text-sm text-gray-400">Show which cards you passed during play</p>
+              </div>
+            </label>
             <button
               onClick={() => {
-                socket.createRoom(playerName.trim(), randomPartners, { countPoints, cardsSeen });
+                socket.createRoom(playerName.trim(), randomPartners, { countPoints, cardsSeen, showPassedCards });
               }}
               className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
             >
