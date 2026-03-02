@@ -156,6 +156,10 @@ export function useSocket(idToken: string | null) {
     setNeedMahJongWish(false);
   }, []);
 
+  const concedeAction = useCallback(() => {
+    socketRef.current?.emit('concede');
+  }, []);
+
   const nextRound = useCallback(() => {
     socketRef.current?.emit('next-round');
     setRoundResult(null);
@@ -206,6 +210,7 @@ export function useSocket(idToken: string | null) {
     bombCancel,
     giveDragonTrick,
     mahJongWish,
+    concede: concedeAction,
     nextRound,
     swapSeats: swapSeatsAction,
     updateSettings,

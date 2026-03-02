@@ -2,7 +2,7 @@ import {
   GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound,
   callGrandTichu, callSmallTichu, passCards as passCardsEngine,
   applyPasses, playCards, passTurn, playBomb,
-  giveDragonTrick, setMahJongWish, toClientState,
+  giveDragonTrick, setMahJongWish, toClientState, concede as concedeEngine,
   Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
 } from '@tichu/shared';
 
@@ -464,6 +464,10 @@ export function handleDragonGiveaway(room: Room, seat: Seat, to: Seat): PlayResu
 export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank): void {
   room.accumulator.mahJongWishes.push({ seat, rank });
   room.state = setMahJongWish(room.state, rank);
+}
+
+export function handleConcede(room: Room, seat: Seat): PlayResult {
+  return concedeEngine(room.state, seat);
 }
 
 export function applyPlayResult(room: Room, result: PlayResult): void {

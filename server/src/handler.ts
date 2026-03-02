@@ -4,7 +4,7 @@ import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
-  handleDragonGiveaway, handleMahJongWish, applyPlayResult,
+  handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
   startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
@@ -267,6 +267,21 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       handleMahJongWish(room, seat, rank);
+      broadcastState(io, room);
+    });
+
+    socket.on('concede', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      const result = handleConcede(room, seat);
+      applyPlayResult(room, result);
+
+      if (result.roundResult) {
+        io.to(room.code).emit('round-result', { result: result.roundResult });
+        handleRoundResult(room, result.roundResult);
+      }
+
       broadcastState(io, room);
     });
 
