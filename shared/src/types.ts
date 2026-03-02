@@ -44,11 +44,13 @@ export type Combo = {
 export type GameSettings = {
   countPoints: boolean;   // show captured point totals by player names
   cardsSeen: boolean;     // show remaining card counts (cards not yet played)
+  showPassedCards: boolean; // show cards you passed during play
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
   countPoints: false,
   cardsSeen: false,
+  showPassedCards: false,
 };
 
 // ===== Game State =====

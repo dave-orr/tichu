@@ -218,6 +218,22 @@ export function setupHandlers(io: Server): void {
       }
     });
 
+    socket.on('update-settings', ({ settings }: { settings: Partial<GameSettings> }) => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can change settings' });
+        return;
+      }
+      if (room.state.phase !== 'waiting') {
+        socket.emit('error', { message: 'Cannot change settings after game has started' });
+        return;
+      }
+      room.state.settings = { ...room.state.settings, ...settings };
+      broadcastState(io, room);
+    });
+
     socket.on('swap-seats', ({ seatA, seatB }: { seatA: Seat; seatB: Seat }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
