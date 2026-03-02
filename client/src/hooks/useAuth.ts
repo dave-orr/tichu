@@ -6,7 +6,7 @@ import {
   User,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../firebase.js';
+import { auth, db, googleProvider, firebaseConfigured } from '../firebase.js';
 
 export type UserProfile = {
   uid: string;
@@ -74,13 +74,32 @@ export function useAuth() {
   const [idToken, setIdToken] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!firebaseConfigured || !auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
         const token = await firebaseUser.getIdToken();
         setIdToken(token);
-        const userProfile = await loadOrCreateProfile(firebaseUser);
-        setProfile(userProfile);
+        try {
+          const userProfile = await loadOrCreateProfile(firebaseUser);
+          setProfile(userProfile);
+        } catch (error) {
+          console.error('Failed to load/create user profile:', error);
+          // Fall back to a minimal profile from the Firebase user
+          setProfile({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName || 'Player',
+            email: firebaseUser.email || '',
+            photoURL: firebaseUser.photoURL,
+            stats: { ...DEFAULT_STATS },
+            preferences: {
+              preferredName: firebaseUser.displayName?.split(' ')[0] || 'Player',
+            },
+          });
+        }
       } else {
         setIdToken(null);
         setProfile(null);
@@ -101,6 +120,10 @@ export function useAuth() {
   }, [user]);
 
   const signInWithGoogle = useCallback(async () => {
+    if (!auth || !googleProvider) {
+      console.error('Firebase not configured — set VITE_FIREBASE_* env vars');
+      return null;
+    }
     try {
       const result = await signInWithPopup(auth, googleProvider);
       return result.user;
@@ -111,7 +134,7 @@ export function useAuth() {
   }, []);
 
   const signOut = useCallback(async () => {
-    await firebaseSignOut(auth);
+    if (auth) await firebaseSignOut(auth);
     setUser(null);
     setProfile(null);
     setIdToken(null);
@@ -135,6 +158,7 @@ export function useAuth() {
 }
 
 async function loadOrCreateProfile(user: User): Promise<UserProfile> {
+  if (!db) throw new Error('Firestore not initialized');
   const docRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(docRef);
 
