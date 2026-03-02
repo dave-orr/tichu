@@ -30,6 +30,8 @@ export type Room = {
 };
 
 const rooms = new Map<string, Room>();
+// Reverse map: socket.id -> room code for O(1) room lookups
+const socketRooms = new Map<string, string>();
 
 // Map socket.id -> Firebase uid for authenticated players
 const socketUids = new Map<string, string>();
@@ -193,6 +195,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
   };
 
   rooms.set(code, room);
+  socketRooms.set(socketId, code);
   return room;
 }
 
@@ -217,6 +220,7 @@ export function joinRoom(
   room.state.players[seat].name = playerName;
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
+  socketRooms.set(socketId, room.code);
 
   return { room, seat };
 }
@@ -241,10 +245,18 @@ export function reconnectToRoom(
   const oldSocketId = room.seatPlayers.get(seat);
   if (oldSocketId) {
     room.playerSockets.delete(oldSocketId);
+    socketRooms.delete(oldSocketId);
   }
   room.state.players[seat].id = socketId;
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
+  socketRooms.set(socketId, room.code);
+
+  // Cancel any pending cleanup timer since a player reconnected
+  if (roomCleanupTimers.has(room.code)) {
+    clearTimeout(roomCleanupTimers.get(room.code)!);
+    roomCleanupTimers.delete(room.code);
+  }
 
   return { room, seat };
 }
@@ -254,36 +266,64 @@ export function getRoom(code: string): Room | undefined {
 }
 
 export function getRoomBySocket(socketId: string): { room: Room; seat: Seat } | null {
-  for (const room of rooms.values()) {
-    const seat = room.playerSockets.get(socketId);
-    if (seat !== undefined) {
-      return { room, seat };
-    }
-  }
-  return null;
+  const code = socketRooms.get(socketId);
+  if (!code) return null;
+  const room = rooms.get(code);
+  if (!room) return null;
+  const seat = room.playerSockets.get(socketId);
+  if (seat === undefined) return null;
+  return { room, seat };
 }
+
+const ABANDONED_ROOM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const roomCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function removePlayer(socketId: string): void {
   const uid = socketUids.get(socketId);
   if (uid) uidSockets.delete(uid);
   socketUids.delete(socketId);
-  for (const [code, room] of rooms.entries()) {
-    const seat = room.playerSockets.get(socketId);
-    if (seat !== undefined) {
-      room.playerSockets.delete(socketId);
-      // Don't remove from seatPlayers during a game (allow reconnect)
-      if (room.state.phase === 'waiting') {
-        room.seatPlayers.delete(seat);
-        room.state.players[seat].id = '';
-        room.state.players[seat].name = '';
-      }
-      // Clean up empty rooms
-      if (room.playerSockets.size === 0 && room.state.phase === 'waiting') {
-        clearInvitesForRoom(code);
+
+  const code = socketRooms.get(socketId);
+  if (!code) return;
+  socketRooms.delete(socketId);
+
+  const room = rooms.get(code);
+  if (!room) return;
+
+  const seat = room.playerSockets.get(socketId);
+  if (seat === undefined) return;
+
+  room.playerSockets.delete(socketId);
+
+  // Don't remove from seatPlayers during a game (allow reconnect)
+  if (room.state.phase === 'waiting') {
+    room.seatPlayers.delete(seat);
+    room.state.players[seat].id = '';
+    room.state.players[seat].name = '';
+  }
+
+  // Clean up empty rooms immediately in waiting phase
+  if (room.playerSockets.size === 0 && room.state.phase === 'waiting') {
+    clearInvitesForRoom(code);
+    rooms.delete(code);
+    return;
+  }
+
+  // For in-progress games, schedule cleanup if all players disconnected
+  if (room.playerSockets.size === 0 && room.state.phase !== 'waiting') {
+    const timer = setTimeout(() => {
+      roomCleanupTimers.delete(code);
+      const r = rooms.get(code);
+      if (r && r.playerSockets.size === 0) {
         rooms.delete(code);
+        console.log(`Cleaned up abandoned room: ${code}`);
       }
-      return;
-    }
+    }, ABANDONED_ROOM_TIMEOUT_MS);
+    roomCleanupTimers.set(code, timer);
+  } else if (roomCleanupTimers.has(code)) {
+    // Someone reconnected, cancel the cleanup timer
+    clearTimeout(roomCleanupTimers.get(code)!);
+    roomCleanupTimers.delete(code);
   }
 }
 

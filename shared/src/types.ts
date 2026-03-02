@@ -202,6 +202,13 @@ export type RoundLog = {
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
 };
 
+// ===== Type Helpers =====
+
+/** Cast an array to a fixed-length 4-tuple. Avoids `as unknown as [T,T,T,T]` throughout. */
+export function toPlayers<T>(arr: T[]): [T, T, T, T] {
+  return arr as unknown as [T, T, T, T];
+}
+
 // ===== Helpers =====
 
 export function cardId(card: Card): string {
