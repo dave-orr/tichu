@@ -5,12 +5,26 @@ type Props = {
   onClose: () => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
   sendInvite: (targetUid: string) => void;
+  expiredInviteUids: Set<string>;
 };
 
-export default function InvitePanel({ onClose, fetchPlayers, sendInvite }: Props) {
+export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expiredInviteUids }: Props) {
   const [players, setPlayers] = useState<InvitablePlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [invited, setInvited] = useState<Set<string>>(new Set());
+
+  // Revert "Invited" state when server notifies of expiry
+  useEffect(() => {
+    if (expiredInviteUids.size === 0) return;
+    setInvited(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const uid of expiredInviteUids) {
+        if (next.delete(uid)) changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [expiredInviteUids]);
 
   useEffect(() => {
     fetchPlayers().then(({ players }) => {

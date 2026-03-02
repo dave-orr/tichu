@@ -331,6 +331,21 @@ export function setupHandlers(io: Server): void {
           fromName: invite.fromName,
         });
       }
+
+      // Proactively expire the invite after 5 minutes
+      setTimeout(() => {
+        const inv = getInvite(invite.id);
+        if (!inv) return; // already accepted/dismissed
+        removeInvite(invite.id);
+        const targetSock = getSocketForUid(inv.targetUid);
+        if (targetSock) {
+          io.to(targetSock).emit('invite-expired', { inviteId: inv.id });
+        }
+        const orgSock = getSocketForUid(inv.fromUid);
+        if (orgSock) {
+          io.to(orgSock).emit('invite-expired', { inviteId: inv.id, targetUid: inv.targetUid });
+        }
+      }, 5 * 60 * 1000);
     });
 
     socket.on('respond-invite', ({ inviteId, accept, playerName }: { inviteId: string; accept: boolean; playerName?: string }) => {

@@ -87,6 +87,7 @@ export default function Lobby({ socket, auth }: Props) {
               onClose={() => setShowInvitePanel(false)}
               fetchPlayers={socket.fetchPlayers}
               sendInvite={socket.sendInvite}
+              expiredInviteUids={socket.expiredInviteUids}
             />
           )}
 

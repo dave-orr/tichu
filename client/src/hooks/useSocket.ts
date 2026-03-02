@@ -24,6 +24,7 @@ export function useSocket(idToken: string | null) {
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [randomPartners, setRandomPartners] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
+  const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -78,6 +79,15 @@ export function useSocket(idToken: string | null) {
         if (prev.some(i => i.inviteId === invite.inviteId)) return prev;
         return [...prev, invite];
       });
+    });
+
+    socket.on('invite-expired', ({ inviteId, targetUid }: { inviteId: string; targetUid?: string }) => {
+      // Target side: remove from pending invites
+      setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
+      // Organizer side: track expired target uid so InvitePanel can revert "Invited" → "Invite"
+      if (targetUid) {
+        setExpiredInviteUids(prev => new Set(prev).add(targetUid));
+      }
     });
 
     socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
@@ -211,6 +221,7 @@ export function useSocket(idToken: string | null) {
     swapSeats: swapSeatsAction,
     updateSettings,
     pendingInvites,
+    expiredInviteUids,
     fetchPlayers,
     sendInvite,
     respondInvite,
