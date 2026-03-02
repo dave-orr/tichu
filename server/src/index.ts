@@ -22,6 +22,7 @@ const io = new Server(httpServer, {
     origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
+  maxHttpBufferSize: 1e4, // 10 KB max payload
 });
 
 setupHandlers(io);

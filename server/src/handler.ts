@@ -10,9 +10,35 @@ import {
 import { verifyIdToken } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd } from './stats.js';
 
+// Simple per-socket rate limiter: max `limit` events per `windowMs`.
+function createRateLimiter(windowMs: number, limit: number) {
+  const counts = new Map<string, { count: number; resetAt: number }>();
+  return (socketId: string): boolean => {
+    const now = Date.now();
+    const entry = counts.get(socketId);
+    if (!entry || now >= entry.resetAt) {
+      counts.set(socketId, { count: 1, resetAt: now + windowMs });
+      return true;
+    }
+    entry.count++;
+    return entry.count <= limit;
+  };
+}
+
+const rateLimiter = createRateLimiter(1000, 20); // 20 events per second per socket
+
 export function setupHandlers(io: Server): void {
   io.on('connection', async (socket: Socket) => {
     console.log(`Player connected: ${socket.id}`);
+
+    // Rate limit all incoming events
+    socket.use((event, next) => {
+      if (rateLimiter(socket.id)) {
+        next();
+      } else {
+        next(new Error('Rate limit exceeded'));
+      }
+    });
 
     // Verify Firebase token if provided
     const token = socket.handshake.auth?.token;
