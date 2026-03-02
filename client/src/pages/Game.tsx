@@ -273,12 +273,22 @@ export default function Game({ socket, auth }: Props) {
           <div className="mb-2 max-w-lg mx-auto">
             <div className="flex justify-center items-end gap-4">
               <span className="text-xs text-gray-400">You passed:</span>
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
-                <div key={p.playerName} className="text-center">
-                  <CardComponent card={p.card} small />
-                  <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
-                </div>
-              ))}
+              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
+                const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+                return (
+                  <div key={p.playerName} className="text-center">
+                    <div className="relative inline-block">
+                      <CardComponent card={p.card} small />
+                      {played && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
