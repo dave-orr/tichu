@@ -13,6 +13,7 @@ import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
 import RoundResults from '../components/RoundResults.js';
 import CardsSeen from '../components/CardsSeen.js';
+import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -30,6 +31,7 @@ export default function Game({ socket, auth }: Props) {
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
+  const gameEvents = useGameEvents(gameState, roundResult);
 
   // Reset card selection when phase changes (e.g., round end -> new round)
   const phase = gameState?.phase;
@@ -153,18 +155,21 @@ export default function Game({ socket, auth }: Props) {
   // Grand Tichu phase
   if (phase === 'grandTichuWindow') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full">
-          <ScoreBoard gameState={gameState} />
-          <div className="mt-6">
-            <GrandTichuPrompt
-              cards={myHand}
-              decided={myPlayer.grandTichuDecided}
-              onDecide={socket.callGrandTichu}
-            />
+      <>
+        <GameAnnouncements events={gameEvents} />
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full">
+            <ScoreBoard gameState={gameState} />
+            <div className="mt-6">
+              <GrandTichuPrompt
+                cards={myHand}
+                decided={myPlayer.grandTichuDecided}
+                onDecide={socket.callGrandTichu}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -184,26 +189,31 @@ export default function Game({ socket, auth }: Props) {
     };
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-3xl w-full">
-          <ScoreBoard gameState={gameState} />
-          <div className="mt-6">
-            <PassCards
-              hand={myHand}
-              mySeat={mySeat}
-              playerNames={playerNames}
-              onPass={handlePass}
-            />
+      <>
+        <GameAnnouncements events={gameEvents} />
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-3xl w-full">
+            <ScoreBoard gameState={gameState} />
+            <div className="mt-6">
+              <PassCards
+                hand={myHand}
+                mySeat={mySeat}
+                playerNames={playerNames}
+                onPass={handlePass}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (phase === 'passing' && myPlayer.passedCards) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-3xl w-full text-center">
+      <>
+        <GameAnnouncements events={gameEvents} />
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-3xl w-full text-center">
           <ScoreBoard gameState={gameState} />
           <p className="mt-6 mb-4 text-gray-300">Waiting for other players to pass cards...</p>
           {passRecord && (
@@ -225,12 +235,16 @@ export default function Game({ socket, auth }: Props) {
           <div className="text-center text-sm text-gray-400 mt-1">{myPlayer.name}</div>
         </div>
       </div>
+      </>
     );
   }
 
   // Main game phase
   return (
     <div className="min-h-screen flex flex-col relative">
+      {/* Announcements overlay */}
+      <GameAnnouncements events={gameEvents} />
+
       {/* Modals */}
       {needMahJongWish && <MahJongWish onWish={socket.mahJongWish} />}
       {gameState.dragonGiveaway && gameState.dragonGiveawayBy === mySeat && (
