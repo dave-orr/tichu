@@ -158,6 +158,37 @@ export type RoundResult = {
   outOrder: [Seat, Seat, Seat, Seat]; // order players went out (last = still had cards)
 };
 
+// ===== Round Log (for analytics) =====
+
+export type RoundLogPlayerEntry = {
+  seat: Seat;
+  uid: string | null;
+  name: string;
+  team: 0 | 1;
+  tichuCall: TichuCall;
+  outOrder: number;
+  initialHand: Card[];
+  passedLeft: Card | null;
+  passedPartner: Card | null;
+  passedRight: Card | null;
+};
+
+export type RoundLog = {
+  gameId: string;
+  roundNumber: number;
+  timestamp: number;
+  scoresBeforeRound: [number, number];
+  scoresAfterRound: [number, number];
+  roundCardPoints: [number, number];
+  tichuBonuses: [number, number];
+  isDoubleVictory: boolean;
+  outOrder: Seat[];
+  players: RoundLogPlayerEntry[];
+  bombs: Array<{ seat: Seat; cards: Card[] }>;
+  dragonGiveaways: Array<{ fromSeat: Seat; toSeat: Seat }>;
+  mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
+};
+
 // ===== Helpers =====
 
 export function cardId(card: Card): string {

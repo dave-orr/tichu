@@ -5,10 +5,10 @@ import {
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, applyPlayResult,
-  startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
+  startNextRound, swapSeats, Room, setSocketUid,
 } from './rooms.js';
 import { verifyIdToken } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog } from './stats.js';
 
 // Simple per-socket rate limiter: max `limit` events per `windowMs`.
 function createRateLimiter(windowMs: number, limit: number) {
@@ -124,7 +124,7 @@ export function setupHandlers(io: Server): void {
       }
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room);
+        handleRoundResult(room, result.roundResult);
       }
 
       broadcastState(io, room);
@@ -145,7 +145,7 @@ export function setupHandlers(io: Server): void {
       }
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room);
+        handleRoundResult(room, result.roundResult);
       }
 
       broadcastState(io, room);
@@ -179,7 +179,7 @@ export function setupHandlers(io: Server): void {
 
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room);
+        handleRoundResult(room, result.roundResult);
       }
 
       broadcastState(io, room);
@@ -194,7 +194,7 @@ export function setupHandlers(io: Server): void {
 
       if (result.roundResult) {
         io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room);
+        handleRoundResult(room, result.roundResult);
       }
 
       broadcastState(io, room);
@@ -203,8 +203,8 @@ export function setupHandlers(io: Server): void {
     socket.on('mah-jong-wish', ({ rank }: { rank: NormalRank }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
-      const { room } = found;
-      handleMahJongWish(room, rank);
+      const { room, seat } = found;
+      handleMahJongWish(room, seat, rank);
       broadcastState(io, room);
     });
 
@@ -245,26 +245,29 @@ function broadcastState(io: Server, room: Room): void {
   }
 }
 
-function handleRoundResult(room: Room): void {
+function handleRoundResult(room: Room, roundResult: import('@tichu/shared').RoundResult): void {
   const state = room.state;
   if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') return;
 
-  // Collect uid -> seat mapping for authenticated players
-  const uidMap = new Map<string, Seat>();
-  for (const [socketId, seat] of room.playerSockets) {
-    const uid = getSocketUid(socketId);
-    if (uid) uidMap.set(uid, seat);
-  }
-  if (uidMap.size === 0) return;
+  // Save round log (fire-and-forget)
+  saveRoundLog(room, roundResult).catch(err =>
+    console.error('Failed to save round log:', err)
+  );
 
   // Update round stats for each authenticated player
-  updateStatsForRound(uidMap, state).catch(err =>
+  updateStatsForRound(room, roundResult).catch(err =>
     console.error('Failed to update round stats:', err)
   );
 
+  // Update team stats
+  const isGameEnd = state.phase === 'gameEnd';
+  updateTeamStats(room, roundResult, isGameEnd).catch(err =>
+    console.error('Failed to update team stats:', err)
+  );
+
   // If game is over, also update game-level stats
-  if (state.phase === 'gameEnd') {
-    updateStatsForGameEnd(uidMap, state).catch(err =>
+  if (isGameEnd) {
+    updateStatsForGameEnd(room, roundResult).catch(err =>
       console.error('Failed to update game stats:', err)
     );
   }

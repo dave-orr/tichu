@@ -6,6 +6,17 @@ import {
   Card, NormalRank, PlayResult, RoundResult, PassInfo,
 } from '@tichu/shared';
 
+export type RoundAccumulator = {
+  gameId: string;
+  initialHands: Map<Seat, Card[]>;
+  passes: Map<Seat, PassInfo>;
+  bombs: Array<{ seat: Seat; cards: Card[] }>;
+  dragonGiveaways: Array<{ fromSeat: Seat; toSeat: Seat }>;
+  mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
+  scoresAtRoundStart: [number, number];
+  wasDown300: [boolean, boolean]; // per team, tracked across the whole game
+};
+
 export type Room = {
   code: string;
   state: GameState;
@@ -14,6 +25,8 @@ export type Room = {
   passes: Map<Seat, PassInfo>;      // pending card passes
   randomPartners: boolean;
   organizer: string;                // socket.id of room creator
+  gameId: string;
+  accumulator: RoundAccumulator;
 };
 
 const rooms = new Map<string, Room>();
@@ -27,6 +40,23 @@ export function setSocketUid(socketId: string, uid: string): void {
 
 export function getSocketUid(socketId: string): string | null {
   return socketUids.get(socketId) ?? null;
+}
+
+function createAccumulator(gameId: string, scores: [number, number], prevWasDown300?: [boolean, boolean]): RoundAccumulator {
+  const diff = scores[0] - scores[1];
+  const wasDown300: [boolean, boolean] = prevWasDown300
+    ? [prevWasDown300[0] || diff <= -300, prevWasDown300[1] || diff >= 300]
+    : [false, false];
+  return {
+    gameId,
+    initialHands: new Map(),
+    passes: new Map(),
+    bombs: [],
+    dragonGiveaways: [],
+    mahJongWishes: [],
+    scoresAtRoundStart: scores,
+    wasDown300,
+  };
 }
 
 function generateRoomCode(): string {
@@ -47,6 +77,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
   state.players[0].id = socketId;
   state.players[0].name = playerName;
 
+  const gameId = `${code}_${Date.now()}`;
   const room: Room = {
     code,
     state,
@@ -55,6 +86,8 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     passes: new Map(),
     randomPartners,
     organizer: socketId,
+    gameId,
+    accumulator: createAccumulator(gameId, [0, 0]),
   };
 
   rooms.set(code, room);
@@ -157,7 +190,9 @@ export function startGame(room: Room): void {
   if (room.randomPartners) {
     shuffleSeats(room);
   }
+  room.gameId = `${room.code}_${Date.now()}`;
   room.state = startNewRound(room.state);
+  room.accumulator = createAccumulator(room.gameId, [0, 0]);
 }
 
 /** Randomly assign players to seats */
@@ -213,6 +248,12 @@ export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
 
 export function handleGrandTichu(room: Room, seat: Seat, call: boolean): void {
   room.state = callGrandTichu(room.state, seat, call);
+  // Snapshot initial hands once all players have decided and full hands are dealt
+  if (room.state.phase === 'passing' && room.accumulator.initialHands.size === 0) {
+    for (const p of room.state.players) {
+      room.accumulator.initialHands.set(p.seat, [...p.hand]);
+    }
+  }
 }
 
 export function handleSmallTichu(room: Room, seat: Seat): void {
@@ -225,6 +266,10 @@ export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean
 
   // Check if all 4 players have passed
   if (room.passes.size === 4) {
+    // Snapshot pass data before clearing
+    for (const [s, p] of room.passes) {
+      room.accumulator.passes.set(s, p);
+    }
     const passes = Object.fromEntries(room.passes) as Record<Seat, PassInfo>;
     room.state = applyPasses(room.state, passes);
     room.passes.clear();
@@ -242,14 +287,24 @@ export function handlePassTurn(room: Room, seat: Seat): PlayResult {
 }
 
 export function handleBomb(room: Room, seat: Seat, cards: Card[]): PlayResult {
-  return playBomb(room.state, seat, cards);
+  const result = playBomb(room.state, seat, cards);
+  // Record bomb if it was actually played (state changed)
+  if (result.state !== room.state) {
+    room.accumulator.bombs.push({ seat, cards: [...cards] });
+  }
+  return result;
 }
 
 export function handleDragonGiveaway(room: Room, seat: Seat, to: Seat): PlayResult {
-  return giveDragonTrick(room.state, seat, to);
+  const result = giveDragonTrick(room.state, seat, to);
+  if (result.state !== room.state) {
+    room.accumulator.dragonGiveaways.push({ fromSeat: seat, toSeat: to });
+  }
+  return result;
 }
 
-export function handleMahJongWish(room: Room, rank: NormalRank): void {
+export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank): void {
+  room.accumulator.mahJongWishes.push({ seat, rank });
   room.state = setMahJongWish(room.state, rank);
 }
 
@@ -258,5 +313,8 @@ export function applyPlayResult(room: Room, result: PlayResult): void {
 }
 
 export function startNextRound(room: Room): void {
+  const scores: [number, number] = [room.state.teams[0].score, room.state.teams[1].score];
+  const prevWasDown300 = room.accumulator.wasDown300;
   room.state = startNewRound(room.state);
+  room.accumulator = createAccumulator(room.gameId, scores, prevWasDown300);
 }
