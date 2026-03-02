@@ -1,5 +1,9 @@
 # Tichu Project Notes
 
+## Site
+
+Production site: https://tichu.squidbox.com
+
 ## Environment Files
 
 ### server/.env
