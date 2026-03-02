@@ -61,8 +61,23 @@ export function useAuth() {
       if (firebaseUser) {
         const token = await firebaseUser.getIdToken();
         setIdToken(token);
-        const userProfile = await loadOrCreateProfile(firebaseUser);
-        setProfile(userProfile);
+        try {
+          const userProfile = await loadOrCreateProfile(firebaseUser);
+          setProfile(userProfile);
+        } catch (error) {
+          console.error('Failed to load/create user profile:', error);
+          // Fall back to a minimal profile from the Firebase user
+          setProfile({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName || 'Player',
+            email: firebaseUser.email || '',
+            photoURL: firebaseUser.photoURL,
+            stats: { ...DEFAULT_STATS },
+            preferences: {
+              preferredName: firebaseUser.displayName?.split(' ')[0] || 'Player',
+            },
+          });
+        }
       } else {
         setIdToken(null);
         setProfile(null);
