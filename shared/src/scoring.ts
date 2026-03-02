@@ -26,9 +26,14 @@ export function sumPoints(cards: Card[]): number {
 export function scoreRound(state: GameState): RoundResult {
   const players = state.players;
 
-  // Determine out order
+  // Determine out order (outOrder=0 means never went out, sort those last)
   const outOrder = [...players]
-    .sort((a, b) => a.outOrder - b.outOrder)
+    .sort((a, b) => {
+      if (a.outOrder === 0 && b.outOrder === 0) return 0;
+      if (a.outOrder === 0) return 1;
+      if (b.outOrder === 0) return -1;
+      return a.outOrder - b.outOrder;
+    })
     .map(p => p.seat) as [Seat, Seat, Seat, Seat];
 
   const firstOut = outOrder[0];

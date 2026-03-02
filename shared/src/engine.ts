@@ -328,8 +328,8 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     playedCards: [...state.playedCards, ...cards],
   };
 
-  // Check if round ended (3 players out)
-  if (newOutCount >= 3) {
+  // Check if round ended (3 players out, or 1-2 finish)
+  if (shouldRoundEnd(newOutCount, newPlayers)) {
     return endRound(newState);
   }
 
@@ -362,7 +362,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
     partnerSeat = getNextActiveSeat(state, seat, newPlayers);
   }
 
-  if (newOutCount >= 3) {
+  if (shouldRoundEnd(newOutCount, newPlayers)) {
     return endRound({ ...state, players: newPlayers, outCount: newOutCount, playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card] });
   }
 
@@ -502,7 +502,7 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
     dragonGiveawayBy: null,
   };
 
-  if (newState.outCount >= 3) {
+  if (shouldRoundEnd(newState.outCount, newPlayers)) {
     return endRound(newState);
   }
 
@@ -650,7 +650,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     playedCards: [...state.playedCards, ...cards],
   };
 
-  if (newOutCount >= 3) {
+  if (shouldRoundEnd(newOutCount, newPlayers)) {
     return endRound(newState);
   }
 
@@ -686,6 +686,16 @@ function endRound(state: GameState): PlayResult {
 function removeCard(hand: Card[], card: Card): void {
   const idx = hand.findIndex(c => cardsEqual(c, card));
   if (idx >= 0) hand.splice(idx, 1);
+}
+
+/** Check if round should end: 3+ out, or 1-2 finish (both partners out first) */
+function shouldRoundEnd(outCount: number, players: Player[]): boolean {
+  if (outCount >= 3) return true;
+  if (outCount === 2) {
+    const outPlayers = players.filter(p => p.isOut);
+    return getTeamForSeat(outPlayers[0].seat) === getTeamForSeat(outPlayers[1].seat);
+  }
+  return false;
 }
 
 function getNextActiveSeat(
