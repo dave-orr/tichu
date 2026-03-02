@@ -1,6 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings } from '@tichu/shared';
-import { InvitablePlayer } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -434,7 +433,7 @@ function broadcastState(io: Server, room: Room): void {
   }
 }
 
-function handleRoundResult(room: Room, roundResult: import('@tichu/shared').RoundResult): void {
+function handleRoundResult(room: Room, roundResult: RoundResult): void {
   const state = room.state;
   if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') return;
 
