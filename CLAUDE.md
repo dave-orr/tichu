@@ -1,5 +1,8 @@
 # Tichu Project Notes
 
+## Site
+
+Production site: https://tichu.squidbox.com
 ## Architecture
 
 Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Node+Socket.IO) → `client/` (React+Vite+Tailwind).
