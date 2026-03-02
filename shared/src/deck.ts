@@ -34,41 +34,6 @@ export function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
-/** Deal the full deck into 4 hands of 14 cards */
-export function dealAll(deck: Card[]): [Card[], Card[], Card[], Card[]] {
-  const d = [...deck];
-  shuffle(d);
-  return [
-    d.slice(0, 14),
-    d.slice(14, 28),
-    d.slice(28, 42),
-    d.slice(42, 56),
-  ];
-}
-
-/** Deal first 8 cards to each player (for Grand Tichu window) */
-export function dealFirstEight(deck: Card[]): {
-  hands: [Card[], Card[], Card[], Card[]];
-  remaining: [Card[], Card[], Card[], Card[]];
-} {
-  const d = [...deck];
-  shuffle(d);
-  return {
-    hands: [
-      d.slice(0, 8),
-      d.slice(14, 22),
-      d.slice(28, 36),
-      d.slice(42, 50),
-    ],
-    remaining: [
-      d.slice(8, 14),
-      d.slice(22, 28),
-      d.slice(36, 42),
-      d.slice(50, 56),
-    ],
-  };
-}
-
 /** Get the sort value of a card (for hand ordering) */
 export function cardSortValue(card: Card): number {
   if (card.type === 'special') {

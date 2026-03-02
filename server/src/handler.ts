@@ -20,15 +20,20 @@ import {
 // Simple per-socket rate limiter: max `limit` events per `windowMs`.
 function createRateLimiter(windowMs: number, limit: number) {
   const counts = new Map<string, { count: number; resetAt: number }>();
-  return (socketId: string): boolean => {
-    const now = Date.now();
-    const entry = counts.get(socketId);
-    if (!entry || now >= entry.resetAt) {
-      counts.set(socketId, { count: 1, resetAt: now + windowMs });
-      return true;
-    }
-    entry.count++;
-    return entry.count <= limit;
+  return {
+    check(socketId: string): boolean {
+      const now = Date.now();
+      const entry = counts.get(socketId);
+      if (!entry || now >= entry.resetAt) {
+        counts.set(socketId, { count: 1, resetAt: now + windowMs });
+        return true;
+      }
+      entry.count++;
+      return entry.count <= limit;
+    },
+    cleanup(socketId: string): void {
+      counts.delete(socketId);
+    },
   };
 }
 
@@ -40,12 +45,23 @@ export function setupHandlers(io: Server): void {
 
     // Rate limit all incoming events
     socket.use((event, next) => {
-      if (rateLimiter(socket.id)) {
+      if (rateLimiter.check(socket.id)) {
         next();
       } else {
         next(new Error('Rate limit exceeded'));
       }
     });
+
+    // Authenticate and push pending invites
+    function pushPendingInvites(uid: string) {
+      for (const inv of getInvitesForUser(uid)) {
+        socket.emit('invite-received', {
+          inviteId: inv.id,
+          roomCode: inv.roomCode,
+          fromName: inv.fromName,
+        });
+      }
+    }
 
     // Verify Firebase token if provided
     const token = socket.handshake.auth?.token;
@@ -54,14 +70,7 @@ export function setupHandlers(io: Server): void {
       if (decoded) {
         setSocketUid(socket.id, decoded.uid);
         console.log(`Authenticated user: ${decoded.uid}`);
-        // Push any pending invites for this user
-        for (const inv of getInvitesForUser(decoded.uid)) {
-          socket.emit('invite-received', {
-            inviteId: inv.id,
-            roomCode: inv.roomCode,
-            fromName: inv.fromName,
-          });
-        }
+        pushPendingInvites(decoded.uid);
       }
     }
 
@@ -70,14 +79,7 @@ export function setupHandlers(io: Server): void {
       const decoded = await verifyIdToken(newToken);
       if (decoded) {
         setSocketUid(socket.id, decoded.uid);
-        // Push any pending invites for this user
-        for (const inv of getInvitesForUser(decoded.uid)) {
-          socket.emit('invite-received', {
-            inviteId: inv.id,
-            roomCode: inv.roomCode,
-            fromName: inv.fromName,
-          });
-        }
+        pushPendingInvites(decoded.uid);
       }
     });
 
@@ -422,6 +424,7 @@ export function setupHandlers(io: Server): void {
     socket.on('disconnect', () => {
       console.log(`Player disconnected: ${socket.id}`);
       removePlayer(socket.id);
+      rateLimiter.cleanup(socket.id);
     });
   });
 }
