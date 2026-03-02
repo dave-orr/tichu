@@ -1,8 +1,8 @@
 import { identifyCombo, canBeat, isBomb, singleCardRank } from './combinations.js';
 import { createDeck, shuffle, sortHand } from './deck.js';
-import { scoreRound, isGameOver, getWinner } from './scoring.js';
+import { scoreRound, isGameOver, getWinner, sumPoints } from './scoring.js';
 import {
-  Card, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
+  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
   Team, cardsEqual, cardId, getPartnerSeat, getRightSeat, getTeamForSeat,
 } from './types.js';
 
@@ -80,7 +80,7 @@ export function startNewRound(state: GameState): GameState {
       ...p,
       hand: sortHand(deck.slice(i * 14, i * 14 + 8)), // first 8 cards
       tricksWon: [],
-      tichuCall: p.tichuCall === 'grand' ? 'grand' : 'none' as const, // preserve grand calls... actually reset
+      tichuCall: 'none',
       hasPlayedFirstCard: false,
       isOut: false,
       outOrder: 0,
@@ -88,11 +88,6 @@ export function startNewRound(state: GameState): GameState {
       passedCards: false,
     })) as unknown as [Player, Player, Player, Player],
   };
-
-  // Reset tichu calls for new round
-  for (const p of newState.players) {
-    p.tichuCall = 'none';
-  }
 
   return newState;
 }
@@ -702,9 +697,6 @@ function getNextActiveSeat(
 }
 
 // ===== Client View =====
-
-import { ClientGameState, ClientPlayer } from './types.js';
-import { sumPoints } from './scoring.js';
 
 export function toClientState(state: GameState, forSeat: Seat): ClientGameState {
   const clientPlayers = state.players.map(p => ({

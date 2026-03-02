@@ -49,10 +49,6 @@ export function useSocket(idToken: string | null) {
       setRandomPartners(randomPartners);
     });
 
-    socket.on('player-joined', ({ playerName, seat }: { playerName: string; seat: number }) => {
-      // Handled via game-state update
-    });
-
     socket.on('game-state', ({ state }: { state: ClientGameState }) => {
       setGameState(state);
       setError(null);
