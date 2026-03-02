@@ -249,6 +249,7 @@ export default function Game({ socket, auth }: Props) {
           isCurrentTurn={turnIndex === relativeSeats[2]}
           label="Partner"
           showPoints={gameState.settings.countPoints}
+          horizontal
         />
       </div>
 
@@ -423,11 +424,13 @@ function OpponentInfo({
   isCurrentTurn,
   label,
   showPoints,
+  horizontal,
 }: {
   player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
   label: string;
   showPoints?: boolean;
+  horizontal?: boolean;
 }) {
   return (
     <div className={`text-center ${isCurrentTurn ? 'pulse-glow rounded-lg p-2' : 'p-2'}`}>
@@ -444,7 +447,7 @@ function OpponentInfo({
         </div>
       )}
       <div className="mt-1">
-        <CardBack count={player.cardCount} />
+        <CardBack count={player.cardCount} horizontal={horizontal} />
       </div>
       {player.trickCount > 0 && (
         <div className="text-xs text-gray-400 mt-1">{player.trickCount} tricks</div>

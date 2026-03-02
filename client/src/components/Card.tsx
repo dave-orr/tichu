@@ -72,9 +72,23 @@ function SpecialCardContent({ name }: { name: string }) {
   }
 }
 
-export function CardBack({ count }: { count?: number }) {
+export function CardBack({ count, horizontal }: { count?: number; horizontal?: boolean }) {
   if (count !== undefined && count === 0) {
     return <div className="text-gray-500 text-sm italic">Out</div>;
+  }
+  if (horizontal) {
+    return (
+      <div className="flex items-center gap-2 justify-center">
+        <div className="flex">
+          {Array.from({ length: Math.min(count ?? 1, 14) }).map((_, i) => (
+            <div key={i} className="card-back" style={{ marginLeft: i > 0 ? '-20px' : '0' }} />
+          ))}
+        </div>
+        {count !== undefined && (
+          <div className="text-xs text-gray-300">{count} cards</div>
+        )}
+      </div>
+    );
   }
   return (
     <div className="flex flex-wrap gap-0.5 justify-center max-w-[80px]">
