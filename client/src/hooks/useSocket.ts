@@ -6,6 +6,8 @@ export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
 export function useSocket(idToken: string | null) {
   const socketRef = useRef<Socket | null>(null);
+  const tokenRef = useRef(idToken);
+  tokenRef.current = idToken;
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [roomCode, setRoomCode] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export function useSocket(idToken: string | null) {
       ? 'http://localhost:3000'
       : window.location.origin, {
       transports: ['websocket', 'polling'],
-      auth: idToken ? { token: idToken } : undefined,
+      auth: tokenRef.current ? { token: tokenRef.current } : undefined,
     });
     socketRef.current = socket;
 
@@ -69,6 +71,13 @@ export function useSocket(idToken: string | null) {
     return () => {
       socket.disconnect();
     };
+  }, []);
+
+  // Send token to server when it changes (without reconnecting the socket)
+  useEffect(() => {
+    if (idToken && socketRef.current?.connected) {
+      socketRef.current.emit('authenticate', { token: idToken });
+    }
   }, [idToken]);
 
   const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>) => {

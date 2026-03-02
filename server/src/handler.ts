@@ -50,6 +50,14 @@ export function setupHandlers(io: Server): void {
       }
     }
 
+    // Handle late/refreshed authentication tokens without reconnecting
+    socket.on('authenticate', async ({ token: newToken }: { token: string }) => {
+      const decoded = await verifyIdToken(newToken);
+      if (decoded) {
+        setSocketUid(socket.id, decoded.uid);
+      }
+    });
+
     socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
       const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
       socket.join(room.code);
