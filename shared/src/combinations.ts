@@ -371,6 +371,11 @@ export function canBeat(current: Combo, play: Combo): boolean {
   if (current.type !== play.type) return false;
   if (current.length !== play.length) return false;
 
+  // Phoenix as a single beats everything except Dragon
+  if (play.type === 'single' && play.cards[0].type === 'special' && play.cards[0].name === 'phoenix') {
+    return !current.cards.some(c => c.type === 'special' && c.name === 'dragon');
+  }
+
   // Higher rank wins
   return play.rank > current.rank;
 }

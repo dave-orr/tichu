@@ -33,13 +33,114 @@ const rooms = new Map<string, Room>();
 
 // Map socket.id -> Firebase uid for authenticated players
 const socketUids = new Map<string, string>();
+// Reverse map: uid -> socket.id (for sending invites to specific users)
+const uidSockets = new Map<string, string>();
 
 export function setSocketUid(socketId: string, uid: string): void {
   socketUids.set(socketId, uid);
+  uidSockets.set(uid, socketId);
 }
 
 export function getSocketUid(socketId: string): string | null {
   return socketUids.get(socketId) ?? null;
+}
+
+export function getSocketForUid(uid: string): string | null {
+  return uidSockets.get(uid) ?? null;
+}
+
+export function isUidOnline(uid: string): boolean {
+  return uidSockets.has(uid);
+}
+
+export function isUidAvailable(uid: string): boolean {
+  const socketId = uidSockets.get(uid);
+  if (!socketId) return false;
+  return getRoomBySocket(socketId) === null;
+}
+
+// ===== Pending Invites (in-memory, transient) =====
+
+export type PendingInvite = {
+  id: string;
+  roomCode: string;
+  fromUid: string;
+  fromName: string;
+  targetUid: string;
+  createdAt: number;
+};
+
+const pendingInvites = new Map<string, PendingInvite>();
+const invitesByTarget = new Map<string, Set<string>>();
+
+const INVITE_EXPIRY_MS = 5 * 60 * 1000;
+
+export function createInvite(roomCode: string, fromUid: string, fromName: string, targetUid: string): PendingInvite | null {
+  const room = getRoom(roomCode);
+  if (!room) return null;
+  if (room.state.phase !== 'waiting') return null;
+  if (room.seatPlayers.size >= 4) return null;
+
+  // Don't duplicate invites to same user for same room
+  const existingIds = invitesByTarget.get(targetUid);
+  if (existingIds) {
+    for (const id of existingIds) {
+      const inv = pendingInvites.get(id);
+      if (inv && inv.roomCode === roomCode) return null;
+    }
+  }
+
+  const invite: PendingInvite = {
+    id: `${roomCode}_${targetUid}_${Date.now()}`,
+    roomCode,
+    fromUid,
+    fromName,
+    targetUid,
+    createdAt: Date.now(),
+  };
+  pendingInvites.set(invite.id, invite);
+  if (!invitesByTarget.has(targetUid)) invitesByTarget.set(targetUid, new Set());
+  invitesByTarget.get(targetUid)!.add(invite.id);
+  return invite;
+}
+
+export function removeInvite(inviteId: string): void {
+  const invite = pendingInvites.get(inviteId);
+  if (!invite) return;
+  pendingInvites.delete(inviteId);
+  invitesByTarget.get(invite.targetUid)?.delete(inviteId);
+}
+
+export function getInvite(inviteId: string): PendingInvite | undefined {
+  return pendingInvites.get(inviteId);
+}
+
+export function getInvitesForUser(uid: string): PendingInvite[] {
+  const ids = invitesByTarget.get(uid);
+  if (!ids) return [];
+  const now = Date.now();
+  const result: PendingInvite[] = [];
+  for (const id of ids) {
+    const inv = pendingInvites.get(id);
+    if (!inv) continue;
+    if (now - inv.createdAt > INVITE_EXPIRY_MS) {
+      removeInvite(id);
+      continue;
+    }
+    const room = getRoom(inv.roomCode);
+    if (!room || room.state.phase !== 'waiting' || room.seatPlayers.size >= 4) {
+      removeInvite(id);
+      continue;
+    }
+    result.push(inv);
+  }
+  return result;
+}
+
+export function clearInvitesForRoom(roomCode: string): void {
+  for (const [id, inv] of pendingInvites) {
+    if (inv.roomCode === roomCode) removeInvite(id);
+  }
 }
 
 function createAccumulator(gameId: string, scores: [number, number], prevWasDown300?: [boolean, boolean]): RoundAccumulator {
@@ -162,6 +263,8 @@ export function getRoomBySocket(socketId: string): { room: Room; seat: Seat } | 
 }
 
 export function removePlayer(socketId: string): void {
+  const uid = socketUids.get(socketId);
+  if (uid) uidSockets.delete(uid);
   socketUids.delete(socketId);
   for (const [code, room] of rooms.entries()) {
     const seat = room.playerSockets.get(socketId);
@@ -175,6 +278,7 @@ export function removePlayer(socketId: string): void {
       }
       // Clean up empty rooms
       if (room.playerSockets.size === 0 && room.state.phase === 'waiting') {
+        clearInvitesForRoom(code);
         rooms.delete(code);
       }
       return;

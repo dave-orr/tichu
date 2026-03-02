@@ -265,6 +265,11 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   const combo = identifyCombo(cards);
   if (!combo) return { state };
 
+  // Phoenix as a single takes rank of current trick + 0.5
+  if (combo.type === 'single' && cards[0].type === 'special' && cards[0].name === 'phoenix' && state.currentTrick) {
+    combo.rank = state.currentTrick.rank + 0.5;
+  }
+
   // Check if this beats the current trick
   if (state.currentTrick && !canBeat(state.currentTrick, combo)) {
     return { state };

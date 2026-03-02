@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -249,6 +249,7 @@ export default function Game({ socket, auth }: Props) {
           isCurrentTurn={turnIndex === relativeSeats[2]}
           label="Partner"
           showPoints={gameState.settings.countPoints}
+          horizontal
         />
       </div>
 
@@ -295,6 +296,21 @@ export default function Game({ socket, auth }: Props) {
 
       {/* Bottom area: player's hand and controls */}
       <div className="p-4 bg-gray-900/50">
+        {/* Passed cards display */}
+        {gameState.settings.showPassedCards && passRecord && phase === 'playing' && (
+          <div className="mb-2 max-w-lg mx-auto">
+            <div className="flex justify-center items-end gap-4">
+              <span className="text-xs text-gray-400">You passed:</span>
+              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
+                <div key={p.playerName} className="text-center">
+                  <CardComponent card={p.card} small />
+                  <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
           <div className="mb-2 max-w-lg mx-auto">
@@ -356,12 +372,17 @@ export default function Game({ socket, auth }: Props) {
                     Pass
                   </button>
                 )}
-                {currentTrick && mustPlayWish && (
+                {currentTrick && mustPlayWish && gameState.mahJongWish && (
                   <div className="text-sm text-yellow-400 flex items-center px-4">
-                    You must play the wished rank!
+                    You must play a {RANK_NAMES[gameState.mahJongWish]}!
                   </div>
                 )}
               </>
+            )}
+            {!isMyTurn && !gameState.bombWindow && (
+              <div className="text-sm text-gray-400">
+                Waiting for {playerNames[turnIndex]} to play...
+              </div>
             )}
             {hasBombInHand && !gameState.bombWindow && (
               <button
@@ -403,11 +424,13 @@ function OpponentInfo({
   isCurrentTurn,
   label,
   showPoints,
+  horizontal,
 }: {
   player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
   label: string;
   showPoints?: boolean;
+  horizontal?: boolean;
 }) {
   return (
     <div className={`text-center ${isCurrentTurn ? 'pulse-glow rounded-lg p-2' : 'p-2'}`}>
@@ -424,7 +447,7 @@ function OpponentInfo({
         </div>
       )}
       <div className="mt-1">
-        <CardBack count={player.cardCount} />
+        <CardBack count={player.cardCount} horizontal={horizontal} />
       </div>
       {player.trickCount > 0 && (
         <div className="text-xs text-gray-400 mt-1">{player.trickCount} tricks</div>

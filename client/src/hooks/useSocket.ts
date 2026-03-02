@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
+export type IncomingInvite = {
+  inviteId: string;
+  roomCode: string;
+  fromName: string;
+};
+
 export function useSocket(idToken: string | null) {
   const socketRef = useRef<Socket | null>(null);
+  const tokenRef = useRef(idToken);
+  tokenRef.current = idToken;
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [roomCode, setRoomCode] = useState<string | null>(null);
@@ -15,13 +23,15 @@ export function useSocket(idToken: string | null) {
   const [roundResult, setRoundResult] = useState<any>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [randomPartners, setRandomPartners] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
+  const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
       ? 'http://localhost:3000'
       : window.location.origin, {
       transports: ['websocket', 'polling'],
-      auth: idToken ? { token: idToken } : undefined,
+      auth: tokenRef.current ? { token: tokenRef.current } : undefined,
     });
     socketRef.current = socket;
 
@@ -64,11 +74,41 @@ export function useSocket(idToken: string | null) {
       setRoundResult(result);
     });
 
+    socket.on('invite-received', (invite: IncomingInvite) => {
+      setPendingInvites(prev => {
+        if (prev.some(i => i.inviteId === invite.inviteId)) return prev;
+        return [...prev, invite];
+      });
+    });
+
+    socket.on('invite-expired', ({ inviteId, targetUid }: { inviteId: string; targetUid?: string }) => {
+      // Target side: remove from pending invites
+      setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
+      // Organizer side: track expired target uid so InvitePanel can revert "Invited" → "Invite"
+      if (targetUid) {
+        setExpiredInviteUids(prev => new Set(prev).add(targetUid));
+      }
+    });
+
+    socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
+      setRoomCode(roomCode);
+      setIsOrganizer(false);
+      setRandomPartners(randomPartners);
+      setPendingInvites([]);
+    });
+
     setConnectionState('connecting');
 
     return () => {
       socket.disconnect();
     };
+  }, []);
+
+  // Send token to server when it changes (without reconnecting the socket)
+  useEffect(() => {
+    if (idToken && socketRef.current?.connected) {
+      socketRef.current.emit('authenticate', { token: idToken });
+    }
   }, [idToken]);
 
   const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>) => {
@@ -131,8 +171,27 @@ export function useSocket(idToken: string | null) {
     setRoundResult(null);
   }, []);
 
+  const updateSettings = useCallback((settings: Partial<GameSettings>) => {
+    socketRef.current?.emit('update-settings', { settings });
+  }, []);
+
   const swapSeatsAction = useCallback((seatA: Seat, seatB: Seat) => {
     socketRef.current?.emit('swap-seats', { seatA, seatB });
+  }, []);
+
+  const fetchPlayers = useCallback((): Promise<{ players: InvitablePlayer[] }> => {
+    return new Promise(resolve => {
+      socketRef.current?.emit('fetch-players', resolve);
+    });
+  }, []);
+
+  const sendInvite = useCallback((targetUid: string) => {
+    socketRef.current?.emit('send-invite', { targetUid });
+  }, []);
+
+  const respondInvite = useCallback((inviteId: string, accept: boolean, playerName?: string) => {
+    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName });
+    setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
   }, []);
 
   return {
@@ -160,5 +219,11 @@ export function useSocket(idToken: string | null) {
     mahJongWish,
     nextRound,
     swapSeats: swapSeatsAction,
+    updateSettings,
+    pendingInvites,
+    expiredInviteUids,
+    fetchPlayers,
+    sendInvite,
+    respondInvite,
   };
 }

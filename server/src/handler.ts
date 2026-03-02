@@ -1,14 +1,18 @@
 import { Server, Socket } from 'socket.io';
 import { toClientState, Seat, Card, NormalRank, GameSettings } from '@tichu/shared';
+import { InvitablePlayer } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, applyPlayResult,
-  startNextRound, swapSeats, Room, setSocketUid,
+  startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
+  getSocketForUid, isUidOnline, isUidAvailable,
+  createInvite, removeInvite, getInvite, getInvitesForUser,
+  clearInvitesForRoom,
 } from './rooms.js';
 import { verifyIdToken } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards,
@@ -51,8 +55,32 @@ export function setupHandlers(io: Server): void {
       if (decoded) {
         setSocketUid(socket.id, decoded.uid);
         console.log(`Authenticated user: ${decoded.uid}`);
+        // Push any pending invites for this user
+        for (const inv of getInvitesForUser(decoded.uid)) {
+          socket.emit('invite-received', {
+            inviteId: inv.id,
+            roomCode: inv.roomCode,
+            fromName: inv.fromName,
+          });
+        }
       }
     }
+
+    // Handle late/refreshed authentication tokens without reconnecting
+    socket.on('authenticate', async ({ token: newToken }: { token: string }) => {
+      const decoded = await verifyIdToken(newToken);
+      if (decoded) {
+        setSocketUid(socket.id, decoded.uid);
+        // Push any pending invites for this user
+        for (const inv of getInvitesForUser(decoded.uid)) {
+          socket.emit('invite-received', {
+            inviteId: inv.id,
+            roomCode: inv.roomCode,
+            fromName: inv.fromName,
+          });
+        }
+      }
+    });
 
     socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
       if (!isValidPlayerName(playerName)) {
@@ -94,6 +122,7 @@ export function setupHandlers(io: Server): void {
         return;
       }
       startGame(room);
+      clearInvitesForRoom(room.code);
       broadcastState(io, room);
     });
 
@@ -250,6 +279,22 @@ export function setupHandlers(io: Server): void {
       }
     });
 
+    socket.on('update-settings', ({ settings }: { settings: Partial<GameSettings> }) => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can change settings' });
+        return;
+      }
+      if (room.state.phase !== 'waiting') {
+        socket.emit('error', { message: 'Cannot change settings after game has started' });
+        return;
+      }
+      room.state.settings = { ...room.state.settings, ...settings };
+      broadcastState(io, room);
+    });
+
     socket.on('swap-seats', ({ seatA, seatB }: { seatA: unknown; seatB: unknown }) => {
       if (!isValidSeat(seatA) || !isValidSeat(seatB)) {
         socket.emit('error', { message: 'Invalid seat' });
@@ -265,6 +310,114 @@ export function setupHandlers(io: Server): void {
       if (swapSeats(room, seatA, seatB)) {
         broadcastState(io, room);
       }
+    });
+
+    // ===== Invite System =====
+
+    socket.on('fetch-players', async (callback: (data: { players: InvitablePlayer[] }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ players: [] });
+        return;
+      }
+
+      const { allUsers, playedWithUids } = await fetchInvitableUsers(uid);
+
+      const players: InvitablePlayer[] = allUsers.map(u => ({
+        uid: u.uid,
+        displayName: u.displayName,
+        photoURL: u.photoURL,
+        playedWith: playedWithUids.has(u.uid),
+        isOnline: isUidOnline(u.uid),
+        isAvailable: isUidAvailable(u.uid),
+      }));
+
+      // Sort: available+played-with first, then available, then online, then offline
+      players.sort((a, b) => {
+        const scoreA = (a.isAvailable ? 4 : a.isOnline ? 2 : 0) + (a.playedWith ? 1 : 0);
+        const scoreB = (b.isAvailable ? 4 : b.isOnline ? 2 : 0) + (b.playedWith ? 1 : 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return a.displayName.localeCompare(b.displayName);
+      });
+
+      callback({ players });
+    });
+
+    socket.on('send-invite', ({ targetUid }: { targetUid: string }) => {
+      const fromUid = getSocketUid(socket.id);
+      if (!fromUid) return;
+
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can send invites' });
+        return;
+      }
+
+      const fromName = room.state.players[seat].name;
+      const invite = createInvite(room.code, fromUid, fromName, targetUid);
+      if (!invite) return;
+
+      const targetSocketId = getSocketForUid(targetUid);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit('invite-received', {
+          inviteId: invite.id,
+          roomCode: invite.roomCode,
+          fromName: invite.fromName,
+        });
+      }
+
+      // Proactively expire the invite after 5 minutes
+      setTimeout(() => {
+        const inv = getInvite(invite.id);
+        if (!inv) return; // already accepted/dismissed
+        removeInvite(invite.id);
+        const targetSock = getSocketForUid(inv.targetUid);
+        if (targetSock) {
+          io.to(targetSock).emit('invite-expired', { inviteId: inv.id });
+        }
+        const orgSock = getSocketForUid(inv.fromUid);
+        if (orgSock) {
+          io.to(orgSock).emit('invite-expired', { inviteId: inv.id, targetUid: inv.targetUid });
+        }
+      }, 5 * 60 * 1000);
+    });
+
+    socket.on('respond-invite', ({ inviteId, accept, playerName }: { inviteId: string; accept: boolean; playerName?: string }) => {
+      const invite = getInvite(inviteId);
+      if (!invite) {
+        socket.emit('error', { message: 'Invite expired or not found' });
+        return;
+      }
+
+      const uid = getSocketUid(socket.id);
+      if (uid !== invite.targetUid) return;
+
+      removeInvite(inviteId);
+
+      if (!accept || !playerName) return;
+
+      if (!isValidPlayerName(playerName)) {
+        socket.emit('error', { message: 'Invalid player name' });
+        return;
+      }
+
+      const result = joinRoom(invite.roomCode, socket.id, playerName);
+      if ('error' in result) {
+        socket.emit('error', { message: result.error });
+        return;
+      }
+
+      const { room, seat } = result;
+      socket.join(room.code);
+      io.to(room.code).emit('player-joined', { playerName, seat });
+      broadcastState(io, room);
+
+      socket.emit('room-joined-via-invite', {
+        roomCode: room.code,
+        randomPartners: room.randomPartners,
+      });
     });
 
     socket.on('disconnect', () => {
