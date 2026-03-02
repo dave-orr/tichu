@@ -3,6 +3,7 @@ import { firebaseAdmin } from './firebase.js';
 import { Room, RoundAccumulator, getSocketUid } from './rooms.js';
 
 const inc = (n: number) => firebaseAdmin!.firestore.FieldValue.increment(n);
+const arrayUnion = (...elements: string[]) => firebaseAdmin!.firestore.FieldValue.arrayUnion(...elements);
 
 export async function updateStatsForRound(
   room: Room,
@@ -86,6 +87,12 @@ export async function updateStatsForRound(
     const opponentBombs = acc.bombs.filter(b => getTeamForSeat(b.seat) !== team).length;
     if (opponentBombs > 0) {
       updates['stats.bombsFaced'] = inc(opponentBombs);
+    }
+
+    // Track who this player has played with (all other authenticated players)
+    const otherUids = [...uidMap.keys()].filter(u => u !== uid);
+    if (otherUids.length > 0) {
+      (updates as Record<string, any>).playedWith = arrayUnion(...otherUids);
     }
 
     batch.update(docRef, updates);
@@ -298,6 +305,39 @@ export async function saveRoundLog(
     .collection('rounds')
     .doc(String(state.roundNumber))
     .set(log);
+}
+
+export async function fetchInvitableUsers(
+  requestingUid: string
+): Promise<{
+  allUsers: Array<{ uid: string; displayName: string; photoURL: string | null }>;
+  playedWithUids: Set<string>;
+}> {
+  if (!firebaseAdmin) return { allUsers: [], playedWithUids: new Set() };
+  const db = firebaseAdmin.firestore();
+
+  // Fetch requesting user's playedWith array and all users in one go
+  const usersSnap = await db.collection('users').get();
+  const allUsers: Array<{ uid: string; displayName: string; photoURL: string | null }> = [];
+  const playedWithUids = new Set<string>();
+
+  for (const doc of usersSnap.docs) {
+    if (doc.id === requestingUid) {
+      // Extract playedWith from the requesting user's doc
+      const data = doc.data();
+      const played: string[] = data.playedWith ?? [];
+      for (const uid of played) playedWithUids.add(uid);
+      continue;
+    }
+    const data = doc.data();
+    allUsers.push({
+      uid: doc.id,
+      displayName: data.displayName || 'Player',
+      photoURL: data.photoURL || null,
+    });
+  }
+
+  return { allUsers, playedWithUids };
 }
 
 // Helper: build uid -> seat map from room
