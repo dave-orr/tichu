@@ -5,6 +5,8 @@ type Props = {
   players: ClientPlayer[];
   onNextRound: () => void;
   isGameOver: boolean;
+  mySeat: Seat;
+  roundEndReady: Seat[];
 };
 
 function tichuLabel(call: 'small' | 'grand', made: boolean) {
@@ -13,8 +15,10 @@ function tichuLabel(call: 'small' | 'grand', made: boolean) {
   return <span className={`${color} font-bold ml-1`}>{letter}</span>;
 }
 
-export default function RoundResults({ result, players, onNextRound, isGameOver }: Props) {
+export default function RoundResults({ result, players, onNextRound, isGameOver, mySeat, roundEndReady }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
+  const iAmReady = roundEndReady.includes(mySeat);
+  const readyCount = roundEndReady.length;
 
   function renderTichuIndicator(seat: Seat) {
     const call = players[seat].tichuCall;
@@ -107,6 +111,10 @@ export default function RoundResults({ result, players, onNextRound, isGameOver 
                 : `${players[1].name} & ${players[3].name} Win!`
               }
             </div>
+          </div>
+        ) : iAmReady ? (
+          <div className="text-center text-gray-400 py-3">
+            Waiting for others ({readyCount}/4)...
           </div>
         ) : (
           <button

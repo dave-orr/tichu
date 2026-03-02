@@ -51,6 +51,10 @@ export function useSocket(idToken: string | null) {
     socket.on('game-state', ({ state }: { state: ClientGameState }) => {
       setGameState(state);
       setError(null);
+      // Clear round result when the phase moves past roundEnd
+      if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
+        setRoundResult(null);
+      }
     });
 
     socket.on('error', ({ message }: { message: string }) => {
@@ -158,7 +162,6 @@ export function useSocket(idToken: string | null) {
 
   const nextRound = useCallback(() => {
     socketRef.current?.emit('next-round');
-    setRoundResult(null);
   }, []);
 
   const updateSettings = useCallback((settings: Partial<GameSettings>) => {

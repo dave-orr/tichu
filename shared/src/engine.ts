@@ -35,6 +35,7 @@ export function createInitialState(settings?: GameSettings): GameState {
     dragonGiveawayBy: null,
     settings: settings ?? DEFAULT_SETTINGS,
     playedCards: [],
+    roundEndReady: [],
   };
 }
 
@@ -76,6 +77,7 @@ export function startNewRound(state: GameState): GameState {
     dragonGiveaway: false,
     dragonGiveawayBy: null,
     playedCards: [],
+    roundEndReady: [],
     players: state.players.map((p, i) => ({
       ...p,
       hand: sortHand(deck.slice(i * 14, i * 14 + 8)), // first 8 cards
@@ -732,6 +734,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     dragonGiveawayBy: state.dragonGiveawayBy,
     settings: state.settings,
     playedCards: state.playedCards,
+    roundEndReady: state.roundEndReady,
     myHand: state.players[forSeat].hand,
     mySeat: forSeat,
   };

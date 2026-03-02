@@ -260,6 +260,8 @@ export default function Game({ socket, auth }: Props) {
           players={[...players]}
           onNextRound={socket.nextRound}
           isGameOver={phase === 'gameEnd'}
+          mySeat={mySeat}
+          roundEndReady={gameState.roundEndReady}
         />
       )}
 

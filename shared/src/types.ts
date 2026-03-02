@@ -124,6 +124,7 @@ export type GameState = {
   dragonGiveawayBy: Seat | null;
   settings: GameSettings;
   playedCards: Card[];         // all cards played/discarded this round (for cards-seen tracking)
+  roundEndReady: Seat[];       // seats that have acknowledged round results
 };
 
 // ===== Socket Events =====
