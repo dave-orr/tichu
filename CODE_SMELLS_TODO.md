@@ -72,12 +72,7 @@ last. Something like:
 
 ### ~~16. `generateRoomCode` uses recursion for collision~~ FIXED
 
-### 17. Game.tsx and Lobby.tsx are very large single components
-**Files:** `client/src/pages/Game.tsx` (457 lines), `client/src/pages/Lobby.tsx`
-(410 lines)
-
-Game.tsx handles grand tichu, passing, playing, bomb mode, and results display all
-in one component. Consider breaking into phase-specific sub-components.
+### ~~17. Game.tsx and Lobby.tsx are very large single components~~ FIXED
 
 ### ~~18. `selectedCards` state not reset on phase transitions~~ FIXED
 
@@ -156,3 +151,16 @@ would be cleaner and avoid threading the large object through component trees.
 - **#13 stats.ts**: Removed the `as Record<string, any>` cast — the `playedWith`
   field is assigned directly to the `updates` record (the key was the issue, not
   the value type).
+
+## FIXED (Component splits)
+
+- **#17 Game.tsx**: Extracted three sub-components:
+  - `GrandTichuPhase.tsx` — the grand tichu window phase (score + prompt)
+  - `PassingPhase.tsx` — both passing states (selecting cards to pass + waiting)
+  - `OpponentInfo.tsx` — opponent card count / tichu call display (was already a
+    separate function, moved to its own file)
+- **#17 Lobby.tsx**: Extracted two sub-components:
+  - `WaitingRoom.tsx` — the in-room view (seat grid, setup options, invite panel,
+    start game button). Owns its own `swapFrom` and `showInvitePanel` state.
+  - `CreateRoomForm.tsx` — room creation form with all game setting checkboxes.
+    Owns its own checkbox state, initialized from profile preferences.
