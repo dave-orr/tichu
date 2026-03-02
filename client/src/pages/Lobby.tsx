@@ -21,16 +21,24 @@ export default function Lobby({ socket, auth }: Props) {
   const [countPoints, setCountPoints] = useState(false);
   const [cardsSeen, setCardsSeen] = useState(false);
   const [showPassedCards, setShowPassedCards] = useState(false);
+  const [clockwise, setClockwise] = useState(false);
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showStats, setShowStats] = useState(false);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const namePrefilledRef = useRef(false);
 
-  // Pre-fill name from profile on first load only
+  // Pre-fill name and settings from profile
   useEffect(() => {
     if (profile && !namePrefilledRef.current) {
       namePrefilledRef.current = true;
       setPlayerName(profile.preferences.preferredName);
+    }
+    if (profile?.preferences.lastSettings) {
+      const s = profile.preferences.lastSettings;
+      if (s.countPoints !== undefined) setCountPoints(s.countPoints);
+      if (s.cardsSeen !== undefined) setCardsSeen(s.cardsSeen);
+      if (s.showPassedCards !== undefined) setShowPassedCards(s.showPassedCards);
+      if (s.clockwise !== undefined) setClockwise(s.clockwise);
     }
   }, [profile]);
 
@@ -142,6 +150,7 @@ export default function Lobby({ socket, auth }: Props) {
                 { key: 'countPoints' as const, label: 'Count Points', desc: 'Show captured point totals by each player\'s name' },
                 { key: 'cardsSeen' as const, label: 'Cards Seen', desc: 'Show how many of each card remain unplayed' },
                 { key: 'showPassedCards' as const, label: 'Show Passed Cards', desc: 'Show which cards you passed during play' },
+                { key: 'clockwise' as const, label: 'Clockwise Play', desc: 'Play passes clockwise instead of counterclockwise' },
               ].map(opt => (
                 <label
                   key={opt.key}
@@ -355,9 +364,23 @@ export default function Lobby({ socket, auth }: Props) {
                 <p className="text-sm text-gray-400">Show which cards you passed during play</p>
               </div>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
+              <input
+                type="checkbox"
+                checked={clockwise}
+                onChange={e => setClockwise(e.target.checked)}
+                className="w-5 h-5 rounded accent-yellow-500"
+              />
+              <div>
+                <span className="font-semibold">Clockwise Play</span>
+                <p className="text-sm text-gray-400">Play passes clockwise instead of counterclockwise</p>
+              </div>
+            </label>
             <button
               onClick={() => {
-                socket.createRoom(playerName.trim(), randomPartners, { countPoints, cardsSeen, showPassedCards });
+                const settings = { countPoints, cardsSeen, showPassedCards, clockwise };
+                socket.createRoom(playerName.trim(), randomPartners, settings);
+                auth.saveLastSettings(settings);
               }}
               className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
             >

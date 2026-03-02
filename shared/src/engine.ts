@@ -3,7 +3,7 @@ import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, getWinner, sumPoints } from './scoring.js';
 import {
   Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
-  Team, cardsEqual, cardId, getPartnerSeat, getRightSeat, getTeamForSeat,
+  Team, cardsEqual, cardId, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat,
 } from './types.js';
 
 // ===== State Creation =====
@@ -697,10 +697,11 @@ function getNextActiveSeat(
   state: GameState, currentSeat: Seat,
   players: Player[]
 ): Seat {
-  let next = getRightSeat(currentSeat);
+  const advance = state.settings.clockwise ? getLeftSeat : getRightSeat;
+  let next = advance(currentSeat);
   let attempts = 0;
   while (players[next].isOut && attempts < 4) {
-    next = getRightSeat(next);
+    next = advance(next);
     attempts++;
   }
   return next;
