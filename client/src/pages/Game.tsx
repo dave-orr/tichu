@@ -363,6 +363,11 @@ export default function Game({ socket, auth }: Props) {
                 )}
               </>
             )}
+            {!isMyTurn && !gameState.bombWindow && (
+              <div className="text-sm text-gray-400">
+                Waiting for {playerNames[turnIndex]} to play...
+              </div>
+            )}
             {hasBombInHand && !gameState.bombWindow && (
               <button
                 onClick={enterBombMode}
