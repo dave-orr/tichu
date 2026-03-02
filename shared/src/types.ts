@@ -125,6 +125,7 @@ export type GameState = {
   settings: GameSettings;
   playedCards: Card[];         // all cards played/discarded this round (for cards-seen tracking)
   roundEndReady: Seat[];       // seats that have acknowledged round results
+  roundHistory: RoundHistoryEntry[]; // score history for all completed rounds
 };
 
 // ===== Socket Events =====
@@ -163,6 +164,14 @@ export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
   cardCount: number;       // how many cards they hold
   trickCount: number;      // how many tricks they've won
   capturedPoints: number;  // total card points captured so far
+};
+
+export type RoundHistoryEntry = {
+  roundNumber: number;
+  cardPoints: [number, number];
+  tichuBonuses: [number, number];
+  roundTotal: [number, number];
+  cumulativeScores: [number, number];
 };
 
 export type RoundResult = {

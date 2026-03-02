@@ -262,6 +262,7 @@ export default function Game({ socket, auth }: Props) {
           isGameOver={phase === 'gameEnd'}
           mySeat={mySeat}
           roundEndReady={gameState.roundEndReady}
+          roundHistory={gameState.roundHistory}
         />
       )}
 
