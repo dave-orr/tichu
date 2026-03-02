@@ -3,7 +3,7 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine,
   applyPasses, playCards, passTurn, playBomb,
   giveDragonTrick, setMahJongWish, toClientState,
-  Card, NormalRank, PlayResult, RoundResult, PassInfo,
+  Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
@@ -162,12 +162,13 @@ function createAccumulator(gameId: string, scores: [number, number], prevWasDown
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  // Ensure unique
-  if (rooms.has(code)) return generateRoomCode();
+  let code: string;
+  do {
+    code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+  } while (rooms.has(code));
   return code;
 }
 
@@ -364,18 +365,14 @@ export function handleSmallTichu(room: Room, seat: Seat): void {
   room.state = callSmallTichu(room.state, seat);
 }
 
-function cardKey(c: Card): string {
-  return c.type === 'normal' ? `${c.suit}-${c.rank}` : c.name;
-}
-
 export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean {
   // Verify all three passed cards are actually in the player's hand
   const hand = room.state.players[seat].hand;
-  const handKeys = new Set(hand.map(cardKey));
+  const handKeys = new Set(hand.map(cardId));
   const passCards = [pass.left, pass.partner, pass.right];
   // Also verify the three cards are distinct
-  const passKeys = new Set(passCards.map(cardKey));
-  if (passKeys.size !== 3 || !passCards.every(c => handKeys.has(cardKey(c)))) {
+  const passKeys = new Set(passCards.map(cardId));
+  if (passKeys.size !== 3 || !passCards.every(c => handKeys.has(cardId(c)))) {
     return false;
   }
 
@@ -388,7 +385,10 @@ export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean
     for (const [s, p] of room.passes) {
       room.accumulator.passes.set(s, p);
     }
-    const passes = Object.fromEntries(room.passes) as Record<Seat, PassInfo>;
+    const passes = {} as Record<Seat, PassInfo>;
+    for (const [seat, info] of room.passes) {
+      passes[seat] = info;
+    }
     room.state = applyPasses(room.state, passes);
     room.passes.clear();
     return true; // all passes applied

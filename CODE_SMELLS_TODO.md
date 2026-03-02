@@ -86,22 +86,9 @@ regardless of phase.
 doesn't scale — with thousands of users this becomes expensive and slow. Should
 query with limits, use pagination, or maintain a separate lightweight index.
 
-### 8. `roundResult` typed as `any`
-**File:** `client/src/hooks/useSocket.ts:23, 73`
+### ~~8. `roundResult` typed as `any`~~ FIXED
 
-```ts
-const [roundResult, setRoundResult] = useState<any>(null);
-```
-
-Should be `useState<RoundResult | null>(null)` using the type from `@tichu/shared`.
-
-### 9. `needDragonChoice` state is tracked but unused
-**File:** `client/src/hooks/useSocket.ts:22, 203`
-
-The `needDragonChoice` state is set in response to the `'need-dragon-choice'`
-event and returned from the hook, but no component ever reads it. The Game
-component uses `gameState.dragonGiveaway && gameState.dragonGiveawayBy === mySeat`
-instead. Either remove the state or use it in the component.
+### ~~9. `needDragonChoice` state is tracked but unused~~ FIXED
 
 ### 10. `as unknown as` double assertions for tuple types
 **Files:** `shared/src/engine.ts` (multiple places)
@@ -121,15 +108,7 @@ function asTuple4<T>(arr: T[]): [T, T, T, T] {
 The code to push pending invites is duplicated between the initial connection
 handler and the `'authenticate'` event handler. Extract to a helper function.
 
-### 12. `handleRoundResult` uses inline type import
-**File:** `server/src/handler.ts:437`
-
-```ts
-function handleRoundResult(room: Room, roundResult: import('@tichu/shared').RoundResult)
-```
-
-Uses an inline `import()` type instead of the `RoundResult` already imported at
-the top of the file via `@tichu/shared`. Just use `RoundResult` directly.
+### ~~12. `handleRoundResult` uses inline type import~~ FIXED
 
 ### 13. Unsafe `any` type assertion in stats.ts
 **File:** `server/src/stats.ts:95`
@@ -145,25 +124,11 @@ be widened to accommodate both `FieldValue` and `FieldValue[]` types.
 
 ## MINOR CODE SMELLS
 
-### 14. `findPlayableCombos` can return duplicate combos
-**File:** `shared/src/combinations.ts:439-481`
+### ~~14. `findPlayableCombos` can return duplicate combos~~ FIXED
 
-The `findPlayableCombos` function accumulates results without deduplication. The
-same combo could be added via multiple code paths (e.g., a four-of-a-kind bomb
-could be found by both `addBombs` and theoretically other paths). Consider
-deduplicating by card IDs.
+### ~~15. `addConsecutivePairs` doesn't handle phoenix~~ FIXED
 
-### 15. `addConsecutivePairs` doesn't handle phoenix
-**File:** `shared/src/combinations.ts:562-593`
-
-The phoenix is not tried in consecutive pair generation, meaning some legal
-phoenix-based consecutive pair plays won't appear in the playable combos list.
-
-### 16. `generateRoomCode` uses recursion for collision
-**File:** `server/src/rooms.ts:163-172`
-
-Could theoretically stack overflow if the code space is exhausted (unlikely with
-the current character set, but an iterative approach would be more robust).
+### ~~16. `generateRoomCode` uses recursion for collision~~ FIXED
 
 ### 17. Game.tsx and Lobby.tsx are very large single components
 **Files:** `client/src/pages/Game.tsx` (457 lines), `client/src/pages/Lobby.tsx`
@@ -172,27 +137,9 @@ the current character set, but an iterative approach would be more robust).
 Game.tsx handles grand tichu, passing, playing, bomb mode, and results display all
 in one component. Consider breaking into phase-specific sub-components.
 
-### 18. `selectedCards` state not reset on phase transitions
-**File:** `client/src/pages/Game.tsx:30`
+### ~~18. `selectedCards` state not reset on phase transitions~~ FIXED
 
-The `selectedCards` Set persists across phase transitions. If the phase changes
-(e.g., from playing to roundEnd and back to grandTichuWindow), stale card IDs
-could remain. Should reset on phase change.
-
-### 19. `useEffect` dependency array incomplete
-**File:** `client/src/pages/Lobby.tsx:33`
-
-```ts
-useEffect(() => {
-  if (profile && !playerName) {
-    setPlayerName(profile.preferences.preferredName);
-  }
-}, [profile]);
-```
-
-References `playerName` inside the effect but doesn't include it in the
-dependency array. This is intentional (only set name on first profile load) but
-should use a ref or a separate flag to make the intent clear.
+### ~~19. `useEffect` dependency array incomplete~~ FIXED
 
 ### 20. Prop drilling through `ReturnType<typeof useSocket>`
 **Files:** `client/src/pages/Game.tsx:17-20`, `client/src/pages/Lobby.tsx:8-11`
@@ -200,35 +147,11 @@ should use a ref or a separate flag to make the intent clear.
 The entire socket hook return value is passed as props. A React context provider
 would be cleaner and avoid threading the large object through component trees.
 
-### 21. `cardKey` duplicates `cardId` from shared
-**File:** `server/src/rooms.ts:367-369`
+### ~~21. `cardKey` duplicates `cardId` from shared~~ FIXED
 
-```ts
-function cardKey(c: Card): string {
-  return c.type === 'normal' ? `${c.suit}-${c.rank}` : c.name;
-}
-```
+### ~~22. `Object.fromEntries` with Map coerces numeric keys to strings~~ FIXED
 
-This is identical to `cardId` from `@tichu/shared` (types.ts:207-209). Should
-use the shared function instead.
-
-### 22. `Object.fromEntries` with Map coerces numeric keys to strings
-**File:** `server/src/rooms.ts:391`
-
-```ts
-const passes = Object.fromEntries(room.passes) as Record<Seat, PassInfo>;
-```
-
-Seat keys (0-3) become string keys ("0"-"3") in the resulting object. This works
-because JS property access coerces to string, but it's fragile and masks a type
-mismatch.
-
-### 23. Pre-existing build issues: vitest not in tsconfig exclude
-**File:** `shared/tsconfig.json`
-
-Test files (*.test.ts) are included in the TypeScript build, causing "Cannot find
-module 'vitest'" errors on `npm run build`. The tsconfig should exclude test files
-from compilation (they're run separately by vitest).
+### ~~23. Pre-existing build issues: vitest not in tsconfig exclude~~ FIXED
 
 ---
 
@@ -243,3 +166,27 @@ from compilation (they're run separately by vitest).
   to just `'none'` and removed the redundant loop.
 - **useSocket.ts**: Removed no-op `player-joined` event handler (state updates
   come via the `game-state` event).
+
+## FIXED (Minor smells)
+
+- **#8 useSocket.ts**: Typed `roundResult` as `RoundResult | null` instead of `any`.
+- **#9 useSocket.ts**: Removed unused `needDragonChoice` state and its
+  `need-dragon-choice` event handler. Game.tsx uses gameState directly.
+- **#12 handler.ts**: Replaced inline `import('@tichu/shared').RoundResult` with
+  the `RoundResult` type already in the imports.
+- **#14 combinations.ts**: Added deduplication to `findPlayableCombos` by sorted
+  card IDs, preventing duplicate combos in the results.
+- **#15 combinations.ts**: Added phoenix support to `addConsecutivePairs` — the
+  phoenix can now fill one pair slot in a consecutive pairs sequence.
+- **#16 rooms.ts**: Converted `generateRoomCode` from recursive to iterative
+  (do/while loop) to avoid theoretical stack overflow.
+- **#18 Game.tsx**: Added `useEffect` to reset `selectedCards` and `bombMode`
+  when the game phase changes.
+- **#19 Lobby.tsx**: Used a `useRef` flag to make the "pre-fill name once"
+  intent explicit, rather than relying on stale closure over `playerName`.
+- **#21 rooms.ts**: Replaced local `cardKey` function with `cardId` from
+  `@tichu/shared` (they were identical).
+- **#22 rooms.ts**: Built the passes `Record<Seat, PassInfo>` via a for-of loop
+  instead of `Object.fromEntries(map)` which coerced numeric keys to strings.
+- **#23 shared/tsconfig.json**: Added `"exclude": ["src/**/*.test.ts"]` so test
+  files are excluded from the TypeScript build (fixes pre-existing vitest errors).

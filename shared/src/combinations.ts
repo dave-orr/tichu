@@ -1,4 +1,4 @@
-import { Card, Combo, ComboType, NormalCard, NormalRank, Suit } from './types.js';
+import { Card, Combo, ComboType, NormalCard, NormalRank, Suit, cardId } from './types.js';
 
 /**
  * Get the effective rank of a card for comparison purposes.
@@ -477,7 +477,14 @@ export function findPlayableCombos(
   // Bombs (always playable)
   addBombs(normalCards, current, results);
 
-  return results;
+  // Deduplicate by sorted card IDs
+  const seen = new Set<string>();
+  return results.filter(combo => {
+    const key = combo.cards.map(c => cardId(c)).sort().join(',');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function addPairs(
@@ -563,15 +570,18 @@ function addConsecutivePairs(
   normalCards: NormalCard[], hasPhoenix: boolean, hasMahjong: boolean,
   current: Combo | null, results: Combo[]
 ) {
-  // This is a simplified version - finds consecutive pair sequences
   const byRank = groupByRank(normalCards);
+  // Ranks with natural pairs (no phoenix needed)
   const pairableRanks: number[] = [];
+  // Ranks with at least one card (phoenix can complete the pair)
+  const singleRanks: number[] = [];
   for (const [rank, cards] of Object.entries(byRank)) {
     if (cards.length >= 2) pairableRanks.push(Number(rank));
+    else if (cards.length === 1) singleRanks.push(Number(rank));
   }
   pairableRanks.sort((a, b) => a - b);
 
-  // Find all consecutive sequences of length >= 2
+  // Find all consecutive sequences of natural pairs
   const minPairs = current?.type === 'consecutivePairs' ? current.length / 2 : 2;
   for (let start = 0; start < pairableRanks.length; start++) {
     for (let end = start + 1; end < pairableRanks.length; end++) {
@@ -587,6 +597,40 @@ function addConsecutivePairs(
       const combo = identifyCombo(comboCards);
       if (combo && (!current || canBeat(current, combo))) {
         results.push(combo);
+      }
+    }
+  }
+
+  // With phoenix: try sequences where one rank uses phoenix to form its pair
+  if (hasPhoenix) {
+    const phoenix: Card = { type: 'special', name: 'phoenix' };
+    // All ranks that have at least one card (natural pairs + singles)
+    const allRanks = [...new Set([...pairableRanks, ...singleRanks])].sort((a, b) => a - b);
+
+    for (let start = 0; start < allRanks.length; start++) {
+      for (let end = start + minPairs - 1; end < allRanks.length; end++) {
+        const seq = allRanks.slice(start, end + 1);
+        if (!isConsecutive(seq)) break;
+        if (seq.length < minPairs) continue;
+
+        // Count how many ranks need the phoenix (have only 1 card)
+        const needsPhoenix = seq.filter(r => (byRank[r]?.length ?? 0) < 2);
+        if (needsPhoenix.length !== 1) continue; // phoenix can only fill one slot
+
+        const comboCards: Card[] = [];
+        for (const r of seq) {
+          const cards = byRank[r];
+          comboCards.push(cards[0]);
+          if (cards.length >= 2) {
+            comboCards.push(cards[1]);
+          } else {
+            comboCards.push(phoenix);
+          }
+        }
+        const combo = identifyCombo(comboCards, needsPhoenix[0] as NormalRank);
+        if (combo && (!current || canBeat(current, combo))) {
+          results.push(combo);
+        }
       }
     }
   }

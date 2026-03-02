@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Seat } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -24,10 +24,12 @@ export default function Lobby({ socket, auth }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showStats, setShowStats] = useState(false);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
+  const namePrefilledRef = useRef(false);
 
-  // Pre-fill name from profile
+  // Pre-fill name from profile on first load only
   useEffect(() => {
-    if (profile && !playerName) {
+    if (profile && !namePrefilledRef.current) {
+      namePrefilledRef.current = true;
       setPlayerName(profile.preferences.preferredName);
     }
   }, [profile]);

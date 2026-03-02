@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, RoundResult } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -19,8 +19,7 @@ export function useSocket(idToken: string | null) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needMahJongWish, setNeedMahJongWish] = useState(false);
-  const [needDragonChoice, setNeedDragonChoice] = useState(false);
-  const [roundResult, setRoundResult] = useState<any>(null);
+  const [roundResult, setRoundResult] = useState<RoundResult | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [randomPartners, setRandomPartners] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
@@ -62,11 +61,7 @@ export function useSocket(idToken: string | null) {
       setNeedMahJongWish(true);
     });
 
-    socket.on('need-dragon-choice', () => {
-      setNeedDragonChoice(true);
-    });
-
-    socket.on('round-result', ({ result }: { result: any }) => {
+    socket.on('round-result', ({ result }: { result: RoundResult }) => {
       setRoundResult(result);
     });
 
@@ -154,7 +149,6 @@ export function useSocket(idToken: string | null) {
 
   const giveDragonTrick = useCallback((to: Seat) => {
     socketRef.current?.emit('give-dragon-trick', { to });
-    setNeedDragonChoice(false);
   }, []);
 
   const mahJongWish = useCallback((rank: NormalRank) => {
@@ -196,7 +190,6 @@ export function useSocket(idToken: string | null) {
     roomCode,
     error,
     needMahJongWish,
-    needDragonChoice,
     roundResult,
     isOrganizer,
     randomPartners,

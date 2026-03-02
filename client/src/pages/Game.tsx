@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
@@ -31,10 +31,17 @@ export default function Game({ socket, auth }: Props) {
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
 
+  // Reset card selection when phase changes (e.g., round end -> new round)
+  const phase = gameState?.phase;
+  useEffect(() => {
+    setSelectedCards(new Set());
+    setBombMode(false);
+  }, [phase]);
+
   if (!gameState) return null;
 
   const {
-    phase, players, mySeat, myHand, currentTrick, currentTrickCards,
+    phase: _, players, mySeat, myHand, currentTrick, currentTrickCards,
     turnIndex, lastPlayedBy, teams,
   } = gameState;
 
