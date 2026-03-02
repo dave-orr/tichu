@@ -39,6 +39,17 @@ export type Combo = {
   length: number;    // number of cards (for straights/consecutive pairs matching)
 };
 
+// ===== Invite System =====
+
+export type InvitablePlayer = {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  playedWith: boolean;
+  isOnline: boolean;
+  isAvailable: boolean;
+};
+
 // ===== Game Settings =====
 
 export type GameSettings = {

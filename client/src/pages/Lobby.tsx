@@ -3,6 +3,7 @@ import type { Seat } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
 import UserStats from '../components/UserStats.js';
+import InvitePanel from '../components/InvitePanel.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -22,6 +23,7 @@ export default function Lobby({ socket, auth }: Props) {
   const [showPassedCards, setShowPassedCards] = useState(false);
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showStats, setShowStats] = useState(false);
+  const [showInvitePanel, setShowInvitePanel] = useState(false);
 
   // Pre-fill name from profile
   useEffect(() => {
@@ -70,6 +72,23 @@ export default function Lobby({ socket, auth }: Props) {
             {roomCode}
           </div>
           <p className="text-gray-300 mb-4">Share this code with other players</p>
+
+          {isOrganizer && playerCount < 4 && profile && (
+            <button
+              onClick={() => setShowInvitePanel(true)}
+              className="mb-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
+            >
+              Invite Players
+            </button>
+          )}
+
+          {showInvitePanel && (
+            <InvitePanel
+              onClose={() => setShowInvitePanel(false)}
+              fetchPlayers={socket.fetchPlayers}
+              sendInvite={socket.sendInvite}
+            />
+          )}
 
           {socket.randomPartners && (
             <p className="text-sm text-yellow-400 mb-4">Random partners enabled - seats will be shuffled on start</p>
@@ -221,6 +240,32 @@ export default function Lobby({ socket, auth }: Props) {
         {error && (
           <div className="bg-red-900/50 border border-red-500 p-3 rounded-lg mb-4 text-center">
             {error}
+          </div>
+        )}
+
+        {socket.pendingInvites.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {socket.pendingInvites.map(inv => (
+              <div key={inv.inviteId} className="bg-blue-900/50 border border-blue-500 p-3 rounded-lg flex items-center justify-between gap-3">
+                <span className="text-sm">
+                  <strong>{inv.fromName}</strong> invited you to room <strong>{inv.roomCode}</strong>
+                </span>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => socket.respondInvite(inv.inviteId, true, playerName.trim() || profile?.preferences.preferredName || 'Player')}
+                    className="text-xs px-3 py-1 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors"
+                  >
+                    Join
+                  </button>
+                  <button
+                    onClick={() => socket.respondInvite(inv.inviteId, false)}
+                    className="text-xs px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

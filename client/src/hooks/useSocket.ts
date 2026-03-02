@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
+
+export type IncomingInvite = {
+  inviteId: string;
+  roomCode: string;
+  fromName: string;
+};
 
 export function useSocket(idToken: string | null) {
   const socketRef = useRef<Socket | null>(null);
@@ -17,6 +23,7 @@ export function useSocket(idToken: string | null) {
   const [roundResult, setRoundResult] = useState<any>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [randomPartners, setRandomPartners] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -64,6 +71,20 @@ export function useSocket(idToken: string | null) {
 
     socket.on('round-result', ({ result }: { result: any }) => {
       setRoundResult(result);
+    });
+
+    socket.on('invite-received', (invite: IncomingInvite) => {
+      setPendingInvites(prev => {
+        if (prev.some(i => i.inviteId === invite.inviteId)) return prev;
+        return [...prev, invite];
+      });
+    });
+
+    socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
+      setRoomCode(roomCode);
+      setIsOrganizer(false);
+      setRandomPartners(randomPartners);
+      setPendingInvites([]);
     });
 
     setConnectionState('connecting');
@@ -148,6 +169,21 @@ export function useSocket(idToken: string | null) {
     socketRef.current?.emit('swap-seats', { seatA, seatB });
   }, []);
 
+  const fetchPlayers = useCallback((): Promise<{ players: InvitablePlayer[] }> => {
+    return new Promise(resolve => {
+      socketRef.current?.emit('fetch-players', resolve);
+    });
+  }, []);
+
+  const sendInvite = useCallback((targetUid: string) => {
+    socketRef.current?.emit('send-invite', { targetUid });
+  }, []);
+
+  const respondInvite = useCallback((inviteId: string, accept: boolean, playerName?: string) => {
+    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName });
+    setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
+  }, []);
+
   return {
     connectionState,
     gameState,
@@ -174,5 +210,9 @@ export function useSocket(idToken: string | null) {
     nextRound,
     swapSeats: swapSeatsAction,
     updateSettings,
+    pendingInvites,
+    fetchPlayers,
+    sendInvite,
+    respondInvite,
   };
 }
