@@ -15,6 +15,15 @@ export default function UserStats({ stats, onClose }: Props) {
   const grandRate = stats.grandTichuCalls > 0
     ? Math.round((stats.grandTichuSuccesses / stats.grandTichuCalls) * 100)
     : 0;
+  const avgPointDiff = stats.roundsPlayed > 0
+    ? Math.round(stats.totalPointDifferential / stats.roundsPlayed)
+    : 0;
+  const closeGameRate = stats.closeGamesPlayed > 0
+    ? Math.round((stats.closeGameWins / stats.closeGamesPlayed) * 100)
+    : 0;
+  const comebackRate = stats.comebackOpportunities > 0
+    ? Math.round((stats.comebackWins / stats.comebackOpportunities) * 100)
+    : 0;
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 mb-4">
@@ -33,21 +42,65 @@ export default function UserStats({ stats, onClose }: Props) {
           No games played yet. Stats will appear here after your first game.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <StatRow label="Games Played" value={stats.gamesPlayed} />
-          <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
-          <StatRow label="Rounds Played" value={stats.roundsPlayed} />
-          <StatRow label="First Out" value={stats.roundsWonFirstOut} />
-          <StatRow
-            label="Tichu Calls"
-            value={stats.tichuCalls > 0 ? `${stats.tichuSuccesses}/${stats.tichuCalls} (${tichuRate}%)` : '0'}
-          />
-          <StatRow
-            label="Grand Tichu"
-            value={stats.grandTichuCalls > 0 ? `${stats.grandTichuSuccesses}/${stats.grandTichuCalls} (${grandRate}%)` : '0'}
-          />
-          <StatRow label="Double Victories" value={stats.doubleVictories} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <StatRow label="Games Played" value={stats.gamesPlayed} />
+            <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
+            <StatRow label="Rounds Played" value={stats.roundsPlayed} />
+            <StatRow label="First Out" value={stats.roundsWonFirstOut} />
+            <StatRow
+              label="Tichu Calls"
+              value={stats.tichuCalls > 0 ? `${stats.tichuSuccesses}/${stats.tichuCalls} (${tichuRate}%)` : '0'}
+            />
+            <StatRow
+              label="Grand Tichu"
+              value={stats.grandTichuCalls > 0 ? `${stats.grandTichuSuccesses}/${stats.grandTichuCalls} (${grandRate}%)` : '0'}
+            />
+            <StatRow label="Double Victories" value={stats.doubleVictories} />
+          </div>
+
+          <div className="border-t border-gray-700 mt-3 pt-3">
+            <h4 className="text-xs text-gray-500 uppercase tracking-wide mb-2">Advanced</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <StatRow
+                label="Avg Point Diff / Round"
+                value={avgPointDiff > 0 ? `+${avgPointDiff}` : String(avgPointDiff)}
+              />
+              <StatRow
+                label="Bombs Played / Faced"
+                value={`${stats.bombsPlayed} / ${stats.bombsFaced}`}
+              />
+              <StatRow
+                label="Tichu When Behind"
+                value={stats.tichuCallsWhenBehind}
+              />
+              <StatRow
+                label="Tichu When Ahead"
+                value={stats.tichuCallsWhenAhead}
+              />
+              <StatRow
+                label="Grand When Behind"
+                value={stats.grandCallsWhenBehind}
+              />
+              <StatRow
+                label="Grand When Ahead"
+                value={stats.grandCallsWhenAhead}
+              />
+              <StatRow
+                label="Close Games"
+                value={stats.closeGamesPlayed > 0
+                  ? `${stats.closeGameWins}/${stats.closeGamesPlayed} (${closeGameRate}%)`
+                  : '0'}
+              />
+              <StatRow
+                label="Comebacks (down 300+)"
+                value={stats.comebackOpportunities > 0
+                  ? `${stats.comebackWins}/${stats.comebackOpportunities} (${comebackRate}%)`
+                  : '0'}
+              />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
