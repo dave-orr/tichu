@@ -260,7 +260,21 @@ export function handleSmallTichu(room: Room, seat: Seat): void {
   room.state = callSmallTichu(room.state, seat);
 }
 
+function cardKey(c: Card): string {
+  return c.type === 'normal' ? `${c.suit}-${c.rank}` : c.name;
+}
+
 export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean {
+  // Verify all three passed cards are actually in the player's hand
+  const hand = room.state.players[seat].hand;
+  const handKeys = new Set(hand.map(cardKey));
+  const passCards = [pass.left, pass.partner, pass.right];
+  // Also verify the three cards are distinct
+  const passKeys = new Set(passCards.map(cardKey));
+  if (passKeys.size !== 3 || !passCards.every(c => handKeys.has(cardKey(c)))) {
+    return false;
+  }
+
   room.passes.set(seat, pass);
   room.state = passCardsEngine(room.state, seat, pass);
 

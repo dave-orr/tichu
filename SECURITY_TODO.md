@@ -9,16 +9,13 @@ Findings from a security review of the Tichu codebase.
 - A client can flood the server with unlimited events (play-cards, bomb-announce/cancel, etc.) causing degraded performance or crashes for all players.
 - No per-IP connection limits either — a single origin can open unbounded connections.
 
-### No server-side input validation on game payloads
-- **Location:** `server/src/handler.ts` (all socket event handlers)
-- Card objects from `play-cards`, `pass-cards`, and `bomb` events are not schema-validated. A client can send arbitrary objects (e.g. `{type: "fake", rank: 999}`) and the server will attempt to process them.
-- Seat index in `give-dragon-trick` is not bounds-checked to 0–3.
-- Rank in `mah-jong-wish` is not validated to 2–14.
-- Player names have a client-side maxLength but no server-side length or character validation (`server/src/rooms.ts:82`).
+### ~~No server-side input validation on game payloads~~ ✅ DONE
+- **Location:** `server/src/handler.ts`, `server/src/validation.ts`, `server/src/rooms.ts`
+- **Fixed:** Added `server/src/validation.ts` with schema validators for Card, Card[], Seat, NormalRank, and player names. All socket event handlers now validate untrusted payloads before processing. `handlePassCards` verifies passed cards are distinct and present in the player's hand.
 
-### Card pass validation gap
-- **Location:** `server/src/rooms.ts` handlePassCards (~line 222)
-- `handlePassCards` does not verify that the three passed cards are actually in the player's hand before storing them. The later `applyPasses` step silently skips removal if the card isn't found, meaning a player could claim to pass cards they don't hold.
+### ~~Card pass validation gap~~ ✅ DONE
+- **Location:** `server/src/rooms.ts` handlePassCards
+- **Fixed:** `handlePassCards` now verifies that all three passed cards are distinct and present in the player's hand before accepting the pass.
 
 ## High
 

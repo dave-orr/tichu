@@ -9,6 +9,10 @@ import {
 } from './rooms.js';
 import { verifyIdToken } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog } from './stats.js';
+import {
+  isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
+  isValidPlayerName, isValidPassCards,
+} from './validation.js';
 
 // Simple per-socket rate limiter: max `limit` events per `windowMs`.
 function createRateLimiter(windowMs: number, limit: number) {
@@ -51,6 +55,10 @@ export function setupHandlers(io: Server): void {
     }
 
     socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
+      if (!isValidPlayerName(playerName)) {
+        socket.emit('error', { message: 'Invalid player name' });
+        return;
+      }
       const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
@@ -58,6 +66,10 @@ export function setupHandlers(io: Server): void {
     });
 
     socket.on('join-room', ({ roomCode, playerName }: { roomCode: string; playerName: string }) => {
+      if (!isValidPlayerName(playerName)) {
+        socket.emit('error', { message: 'Invalid player name' });
+        return;
+      }
       const result = joinRoom(roomCode, socket.id, playerName);
       if ('error' in result) {
         socket.emit('error', { message: result.error });
@@ -101,15 +113,23 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('pass-cards', ({ left, partner, right }: { left: Card; partner: Card; right: Card }) => {
+    socket.on('pass-cards', (data: unknown) => {
+      if (!isValidPassCards(data)) {
+        socket.emit('error', { message: 'Invalid card data' });
+        return;
+      }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      handlePassCards(room, seat, { left, partner, right });
+      handlePassCards(room, seat, data);
       broadcastState(io, room);
     });
 
-    socket.on('play-cards', ({ cards }: { cards: Card[] }) => {
+    socket.on('play-cards', ({ cards }: { cards: unknown }) => {
+      if (!isValidCardArray(cards)) {
+        socket.emit('error', { message: 'Invalid card data' });
+        return;
+      }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -168,7 +188,11 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('bomb', ({ cards }: { cards: Card[] }) => {
+    socket.on('bomb', ({ cards }: { cards: unknown }) => {
+      if (!isValidCardArray(cards)) {
+        socket.emit('error', { message: 'Invalid card data' });
+        return;
+      }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -185,7 +209,11 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('give-dragon-trick', ({ to }: { to: Seat }) => {
+    socket.on('give-dragon-trick', ({ to }: { to: unknown }) => {
+      if (!isValidSeat(to)) {
+        socket.emit('error', { message: 'Invalid seat' });
+        return;
+      }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -200,7 +228,11 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('mah-jong-wish', ({ rank }: { rank: NormalRank }) => {
+    socket.on('mah-jong-wish', ({ rank }: { rank: unknown }) => {
+      if (!isValidNormalRank(rank)) {
+        socket.emit('error', { message: 'Invalid rank' });
+        return;
+      }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -218,7 +250,11 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('swap-seats', ({ seatA, seatB }: { seatA: Seat; seatB: Seat }) => {
+    socket.on('swap-seats', ({ seatA, seatB }: { seatA: unknown; seatB: unknown }) => {
+      if (!isValidSeat(seatA) || !isValidSeat(seatB)) {
+        socket.emit('error', { message: 'Invalid seat' });
+        return;
+      }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
