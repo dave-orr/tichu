@@ -131,6 +131,10 @@ export function useSocket(idToken: string | null) {
     setRoundResult(null);
   }, []);
 
+  const updateSettings = useCallback((settings: Partial<GameSettings>) => {
+    socketRef.current?.emit('update-settings', { settings });
+  }, []);
+
   const swapSeatsAction = useCallback((seatA: Seat, seatB: Seat) => {
     socketRef.current?.emit('swap-seats', { seatA, seatB });
   }, []);
@@ -160,5 +164,6 @@ export function useSocket(idToken: string | null) {
     mahJongWish,
     nextRound,
     swapSeats: swapSeatsAction,
+    updateSettings,
   };
 }
