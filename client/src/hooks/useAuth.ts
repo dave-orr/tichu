@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider, firebaseConfigured } from '../firebase.js';
+import type { GameSettings } from '@tichu/shared';
 
 export type UserProfile = {
   uid: string;
@@ -42,6 +43,7 @@ export type UserStats = {
 
 export type UserPreferences = {
   preferredName: string;
+  lastSettings?: Partial<GameSettings>;
 };
 
 const DEFAULT_STATS: UserStats = {
@@ -146,6 +148,13 @@ export function useAuth() {
     setProfile(userProfile);
   }, [user]);
 
+  const saveLastSettings = useCallback(async (settings: Partial<GameSettings>) => {
+    if (!user || !db) return;
+    const docRef = doc(db, 'users', user.uid);
+    await setDoc(docRef, { preferences: { lastSettings: settings } }, { merge: true });
+    setProfile(prev => prev ? { ...prev, preferences: { ...prev.preferences, lastSettings: settings } } : prev);
+  }, [user]);
+
   return {
     user,
     profile,
@@ -154,6 +163,7 @@ export function useAuth() {
     signInWithGoogle,
     signOut,
     refreshProfile,
+    saveLastSettings,
   };
 }
 
@@ -179,6 +189,7 @@ async function loadOrCreateProfile(user: User): Promise<UserProfile> {
       stats: { ...DEFAULT_STATS, ...data.stats },
       preferences: {
         preferredName: data.preferences?.preferredName || user.displayName?.split(' ')[0] || 'Player',
+        lastSettings: data.preferences?.lastSettings,
       },
     };
   }
