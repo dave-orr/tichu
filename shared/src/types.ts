@@ -106,6 +106,11 @@ export type PassSelection = {
   right: Card | null;
 };
 
+export type ReceivedCard = {
+  card: Card;
+  fromSeat: Seat;
+};
+
 export type GameState = {
   phase: Phase;
   players: [Player, Player, Player, Player];
@@ -124,6 +129,7 @@ export type GameState = {
   dragonGiveawayBy: Seat | null;
   settings: GameSettings;
   playedCards: Card[];         // all cards played/discarded this round (for cards-seen tracking)
+  receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]]; // cards received from passing, per seat
 };
 
 // ===== Socket Events =====
@@ -152,10 +158,11 @@ export type ServerEvent =
   | { type: 'game-over'; winner: 0 | 1; finalScores: [number, number] };
 
 // What the client sees (hands hidden for other players)
-export type ClientGameState = Omit<GameState, 'players' | 'deck'> & {
+export type ClientGameState = Omit<GameState, 'players' | 'deck' | 'receivedCards'> & {
   players: [ClientPlayer, ClientPlayer, ClientPlayer, ClientPlayer];
   myHand: Card[];
   mySeat: Seat;
+  myReceivedCards: ReceivedCard[];
 };
 
 export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {

@@ -2,7 +2,7 @@ import { identifyCombo, canBeat, isBomb, singleCardRank, findPlayableCombos } fr
 import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, getWinner, sumPoints } from './scoring.js';
 import {
-  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, RoundResult, Seat,
+  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, ReceivedCard, RoundResult, Seat,
   Team, cardsEqual, cardId, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
@@ -35,6 +35,7 @@ export function createInitialState(settings?: GameSettings): GameState {
     dragonGiveawayBy: null,
     settings: settings ?? DEFAULT_SETTINGS,
     playedCards: [],
+    receivedCards: [[], [], [], []],
   };
 }
 
@@ -76,6 +77,7 @@ export function startNewRound(state: GameState): GameState {
     dragonGiveaway: false,
     dragonGiveawayBy: null,
     playedCards: [],
+    receivedCards: [[], [], [], []],
     players: toPlayers(state.players.map((p, i) => ({
       ...p,
       hand: sortHand(deck.slice(i * 14, i * 14 + 8)), // first 8 cards
@@ -204,6 +206,21 @@ export function applyPasses(
     newPlayers[rightSeat].hand.push(pass.right);
   }
 
+  // Compute received cards for each player
+  const receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]] = [[], [], [], []];
+  for (let seat = 0; seat < 4; seat++) {
+    const s = seat as Seat;
+    const pass = passes[s];
+    const leftSeat = ((s + 3) % 4) as Seat;
+    const partnerSeat = ((s + 2) % 4) as Seat;
+    const rightSeat = ((s + 1) % 4) as Seat;
+
+    // This player passed left to leftSeat, partner to partnerSeat, right to rightSeat
+    receivedCards[leftSeat].push({ card: pass.left, fromSeat: s });
+    receivedCards[partnerSeat].push({ card: pass.partner, fromSeat: s });
+    receivedCards[rightSeat].push({ card: pass.right, fromSeat: s });
+  }
+
   // Sort all hands
   for (const p of newPlayers) {
     p.hand = sortHand(p.hand);
@@ -223,6 +240,7 @@ export function applyPasses(
     phase: 'playing',
     players: newPlayers,
     turnIndex: startSeat,
+    receivedCards,
   };
 }
 
@@ -717,5 +735,6 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     playedCards: state.playedCards,
     myHand: state.players[forSeat].hand,
     mySeat: forSeat,
+    myReceivedCards: state.receivedCards[forSeat],
   };
 }
