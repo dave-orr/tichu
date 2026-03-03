@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, getPartnerSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -27,6 +27,7 @@ export default function Game({ socket, auth }: Props) {
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
+  const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const gameEvents = useGameEvents(gameState, roundResult);
 
   // Reset card selection when phase changes (e.g., round end -> new round)
@@ -117,6 +118,14 @@ export default function Game({ socket, auth }: Props) {
     }
     return false;
   }, [phase, myHand]);
+
+  const partnerIsOut = phase === 'playing' && !myPlayer.isOut &&
+    players[getPartnerSeat(mySeat)].isOut && !gameState.dragonGiveaway;
+
+  const handleConcede = () => {
+    socket.concede();
+    setShowConcedeConfirm(false);
+  };
 
   const handlePlay = () => {
     if (!canPlay) return;
@@ -276,12 +285,22 @@ export default function Game({ socket, auth }: Props) {
           <div className="mb-2 max-w-lg mx-auto">
             <div className="flex justify-center items-end gap-4">
               <span className="text-xs text-gray-400">You passed:</span>
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
-                <div key={p.playerName} className="text-center">
-                  <CardComponent card={p.card} small />
-                  <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
-                </div>
-              ))}
+              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
+                const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+                return (
+                  <div key={p.playerName} className="text-center">
+                    <div className="relative inline-block">
+                      <CardComponent card={p.card} small />
+                      {played && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -399,6 +418,37 @@ export default function Game({ socket, auth }: Props) {
             <button
               onClick={cancelBombMode}
               className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* Concede button — visible when partner is out */}
+        {partnerIsOut && !bombMode && !showConcedeConfirm && (
+          <div className="flex justify-center mt-2">
+            <button
+              onClick={() => setShowConcedeConfirm(true)}
+              className="py-1 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors"
+            >
+              Concede Round
+            </button>
+          </div>
+        )}
+
+        {/* Concede confirmation */}
+        {showConcedeConfirm && (
+          <div className="flex justify-center items-center gap-3 mt-2">
+            <span className="text-sm text-yellow-400">End the round? Your hand goes to opponents.</span>
+            <button
+              onClick={handleConcede}
+              className="py-1 px-4 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-bold transition-colors"
+            >
+              Yes, Concede
+            </button>
+            <button
+              onClick={() => setShowConcedeConfirm(false)}
+              className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm transition-colors"
             >
               Cancel
             </button>

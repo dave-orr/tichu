@@ -646,6 +646,49 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
   return { state: newState };
 }
 
+// ===== Concede =====
+
+export function concede(state: GameState, seat: Seat): PlayResult {
+  if (state.phase !== 'playing') return { state };
+  if (state.players[seat].isOut) return { state };
+  if (state.dragonGiveaway) return { state };
+
+  // Partner must be out
+  const partnerSeat = getPartnerSeat(seat);
+  if (!state.players[partnerSeat].isOut) return { state };
+
+  const newPlayers = toPlayers(state.players.map(p => ({
+    ...p,
+    hand: [...p.hand],
+    tricksWon: [...p.tricksWon],
+  })));
+
+  // Award current trick to lastPlayedBy if there's one in progress
+  if (state.currentTrickCards.length > 0 && state.lastPlayedBy != null) {
+    newPlayers[state.lastPlayedBy].tricksWon.push(state.currentTrickCards.flat());
+  }
+
+  // Assign outOrders: remaining opponents get next orders, conceding player is last
+  let nextOrder = state.outCount + 1;
+  for (let i = 0; i < 4; i++) {
+    const s = i as Seat;
+    if (!newPlayers[s].isOut && s !== seat) {
+      newPlayers[s].isOut = true;
+      newPlayers[s].outOrder = nextOrder++;
+    }
+  }
+  newPlayers[seat].isOut = true;
+  newPlayers[seat].outOrder = nextOrder;
+
+  return endRound({
+    ...state,
+    players: newPlayers,
+    outCount: 4,
+    currentTrick: null,
+    currentTrickCards: [],
+  });
+}
+
 // ===== Round End =====
 
 function endRound(state: GameState): PlayResult {
