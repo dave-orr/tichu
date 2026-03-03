@@ -273,9 +273,14 @@ export function setupHandlers(io: Server): void {
     socket.on('next-round', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
-      const { room } = found;
+      const { room, seat } = found;
       if (room.state.phase === 'roundEnd') {
-        startNextRound(room);
+        if (!room.state.roundEndReady.includes(seat)) {
+          room.state.roundEndReady.push(seat);
+        }
+        if (room.state.roundEndReady.length === 4) {
+          startNextRound(room);
+        }
         broadcastState(io, room);
       }
     });

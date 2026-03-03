@@ -2,7 +2,7 @@ import { identifyCombo, canBeat, isBomb, singleCardRank, findPlayableCombos } fr
 import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, getWinner, sumPoints } from './scoring.js';
 import {
-  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, ReceivedCard, RoundResult, Seat,
+  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, ReceivedCard, RoundHistoryEntry, RoundResult, Seat,
   Team, cardsEqual, cardId, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
@@ -35,6 +35,8 @@ export function createInitialState(settings?: GameSettings): GameState {
     dragonGiveawayBy: null,
     settings: settings ?? DEFAULT_SETTINGS,
     playedCards: [],
+    roundEndReady: [],
+    roundHistory: [],
     receivedCards: [[], [], [], []],
   };
 }
@@ -77,6 +79,7 @@ export function startNewRound(state: GameState): GameState {
     dragonGiveaway: false,
     dragonGiveawayBy: null,
     playedCards: [],
+    roundEndReady: [],
     receivedCards: [[], [], [], []],
     players: toPlayers(state.players.map((p, i) => ({
       ...p,
@@ -656,11 +659,25 @@ function endRound(state: GameState): PlayResult {
 
   const gameOver = isGameOver(result.totalScores);
 
+  // Add round history entry
+  const roundTotal: [number, number] = [
+    result.teamScores[0] + result.tichuBonuses[0],
+    result.teamScores[1] + result.tichuBonuses[1],
+  ];
+  const historyEntry: RoundHistoryEntry = {
+    roundNumber: state.roundNumber,
+    cardPoints: result.teamScores,
+    tichuBonuses: result.tichuBonuses,
+    roundTotal,
+    cumulativeScores: result.totalScores,
+  };
+
   return {
     state: {
       ...state,
       phase: gameOver ? 'gameEnd' : 'roundEnd',
       teams: newTeams,
+      roundHistory: [...state.roundHistory, historyEntry],
     },
     roundEnded: true,
     roundResult: result,
@@ -733,6 +750,8 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     dragonGiveawayBy: state.dragonGiveawayBy,
     settings: state.settings,
     playedCards: state.playedCards,
+    roundEndReady: state.roundEndReady,
+    roundHistory: state.roundHistory,
     myHand: state.players[forSeat].hand,
     mySeat: forSeat,
     myReceivedCards: state.receivedCards[forSeat],
