@@ -106,6 +106,11 @@ export type PassSelection = {
   right: Card | null;
 };
 
+export type ReceivedCard = {
+  card: Card;
+  fromSeat: Seat;
+};
+
 export type GameState = {
   phase: Phase;
   players: [Player, Player, Player, Player];
@@ -126,6 +131,7 @@ export type GameState = {
   playedCards: Card[];         // all cards played/discarded this round (for cards-seen tracking)
   roundEndReady: Seat[];       // seats that have acknowledged round results
   roundHistory: RoundHistoryEntry[]; // score history for all completed rounds
+  receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]]; // cards received from passing, per seat
 };
 
 // ===== Socket Events =====
@@ -154,10 +160,11 @@ export type ServerEvent =
   | { type: 'game-over'; winner: 0 | 1; finalScores: [number, number] };
 
 // What the client sees (hands hidden for other players)
-export type ClientGameState = Omit<GameState, 'players' | 'deck'> & {
+export type ClientGameState = Omit<GameState, 'players' | 'deck' | 'receivedCards'> & {
   players: [ClientPlayer, ClientPlayer, ClientPlayer, ClientPlayer];
   myHand: Card[];
   mySeat: Seat;
+  myReceivedCards: ReceivedCard[];
 };
 
 export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
@@ -213,6 +220,13 @@ export type RoundLog = {
   dragonGiveaways: Array<{ fromSeat: Seat; toSeat: Seat }>;
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
 };
+
+// ===== Type Helpers =====
+
+/** Cast an array to a fixed-length 4-tuple. Avoids `as unknown as [T,T,T,T]` throughout. */
+export function toPlayers<T>(arr: T[]): [T, T, T, T] {
+  return arr as unknown as [T, T, T, T];
+}
 
 // ===== Helpers =====
 

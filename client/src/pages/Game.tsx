@@ -4,26 +4,22 @@ import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
 import Hand from '../components/Hand.js';
-import CardComponent, { CardBack } from '../components/Card.js';
+import CardComponent from '../components/Card.js';
 import PlayArea from '../components/PlayArea.js';
 import ScoreBoard from '../components/ScoreBoard.js';
-import GrandTichuPrompt from '../components/GrandTichuPrompt.js';
-import PassCards from '../components/PassCards.js';
 import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
 import RoundResults from '../components/RoundResults.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
+import OpponentInfo from '../components/OpponentInfo.js';
+import GrandTichuPhase from '../components/GrandTichuPhase.js';
+import PassingPhase from '../components/PassingPhase.js';
+import type { PassRecord } from '../components/PassingPhase.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
   auth: ReturnType<typeof useAuth>;
-};
-
-type PassRecord = {
-  left: { card: CardType; playerName: string };
-  partner: { card: CardType; playerName: string };
-  right: { card: CardType; playerName: string };
 };
 
 export default function Game({ socket, auth }: Props) {
@@ -147,7 +143,7 @@ export default function Game({ socket, auth }: Props) {
     setBombMode(false);
   };
 
-  const handlePass = () => {
+  const handlePassTurn = () => {
     socket.passTurn();
     setSelectedCards(new Set());
   };
@@ -155,31 +151,22 @@ export default function Game({ socket, auth }: Props) {
   // Grand Tichu phase
   if (phase === 'grandTichuWindow') {
     return (
-      <>
-        <GameAnnouncements events={gameEvents} />
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full">
-            <ScoreBoard gameState={gameState} />
-            <div className="mt-6">
-              <GrandTichuPrompt
-                cards={myHand}
-                decided={myPlayer.grandTichuDecided}
-                onDecide={socket.callGrandTichu}
-              />
-            </div>
-          </div>
-        </div>
-      </>
+      <GrandTichuPhase
+        gameState={gameState}
+        cards={myHand}
+        decided={myPlayer.grandTichuDecided}
+        onDecide={socket.callGrandTichu}
+        gameEvents={gameEvents}
+      />
     );
   }
 
   // Card passing phase
-  if (phase === 'passing' && !myPlayer.passedCards) {
-    const leftSeat = ((mySeat + 3) % 4) as Seat;
-    const partnerSeat = ((mySeat + 2) % 4) as Seat;
-    const rightSeat = ((mySeat + 1) % 4) as Seat;
-
-    const handlePass = (left: CardType, partner: CardType, right: CardType) => {
+  if (phase === 'passing') {
+    const handlePassCards = (left: CardType, partner: CardType, right: CardType) => {
+      const leftSeat = ((mySeat + 3) % 4) as Seat;
+      const partnerSeat = ((mySeat + 2) % 4) as Seat;
+      const rightSeat = ((mySeat + 1) % 4) as Seat;
       setPassRecord({
         left: { card: left, playerName: playerNames[leftSeat] },
         partner: { card: partner, playerName: playerNames[partnerSeat] },
@@ -189,57 +176,21 @@ export default function Game({ socket, auth }: Props) {
     };
 
     return (
-      <>
-        <GameAnnouncements events={gameEvents} />
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="max-w-3xl w-full">
-            <ScoreBoard gameState={gameState} />
-            <div className="mt-6">
-              <PassCards
-                hand={myHand}
-                mySeat={mySeat}
-                playerNames={playerNames}
-                onPass={handlePass}
-              />
-            </div>
-          </div>
-        </div>
-      </>
+      <PassingPhase
+        gameState={gameState}
+        myHand={myHand}
+        mySeat={mySeat}
+        playerNames={playerNames}
+        hasPassed={!!myPlayer.passedCards}
+        playerName={myPlayer.name}
+        passRecord={passRecord}
+        onPass={handlePassCards}
+        gameEvents={gameEvents}
+      />
     );
   }
 
-  if (phase === 'passing' && myPlayer.passedCards) {
-    return (
-      <>
-        <GameAnnouncements events={gameEvents} />
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="max-w-3xl w-full text-center">
-          <ScoreBoard gameState={gameState} />
-          <p className="mt-6 mb-4 text-gray-300">Waiting for other players to pass cards...</p>
-          {passRecord && (
-            <div className="flex justify-center gap-6 mb-4">
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
-                <div key={p.playerName} className="text-center">
-                  <div className="text-xs text-gray-400 mb-1">To {p.playerName}</div>
-                  <CardComponent card={p.card} small />
-                </div>
-              ))}
-            </div>
-          )}
-          <Hand
-            cards={myHand}
-            selectedCards={new Set()}
-            onToggleCard={() => {}}
-            disabled
-          />
-          <div className="text-center text-sm text-gray-400 mt-1">{myPlayer.name}</div>
-        </div>
-      </div>
-      </>
-    );
-  }
-
-  // Main game phase
+  // Main playing phase
   return (
     <div className="min-h-screen flex flex-col relative">
       {/* Announcements overlay */}
@@ -335,6 +286,21 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
+        {/* Received cards display — visible until first play */}
+        {!myPlayer.hasPlayedFirstCard && phase === 'playing' && gameState.myReceivedCards.length > 0 && (
+          <div className="mb-2 max-w-lg mx-auto">
+            <div className="flex justify-center items-end gap-4">
+              <span className="text-xs text-gray-400">You received:</span>
+              {gameState.myReceivedCards.map((rc) => (
+                <div key={`${rc.fromSeat}`} className="text-center">
+                  <CardComponent card={rc.card} small />
+                  <div className="text-[10px] text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
           <div className="mb-2 max-w-lg mx-auto">
@@ -388,7 +354,7 @@ export default function Game({ socket, auth }: Props) {
                 </button>
                 {currentTrick && !mustPlayWish && (
                   <button
-                    onClick={handlePass}
+                    onClick={handlePassTurn}
                     disabled={selectedCards.size > 0}
                     title={selectedCards.size > 0 ? 'Unselect cards to pass' : undefined}
                     className="py-2 px-6 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
@@ -439,43 +405,6 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function OpponentInfo({
-  player,
-  isCurrentTurn,
-  label,
-  showPoints,
-  horizontal,
-}: {
-  player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number; capturedPoints: number };
-  isCurrentTurn: boolean;
-  label: string;
-  showPoints?: boolean;
-  horizontal?: boolean;
-}) {
-  return (
-    <div className={`text-center ${isCurrentTurn ? 'pulse-glow rounded-lg p-2' : 'p-2'}`}>
-      <div className="text-xs text-gray-400">{label}</div>
-      <div className={`font-bold text-sm ${isCurrentTurn ? 'text-yellow-400' : ''}`}>
-        {player.name}
-        {showPoints && player.trickCount > 0 && (
-          <span className="ml-1 text-green-400 font-normal">({player.capturedPoints}pts)</span>
-        )}
-      </div>
-      {player.tichuCall !== 'none' && (
-        <div className={`text-xs ${player.tichuCall === 'grand' ? 'text-red-400' : 'text-orange-400'}`}>
-          {player.tichuCall === 'grand' ? 'GRAND' : 'Tichu'}
-        </div>
-      )}
-      <div className="mt-1">
-        <CardBack count={player.cardCount} horizontal={horizontal} />
-      </div>
-      {player.trickCount > 0 && (
-        <div className="text-xs text-gray-400 mt-1">{player.trickCount} tricks</div>
-      )}
     </div>
   );
 }
