@@ -10,7 +10,7 @@ import {
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom,
 } from './rooms.js';
-import { verifyIdToken } from './firebase.js';
+import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
@@ -439,6 +439,88 @@ export function setupHandlers(io: Server): void {
         roomCode: room.code,
         randomPartners: room.randomPartners,
       });
+    });
+
+    // ===== User Profile (via Admin SDK) =====
+
+    socket.on('load-profile', async (callback: (data: { profile: unknown } | { error: string }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid || !firebaseAdmin) {
+        callback({ error: 'Not authenticated' });
+        return;
+      }
+      try {
+        const db = firebaseAdmin.firestore();
+        const docRef = db.collection('users').doc(uid);
+        const docSnap = await docRef.get();
+
+        // Get display info from Firebase Auth
+        let authUser: { displayName?: string; email?: string; photoURL?: string } = {};
+        try {
+          const userRecord = await firebaseAdmin.auth().getUser(uid);
+          authUser = {
+            displayName: userRecord.displayName,
+            email: userRecord.email,
+            photoURL: userRecord.photoURL,
+          };
+        } catch { /* ignore */ }
+
+        if (docSnap.exists) {
+          const data = docSnap.data()!;
+          // Update display info on each login
+          await docRef.set({
+            displayName: authUser.displayName || data.displayName,
+            email: authUser.email || data.email,
+            photoURL: authUser.photoURL ?? data.photoURL,
+          }, { merge: true });
+
+          callback({
+            profile: {
+              uid,
+              displayName: data.displayName || authUser.displayName || 'Player',
+              email: data.email || authUser.email || '',
+              photoURL: authUser.photoURL ?? data.photoURL ?? null,
+              stats: data.stats || {},
+              preferences: {
+                preferredName: data.preferences?.preferredName || (authUser.displayName?.split(' ')[0]) || 'Player',
+                lastSettings: data.preferences?.lastSettings,
+              },
+            },
+          });
+        } else {
+          // New user — create profile
+          const displayName = authUser.displayName || 'Player';
+          const newProfile = {
+            displayName,
+            email: authUser.email || '',
+            photoURL: authUser.photoURL ?? null,
+            stats: {},
+            preferences: {
+              preferredName: displayName.split(' ')[0] || 'Player',
+            },
+            createdAt: new Date().toISOString(),
+          };
+          await docRef.set(newProfile);
+          callback({
+            profile: { uid, ...newProfile },
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+        callback({ error: 'Failed to load profile' });
+      }
+    });
+
+    socket.on('save-settings', async ({ settings }: { settings: Partial<GameSettings> }) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid || !firebaseAdmin) return;
+      try {
+        const db = firebaseAdmin.firestore();
+        const docRef = db.collection('users').doc(uid);
+        await docRef.set({ preferences: { lastSettings: settings } }, { merge: true });
+      } catch (err) {
+        console.error('Failed to save settings:', err);
+      }
     });
 
     socket.on('disconnect', () => {

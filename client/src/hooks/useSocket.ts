@@ -191,6 +191,16 @@ export function useSocket(idToken: string | null) {
     setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
   }, []);
 
+  const loadProfile = useCallback((): Promise<{ profile: unknown } | { error: string }> => {
+    return new Promise(resolve => {
+      socketRef.current?.emit('load-profile', resolve);
+    });
+  }, []);
+
+  const saveSettings = useCallback((settings: Partial<GameSettings>) => {
+    socketRef.current?.emit('save-settings', { settings });
+  }, []);
+
   return {
     connectionState,
     gameState,
@@ -222,5 +232,7 @@ export function useSocket(idToken: string | null) {
     fetchPlayers,
     sendInvite,
     respondInvite,
+    loadProfile,
+    saveSettings,
   };
 }
