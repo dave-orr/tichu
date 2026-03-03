@@ -29,7 +29,7 @@ export function useSocket(idToken: string | null) {
     const socket = io(window.location.hostname === 'localhost'
       ? 'http://localhost:3000'
       : window.location.origin, {
-      transports: ['polling', 'websocket'],
+      transports: ['polling'],
       auth: tokenRef.current ? { token: tokenRef.current } : undefined,
     });
     socketRef.current = socket;
