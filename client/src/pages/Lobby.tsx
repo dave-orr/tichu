@@ -190,7 +190,8 @@ export default function Lobby({ socket, auth }: Props) {
             initialSettings={profile?.preferences.lastSettings}
             onCreateRoom={(randomPartners, settings) => {
               socket.createRoom(playerName.trim(), randomPartners, settings);
-              auth.saveLastSettings(settings);
+              socket.saveSettings(settings);
+              auth.updateLastSettings(settings);
             }}
             onBack={() => setMode('menu')}
           />
