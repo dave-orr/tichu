@@ -58,14 +58,70 @@ export default function Game({ socket, auth }: Props) {
     setPassNextPlay(false);
   }, [phase]);
 
-  // Play chime when it becomes our turn
+  // Detect pending Mah Jong wish (Mah Jong played but wish not yet selected)
+  const pendingWish = gameState?.phase === 'playing' &&
+    gameState.mahJongWish === null &&
+    gameState.currentTrickCards.length > 0 &&
+    gameState.currentTrickCards[gameState.currentTrickCards.length - 1]
+      .some(c => c.type === 'special' && c.name === 'mahjong');
+
+  // Play chime when it becomes our turn (but not while wish is pending)
   const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
   useEffect(() => {
-    if (isMyTurnNow && !prevTurnRef.current) {
+    if (isMyTurnNow && !prevTurnRef.current && !pendingWish) {
       playTurnChime();
     }
     prevTurnRef.current = !!isMyTurnNow;
-  }, [isMyTurnNow]);
+  }, [isMyTurnNow, pendingWish]);
+
+  // Set document title with player name
+  useEffect(() => {
+    if (gameState) {
+      const name = gameState.players[gameState.mySeat].name;
+      document.title = `Tichu — ${name}`;
+    }
+    return () => { document.title = 'Tichu'; };
+  }, [gameState?.mySeat, gameState?.players]);
+
+  // Flash tab title when it's your turn and tab is not focused
+  useEffect(() => {
+    if (!isMyTurnNow || pendingWish) return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let flash = false;
+    const playerName = gameState?.players[gameState.mySeat].name ?? '';
+    const baseTitle = `Tichu — ${playerName}`;
+
+    const startFlashing = () => {
+      if (document.hidden) {
+        interval = setInterval(() => {
+          flash = !flash;
+          document.title = flash ? '🔔 YOUR TURN!' : baseTitle;
+        }, 800);
+      }
+    };
+
+    const stopFlashing = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+      document.title = baseTitle;
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        startFlashing();
+      } else {
+        stopFlashing();
+      }
+    };
+
+    // Start flashing if already hidden
+    if (document.hidden) startFlashing();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      stopFlashing();
+    };
+  }, [isMyTurnNow, pendingWish, gameState?.mySeat, gameState?.players]);
 
   if (!gameState) return null;
 
