@@ -102,13 +102,13 @@ export function scoreRound(state: GameState): RoundResult {
   };
 }
 
-/** Check if the game is over (a team has >= 1000 points) */
-export function isGameOver(scores: [number, number]): boolean {
-  return (scores[0] >= 1000 || scores[1] >= 1000) && scores[0] !== scores[1];
+/** Check if the game is over (a team has >= target score) */
+export function isGameOver(scores: [number, number], targetScore: number = 1000): boolean {
+  return (scores[0] >= targetScore || scores[1] >= targetScore) && scores[0] !== scores[1];
 }
 
 /** Get the winning team index, or null if game not over */
-export function getWinner(scores: [number, number]): 0 | 1 | null {
-  if (!isGameOver(scores)) return null;
+export function getWinner(scores: [number, number], targetScore: number = 1000): 0 | 1 | null {
+  if (!isGameOver(scores, targetScore)) return null;
   return scores[0] > scores[1] ? 0 : 1;
 }

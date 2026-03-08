@@ -11,7 +11,7 @@ type Props = {
   randomPartners: boolean;
   hasProfile: boolean;
   onSwapSeats: (from: Seat, to: Seat) => void;
-  onUpdateSettings: (settings: Record<string, boolean>) => void;
+  onUpdateSettings: (settings: Record<string, boolean | number>) => void;
   onStartGame: () => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
   sendInvite: (targetUid: string) => void;
@@ -137,6 +137,22 @@ export default function WaitingRoom({
               </div>
             </label>
           ))}
+          <div className={`flex items-center gap-3 p-2 rounded-lg bg-gray-800 border border-gray-600 ${isOrganizer ? '' : 'opacity-70'}`}>
+            <div className="flex-1 text-left">
+              <span className="text-sm font-semibold">Target Score</span>
+              <p className="text-xs text-gray-400">Points needed to win</p>
+            </div>
+            <input
+              type="number"
+              value={gameState.settings.targetScore}
+              onChange={e => isOrganizer && onUpdateSettings({ targetScore: Math.max(100, Math.min(9999, Number(e.target.value) || 1000)) })}
+              disabled={!isOrganizer}
+              min={100}
+              max={9999}
+              step={50}
+              className="w-20 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white text-sm disabled:opacity-50"
+            />
+          </div>
         </div>
 
         {playerCount === 4 && isOrganizer && (

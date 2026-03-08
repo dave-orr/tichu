@@ -27,10 +27,10 @@ describe('identifyCombo', () => {
       expect(combo!.rank).toBe(1);
     });
 
-    it('identifies dragon as single with rank 16', () => {
+    it('identifies dragon as single with rank 15', () => {
       const combo = identifyCombo([dragon]);
       expect(combo!.type).toBe('single');
-      expect(combo!.rank).toBe(16);
+      expect(combo!.rank).toBe(15);
     });
 
     it('identifies phoenix as single', () => {
@@ -237,8 +237,8 @@ describe('singleCardRank', () => {
     expect(singleCardRank(mahjong)).toBe(1);
   });
 
-  it('dragon returns 16', () => {
-    expect(singleCardRank(dragon)).toBe(16);
+  it('dragon returns 15', () => {
+    expect(singleCardRank(dragon)).toBe(15);
   });
 
   it('phoenix returns 0.5 above last played', () => {

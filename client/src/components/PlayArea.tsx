@@ -1,5 +1,27 @@
-import { Card as CardType, Combo, cardId } from '@tichu/shared';
+import { Card as CardType, Combo, RANK_NAMES, NormalRank, cardId } from '@tichu/shared';
 import CardComponent from './Card.js';
+
+function rankLabel(rank: number): string {
+  if (rank in RANK_NAMES) return RANK_NAMES[rank as NormalRank];
+  if (rank === 1) return '1';
+  if (rank === 15) return 'Dragon';
+  return String(rank);
+}
+
+function comboLabel(combo: Combo): string {
+  const r = rankLabel(combo.rank);
+  switch (combo.type) {
+    case 'single': return `Single, ${r}`;
+    case 'pair': return `Pair, ${r}s`;
+    case 'triple': return `Triple, ${r}s`;
+    case 'fullHouse': return `Full House, ${r}s`;
+    case 'straight': return `${combo.length}-card Straight, high ${r}`;
+    case 'consecutivePairs': return `${combo.length / 2} Consecutive Pairs, high ${r}`;
+    case 'fourOfAKindBomb': return `Four-of-a-Kind Bomb, ${r}s`;
+    case 'straightFlushBomb': return `${combo.length}-card Straight Flush Bomb, high ${r}`;
+    default: return combo.type;
+  }
+}
 
 type Props = {
   currentTrick: Combo | null;
@@ -33,7 +55,7 @@ export default function PlayArea({ currentTrick, currentTrickCards, lastPlayedBy
         ))}
       </div>
       <div className="text-xs text-gray-400">
-        {currentTrick.type.replace(/([A-Z])/g, ' $1').trim()} — Rank {currentTrick.rank}
+        {comboLabel(currentTrick)}
       </div>
     </div>
   );

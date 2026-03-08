@@ -312,7 +312,11 @@ export function setupHandlers(io: Server): void {
         socket.emit('error', { message: 'Cannot change settings after game has started' });
         return;
       }
-      room.state.settings = { ...room.state.settings, ...settings };
+      const sanitized = { ...settings };
+      if (sanitized.targetScore != null) {
+        sanitized.targetScore = Math.max(100, Math.min(9999, Math.round(sanitized.targetScore)));
+      }
+      room.state.settings = { ...room.state.settings, ...sanitized };
       broadcastState(io, room);
     });
 
