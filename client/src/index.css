@@ -13,7 +13,7 @@ body {
 
 /* Card styles */
 .card {
-  @apply relative w-16 h-24 rounded-lg border-2 border-gray-300 bg-white shadow-md flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
+  @apply relative w-20 h-[120px] rounded-lg border-2 border-gray-300 bg-white shadow-md flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
 }
 
 .card:hover {

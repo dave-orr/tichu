@@ -11,10 +11,10 @@ Groups that share heavy edits to the same files (especially `Game.tsx`) should N
 ## Group A — Card Rendering & UI Layout
 *Key files: `Game.tsx`, `Card.tsx`, `Hand.tsx`, CSS/Tailwind*
 
-- [ ] 1. Make cards bigger
-- [ ] 7. Move passed/received cards display below your cards and play buttons (scroll issue on small screens)
-- [ ] 11. Move score box to top left
-- [ ] 16. Position phoenix correctly within straights/full houses in the play area (not just appended to the right)
+- [x] 1. Make cards bigger
+- [x] 7. Move passed/received cards display below your cards and play buttons (scroll issue on small screens)
+- [x] 11. Move score box to top left
+- [x] 16. Position phoenix correctly within straights/full houses in the play area (not just appended to the right)
 
 ## Group B — Turn/Play UX
 *Key files: `Game.tsx`, `PlayArea.tsx`, new audio assets*
