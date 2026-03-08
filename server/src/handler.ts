@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, findPlayableCombos } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -547,8 +547,9 @@ function broadcastState(io: Server, room: Room): void {
 }
 
 /**
- * Auto-skip players who can't beat the current play and have <4 cards (no bomb possible).
- * Returns the list of auto-skipped seat indices so we can notify them.
+ * Auto-skip players who can't possibly beat the current play based on card count alone.
+ * Only skips when: hand size < combo length (can't match) AND hand size < 4 (no bomb possible).
+ * Uses only public information (card count) to avoid leaking private hand info.
  */
 function autoSkipHelpless(io: Server, room: Room): void {
   let iterations = 0;
@@ -561,20 +562,18 @@ function autoSkipHelpless(io: Server, room: Room): void {
     const seat = state.turnIndex;
     const player = state.players[seat];
     if (player.isOut) break;
-    if (player.hand.length >= 4) break; // could have a bomb
 
-    const combos = findPlayableCombos(player.hand, state.currentTrick);
-    if (combos.length > 0) break; // can play something
+    const handSize = player.hand.length;
+    if (handSize >= 4) break; // could have a bomb
+    // For consecutive pairs, the combo length is total cards (e.g. 6 for 3 consecutive pairs)
+    if (handSize >= state.currentTrick.length) break; // enough cards to potentially play
 
     // Auto-pass this player
     const result = handlePassTurn(room, seat);
     applyPlayResult(room, result);
 
-    // Notify the auto-skipped player
-    const socketId = room.seatPlayers.get(seat);
-    if (socketId) {
-      io.to(socketId).emit('turn-auto-skipped');
-    }
+    // Notify all players about the auto-skip
+    io.to(room.code).emit('turn-auto-skipped', { seat });
 
     if (result.roundResult) {
       io.to(room.code).emit('round-result', { result: result.roundResult });

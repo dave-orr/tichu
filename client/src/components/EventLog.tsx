@@ -32,10 +32,12 @@ function describeCards(cards: Card[]): string {
 export function useEventLog(
   gameState: ClientGameState | null,
   roundResult: RoundResult | null,
+  autoSkippedSeat?: number | null,
 ): LogEntry[] {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const prevRef = useRef<ClientGameState | null>(null);
   const prevRoundRef = useRef<RoundResult | null>(null);
+  const prevAutoSkipRef = useRef<number | null>(null);
   const nextId = useRef(0);
 
   // Reset log on new round
@@ -128,6 +130,13 @@ export function useEventLog(
       newEntries.push(`Round score: ${roundResult.teamScores[0]}–${roundResult.teamScores[1]}`);
     }
 
+    // Auto-skip
+    if (autoSkippedSeat != null && autoSkippedSeat !== prevAutoSkipRef.current && gameState) {
+      const skipName = gameState.players[autoSkippedSeat].name;
+      newEntries.push(`${skipName}'s turn auto-skipped (not enough cards)`);
+    }
+    prevAutoSkipRef.current = autoSkippedSeat ?? null;
+
     prevRef.current = gameState;
     prevRoundRef.current = roundResult;
 
@@ -140,7 +149,7 @@ export function useEventLog(
       }));
       setEntries(prev => [...prev, ...withIds]);
     }
-  }, [gameState, roundResult]);
+  }, [gameState, roundResult, autoSkippedSeat]);
 
   return entries;
 }

@@ -24,7 +24,7 @@ export function useSocket(idToken: string | null) {
   const [randomPartners, setRandomPartners] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
   const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
-  const [autoSkipped, setAutoSkipped] = useState(false);
+  const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -86,9 +86,9 @@ export function useSocket(idToken: string | null) {
       }
     });
 
-    socket.on('turn-auto-skipped', () => {
-      setAutoSkipped(true);
-      setTimeout(() => setAutoSkipped(false), 2000);
+    socket.on('turn-auto-skipped', ({ seat }: { seat: number }) => {
+      setAutoSkippedSeat(seat);
+      setTimeout(() => setAutoSkippedSeat(null), 2000);
     });
 
     socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
@@ -233,7 +233,7 @@ export function useSocket(idToken: string | null) {
     nextRound,
     swapSeats: swapSeatsAction,
     updateSettings,
-    autoSkipped,
+    autoSkippedSeat,
     pendingInvites,
     expiredInviteUids,
     fetchPlayers,

@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default function Game({ socket, auth }: Props) {
-  const { gameState, needMahJongWish, roundResult, autoSkipped } = socket;
+  const { gameState, needMahJongWish, roundResult, autoSkippedSeat } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
@@ -36,7 +36,7 @@ export default function Game({ socket, auth }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const prevTurnRef = useRef<boolean>(false);
   const gameEvents = useGameEvents(gameState, roundResult);
-  const logEntries = useEventLog(gameState, roundResult);
+  const logEntries = useEventLog(gameState, roundResult, autoSkippedSeat);
   const prevEventCountRef = useRef(0);
 
   // Play gong when someone calls tichu/grand
@@ -383,10 +383,14 @@ export default function Game({ socket, auth }: Props) {
       </div>
 
       {/* Toast notification */}
-      {(toast || autoSkipped) && (
+      {(toast || autoSkippedSeat !== null) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
           <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
-            {autoSkipped ? 'Turn skipped — no playable cards' : toast}
+            {autoSkippedSeat !== null
+              ? autoSkippedSeat === mySeat
+                ? 'Turn skipped — not enough cards'
+                : `${playerNames[autoSkippedSeat]}'s turn skipped — not enough cards`
+              : toast}
           </div>
         </div>
       )}
