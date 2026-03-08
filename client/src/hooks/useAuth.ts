@@ -43,6 +43,7 @@ export type UserStats = {
 export type UserPreferences = {
   preferredName: string;
   lastSettings?: Partial<GameSettings>;
+  lastRandomPartners?: boolean;
 };
 
 const DEFAULT_STATS: UserStats = {

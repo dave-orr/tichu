@@ -111,6 +111,7 @@ export function setupHandlers(io: Server): void {
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
+      socket.emit('random-partners-updated', { randomPartners: room.randomPartners });
     });
 
     socket.on('start-game', () => {
@@ -340,6 +341,22 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
+    socket.on('update-random-partners', ({ randomPartners }: { randomPartners: boolean }) => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can change settings' });
+        return;
+      }
+      if (room.state.phase !== 'waiting') {
+        socket.emit('error', { message: 'Cannot change settings after game has started' });
+        return;
+      }
+      room.randomPartners = !!randomPartners;
+      io.to(room.code).emit('random-partners-updated', { randomPartners: room.randomPartners });
+    });
+
     socket.on('swap-seats', ({ seatA, seatB }: { seatA: unknown; seatB: unknown }) => {
       if (!isValidSeat(seatA) || !isValidSeat(seatB)) {
         socket.emit('error', { message: 'Invalid seat' });
@@ -509,6 +526,7 @@ export function setupHandlers(io: Server): void {
               preferences: {
                 preferredName: data.preferences?.preferredName || (authUser.displayName?.split(' ')[0]) || 'Player',
                 lastSettings: data.preferences?.lastSettings,
+                lastRandomPartners: data.preferences?.lastRandomPartners,
               },
             },
           });
@@ -536,13 +554,17 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('save-settings', async ({ settings }: { settings: Partial<GameSettings> }) => {
+    socket.on('save-settings', async ({ settings, randomPartners }: { settings: Partial<GameSettings>; randomPartners?: boolean }) => {
       const uid = getSocketUid(socket.id);
       if (!uid || !firebaseAdmin) return;
       try {
         const db = firebaseAdmin.firestore();
         const docRef = db.collection('users').doc(uid);
-        await docRef.set({ preferences: { lastSettings: settings } }, { merge: true });
+        const prefs: Record<string, unknown> = { lastSettings: settings };
+        if (randomPartners !== undefined) {
+          prefs.lastRandomPartners = randomPartners;
+        }
+        await docRef.set({ preferences: prefs }, { merge: true });
       } catch (err) {
         console.error('Failed to save settings:', err);
       }
