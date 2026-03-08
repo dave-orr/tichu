@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, getPartnerSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
@@ -16,6 +16,7 @@ import OpponentInfo from '../components/OpponentInfo.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
+import { playTurnChime } from '../utils/sounds.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -23,11 +24,14 @@ type Props = {
 };
 
 export default function Game({ socket, auth }: Props) {
-  const { gameState, needMahJongWish, roundResult } = socket;
+  const { gameState, needMahJongWish, roundResult, autoSkipped } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [passNextPlay, setPassNextPlay] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const prevTurnRef = useRef<boolean>(false);
   const gameEvents = useGameEvents(gameState, roundResult);
 
   // Reset card selection when phase changes (e.g., round end -> new round)
@@ -35,7 +39,17 @@ export default function Game({ socket, auth }: Props) {
   useEffect(() => {
     setSelectedCards(new Set());
     setBombMode(false);
+    setPassNextPlay(false);
   }, [phase]);
+
+  // Play chime when it becomes our turn
+  const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
+  useEffect(() => {
+    if (isMyTurnNow && !prevTurnRef.current) {
+      playTurnChime();
+    }
+    prevTurnRef.current = !!isMyTurnNow;
+  }, [isMyTurnNow]);
 
   if (!gameState) return null;
 
@@ -48,6 +62,17 @@ export default function Game({ socket, auth }: Props) {
   const myPlayer = players[mySeat];
   const playerNames = players.map(p => p.name);
   const mustPlayWish = canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick);
+
+  // Auto-pass when "pass next play" is queued
+  useEffect(() => {
+    if (passNextPlay && isMyTurn && currentTrick !== null && !mustPlayWish && !gameState.bombWindow) {
+      setPassNextPlay(false);
+      socket.passTurn();
+      setSelectedCards(new Set());
+      setToast('Auto-passed (queued)');
+      setTimeout(() => setToast(null), 2000);
+    }
+  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState.bombWindow, socket]);
 
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
@@ -155,6 +180,7 @@ export default function Game({ socket, auth }: Props) {
   const handlePassTurn = () => {
     socket.passTurn();
     setSelectedCards(new Set());
+    setPassNextPlay(false);
   };
 
   // Grand Tichu phase
@@ -282,8 +308,17 @@ export default function Game({ socket, auth }: Props) {
         </div>
       </div>
 
+      {/* Toast notification */}
+      {(toast || autoSkipped) && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+            {autoSkipped ? 'Turn skipped — no playable cards' : toast}
+          </div>
+        </div>
+      )}
+
       {/* Bottom area: player's hand and controls */}
-      <div className="p-4 bg-gray-900/50">
+      <div className={`p-4 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
           <div className="mb-2 max-w-lg mx-auto">
@@ -353,9 +388,27 @@ export default function Game({ socket, auth }: Props) {
               </>
             )}
             {!isMyTurn && !gameState.bombWindow && (
-              <div className="text-sm text-gray-400">
-                Waiting for {playerNames[turnIndex]} to play...
-              </div>
+              <>
+                <div className="text-sm text-gray-400">
+                  Waiting for {playerNames[turnIndex]} to play...
+                </div>
+                {currentTrick !== null && !passNextPlay && (
+                  <button
+                    onClick={() => setPassNextPlay(true)}
+                    className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium text-gray-300 transition-colors"
+                  >
+                    Pass Next Turn
+                  </button>
+                )}
+                {passNextPlay && (
+                  <button
+                    onClick={() => setPassNextPlay(false)}
+                    className="py-2 px-4 bg-yellow-700 hover:bg-yellow-600 rounded-lg text-sm font-medium text-yellow-200 transition-colors"
+                  >
+                    Cancel Auto-Pass
+                  </button>
+                )}
+              </>
             )}
             {hasBombInHand && !gameState.bombWindow && (
               <button

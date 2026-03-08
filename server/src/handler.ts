@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, findPlayableCombos } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -177,6 +177,7 @@ export function setupHandlers(io: Server): void {
         handleRoundResult(room, result.roundResult);
       }
 
+      if (!result.roundResult) autoSkipHelpless(io, room);
       broadcastState(io, room);
     });
 
@@ -198,6 +199,7 @@ export function setupHandlers(io: Server): void {
         handleRoundResult(room, result.roundResult);
       }
 
+      if (!result.roundResult) autoSkipHelpless(io, room);
       broadcastState(io, room);
     });
 
@@ -236,6 +238,7 @@ export function setupHandlers(io: Server): void {
         handleRoundResult(room, result.roundResult);
       }
 
+      if (!result.roundResult) autoSkipHelpless(io, room);
       broadcastState(io, room);
     });
 
@@ -255,6 +258,7 @@ export function setupHandlers(io: Server): void {
         handleRoundResult(room, result.roundResult);
       }
 
+      if (!result.roundResult) autoSkipHelpless(io, room);
       broadcastState(io, room);
     });
 
@@ -312,7 +316,11 @@ export function setupHandlers(io: Server): void {
         socket.emit('error', { message: 'Cannot change settings after game has started' });
         return;
       }
-      room.state.settings = { ...room.state.settings, ...settings };
+      const sanitized = { ...settings };
+      if (sanitized.targetScore != null) {
+        sanitized.targetScore = Math.max(100, Math.min(9999, Math.round(sanitized.targetScore)));
+      }
+      room.state.settings = { ...room.state.settings, ...sanitized };
       broadcastState(io, room);
     });
 
@@ -535,6 +543,45 @@ function broadcastState(io: Server, room: Room): void {
   for (const [socketId, seat] of room.playerSockets) {
     const clientState = toClientState(room.state, seat);
     io.to(socketId).emit('game-state', { state: clientState });
+  }
+}
+
+/**
+ * Auto-skip players who can't beat the current play and have <4 cards (no bomb possible).
+ * Returns the list of auto-skipped seat indices so we can notify them.
+ */
+function autoSkipHelpless(io: Server, room: Room): void {
+  let iterations = 0;
+  while (iterations < 4) {
+    const state = room.state;
+    if (state.phase !== 'playing') break;
+    if (state.currentTrick === null) break; // leading — can't auto-skip
+    if (state.dragonGiveaway || state.bombWindow) break;
+
+    const seat = state.turnIndex;
+    const player = state.players[seat];
+    if (player.isOut) break;
+    if (player.hand.length >= 4) break; // could have a bomb
+
+    const combos = findPlayableCombos(player.hand, state.currentTrick);
+    if (combos.length > 0) break; // can play something
+
+    // Auto-pass this player
+    const result = handlePassTurn(room, seat);
+    applyPlayResult(room, result);
+
+    // Notify the auto-skipped player
+    const socketId = room.seatPlayers.get(seat);
+    if (socketId) {
+      io.to(socketId).emit('turn-auto-skipped');
+    }
+
+    if (result.roundResult) {
+      io.to(room.code).emit('round-result', { result: result.roundResult });
+      handleRoundResult(room, result.roundResult);
+    }
+
+    iterations++;
   }
 }
 

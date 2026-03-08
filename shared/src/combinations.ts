@@ -15,14 +15,14 @@ function getNormalRank(card: Card): NormalRank | null {
 
 /**
  * Get the single-card rank for comparison when playing singles.
- * The Mah Jong = 1, Phoenix = contextual (0.5 above last played), Dragon = 16.
+ * The Mah Jong = 1, Phoenix = contextual (0.5 above last played), Dragon = 15.
  */
 export function singleCardRank(card: Card, lastPlayedRank?: number): number {
   if (card.type === 'normal') return card.rank;
   switch (card.name) {
     case 'mahjong': return 1;
     case 'phoenix': return lastPlayedRank != null ? lastPlayedRank + 0.5 : 1.5;
-    case 'dragon': return 16;
+    case 'dragon': return 15;
     case 'dog': return -1; // dog can't be played as a normal single in a trick
   }
 }
