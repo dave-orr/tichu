@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default function Game({ socket, auth }: Props) {
-  const { gameState, needMahJongWish, roundResult, autoSkipped } = socket;
+  const { gameState, needMahJongWish, roundResult, autoSkippedSeat } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
@@ -34,9 +34,10 @@ export default function Game({ socket, auth }: Props) {
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
   const prevTurnRef = useRef<boolean>(false);
   const gameEvents = useGameEvents(gameState, roundResult);
-  const logEntries = useEventLog(gameState, roundResult);
+  const logEntries = useEventLog(gameState, roundResult, autoSkippedSeat);
   const prevEventCountRef = useRef(0);
 
   // Play gong when someone calls tichu/grand
@@ -50,6 +51,21 @@ export default function Game({ socket, auth }: Props) {
     prevEventCountRef.current = gameEvents.length;
   }, [gameEvents]);
 
+  // Trick countdown timer
+  useEffect(() => {
+    if (!gameState?.trickCountdown) {
+      setCountdownRemaining(null);
+      return;
+    }
+    const update = () => {
+      const remaining = Math.max(0, gameState.trickCountdown!.expiresAt - Date.now());
+      setCountdownRemaining(remaining);
+    };
+    update();
+    const interval = setInterval(update, 50);
+    return () => clearInterval(interval);
+  }, [gameState?.trickCountdown]);
+
   // Reset card selection when phase changes (e.g., round end -> new round)
   const phase = gameState?.phase;
   useEffect(() => {
@@ -58,14 +74,70 @@ export default function Game({ socket, auth }: Props) {
     setPassNextPlay(false);
   }, [phase]);
 
-  // Play chime when it becomes our turn
+  // Detect pending Mah Jong wish (Mah Jong played but wish not yet selected)
+  const pendingWish = gameState?.phase === 'playing' &&
+    gameState.mahJongWish === null &&
+    gameState.currentTrickCards.length > 0 &&
+    gameState.currentTrickCards[gameState.currentTrickCards.length - 1]
+      .some(c => c.type === 'special' && c.name === 'mahjong');
+
+  // Play chime when it becomes our turn (but not while wish is pending)
   const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
   useEffect(() => {
-    if (isMyTurnNow && !prevTurnRef.current) {
+    if (isMyTurnNow && !prevTurnRef.current && !pendingWish) {
       playTurnChime();
     }
     prevTurnRef.current = !!isMyTurnNow;
-  }, [isMyTurnNow]);
+  }, [isMyTurnNow, pendingWish]);
+
+  // Set document title with player name
+  useEffect(() => {
+    if (gameState) {
+      const name = gameState.players[gameState.mySeat].name;
+      document.title = `Tichu — ${name}`;
+    }
+    return () => { document.title = 'Tichu'; };
+  }, [gameState?.mySeat, gameState?.players]);
+
+  // Flash tab title when it's your turn and tab is not focused
+  useEffect(() => {
+    if (!isMyTurnNow || pendingWish) return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let flash = false;
+    const playerName = gameState?.players[gameState.mySeat].name ?? '';
+    const baseTitle = `Tichu — ${playerName}`;
+
+    const startFlashing = () => {
+      if (document.hidden) {
+        interval = setInterval(() => {
+          flash = !flash;
+          document.title = flash ? '🔔 YOUR TURN!' : baseTitle;
+        }, 800);
+      }
+    };
+
+    const stopFlashing = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+      document.title = baseTitle;
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        startFlashing();
+      } else {
+        stopFlashing();
+      }
+    };
+
+    // Start flashing if already hidden
+    if (document.hidden) startFlashing();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      stopFlashing();
+    };
+  }, [isMyTurnNow, pendingWish, gameState?.mySeat, gameState?.players]);
 
   if (!gameState) return null;
 
@@ -89,6 +161,13 @@ export default function Game({ socket, auth }: Props) {
       setTimeout(() => setToast(null), 2000);
     }
   }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState.bombWindow, socket]);
+
+  // Cancel auto-pass when the trick ends (new lead)
+  useEffect(() => {
+    if (currentTrick === null) {
+      setPassNextPlay(false);
+    }
+  }, [currentTrick]);
 
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
@@ -327,10 +406,14 @@ export default function Game({ socket, auth }: Props) {
       </div>
 
       {/* Toast notification */}
-      {(toast || autoSkipped) && (
+      {(toast || autoSkippedSeat !== null) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
           <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
-            {autoSkipped ? 'Turn skipped — no playable cards' : toast}
+            {autoSkippedSeat !== null
+              ? autoSkippedSeat === mySeat
+                ? 'Turn skipped — not enough cards'
+                : `${playerNames[autoSkippedSeat]}'s turn skipped — not enough cards`
+              : toast}
           </div>
         </div>
       )}
@@ -406,8 +489,26 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
+        {/* Trick countdown */}
+        {phase === 'playing' && !bombMode && gameState.trickCountdown && countdownRemaining !== null && (
+          <div className="flex justify-center items-center gap-3 mt-3">
+            <div className="text-sm text-yellow-400">
+              {playerNames[gameState.trickCountdown.winner]} wins trick in{' '}
+              <span className="font-bold text-lg tabular-nums">{(countdownRemaining / 1000).toFixed(1)}s</span>
+            </div>
+            {hasBombInHand && !gameState.bombWindow && (
+              <button
+                onClick={enterBombMode}
+                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors animate-pulse"
+              >
+                Bomb!
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Action buttons */}
-        {phase === 'playing' && !bombMode && (
+        {phase === 'playing' && !bombMode && !gameState.trickCountdown && (
           <div className="flex justify-center gap-3 mt-3">
             {isMyTurn && !gameState.bombWindow && (
               <>
@@ -435,7 +536,7 @@ export default function Game({ socket, auth }: Props) {
                 )}
               </>
             )}
-            {!isMyTurn && !gameState.bombWindow && (
+            {!isMyTurn && !gameState.bombWindow && !myPlayer.isOut && (
               <>
                 <div className="text-sm text-gray-400">
                   Waiting for {playerNames[turnIndex]} to play...
@@ -461,7 +562,9 @@ export default function Game({ socket, auth }: Props) {
             {hasBombInHand && !gameState.bombWindow && (
               <button
                 onClick={enterBombMode}
-                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
+                disabled={currentTrick === null}
+                title={currentTrick === null ? 'Wait for a card to be played' : undefined}
+                className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
               >
                 Bomb!
               </button>
@@ -550,7 +653,15 @@ export default function Game({ socket, auth }: Props) {
           <div className="mt-2 max-w-lg mx-auto">
             <div className="flex justify-center items-end gap-4">
               <span className="text-xs text-gray-400">You received:</span>
-              {gameState.myReceivedCards.map((rc) => (
+              {[...gameState.myReceivedCards]
+                .sort((a, b) => {
+                  // Order: left (+3), partner (+2), right (+1) relative to mySeat
+                  const relA = (a.fromSeat - mySeat + 4) % 4;
+                  const relB = (b.fromSeat - mySeat + 4) % 4;
+                  const order = [3, 2, 1]; // left, partner, right
+                  return order.indexOf(relA) - order.indexOf(relB);
+                })
+                .map((rc) => (
                 <div key={`${rc.fromSeat}`} className="text-center">
                   <CardComponent card={rc.card} small />
                   <div className="text-[10px] text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>

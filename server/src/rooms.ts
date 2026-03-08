@@ -1,7 +1,7 @@
 import {
   GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound,
   callGrandTichu, callSmallTichu, passCards as passCardsEngine,
-  applyPasses, playCards, passTurn, playBomb,
+  applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, concede as concedeEngine,
   Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
 } from '@tichu/shared';
@@ -32,6 +32,25 @@ export type Room = {
 const rooms = new Map<string, Room>();
 // Reverse map: socket.id -> room code for O(1) room lookups
 const socketRooms = new Map<string, string>();
+// Trick countdown timers per room
+const trickCountdownTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export function setTrickCountdownTimer(roomCode: string, timer: ReturnType<typeof setTimeout>): void {
+  trickCountdownTimers.set(roomCode, timer);
+}
+
+export function clearTrickCountdownTimer(roomCode: string): void {
+  const timer = trickCountdownTimers.get(roomCode);
+  if (timer) {
+    clearTimeout(timer);
+    trickCountdownTimers.delete(roomCode);
+  }
+}
+
+export function handleAwardTrick(room: Room): PlayResult {
+  trickCountdownTimers.delete(room.code);
+  return awardTrick(room.state);
+}
 
 // Map socket.id -> Firebase uid for authenticated players
 const socketUids = new Map<string, string>();

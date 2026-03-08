@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, findPlayableCombos } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -9,6 +9,7 @@ import {
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom,
+  setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers } from './stats.js';
@@ -83,18 +84,19 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
+    socket.on('create-room', ({ playerName, randomPartners, settings, photoURL }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
       }
       const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
+      room.state.players[0].photoURL = photoURL ?? null;
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
     });
 
-    socket.on('join-room', ({ roomCode, playerName }: { roomCode: string; playerName: string }) => {
+    socket.on('join-room', ({ roomCode, playerName, photoURL }: { roomCode: string; playerName: string; photoURL?: string | null }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
@@ -105,6 +107,7 @@ export function setupHandlers(io: Server): void {
         return;
       }
       const { room, seat } = result;
+      room.state.players[seat].photoURL = photoURL ?? null;
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
@@ -188,6 +191,16 @@ export function setupHandlers(io: Server): void {
       const result = handlePassTurn(room, seat);
       applyPlayResult(room, result);
 
+      if (result.trickCountdownStarted) {
+        // Start 2-second countdown before awarding trick (gives time to bomb)
+        const timer = setTimeout(() => {
+          resolveTrickCountdown(io, room);
+        }, 2000);
+        setTrickCountdownTimer(room.code, timer);
+        broadcastState(io, room);
+        return;
+      }
+
       if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
         const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
         if (dragonWinnerSocketId) {
@@ -228,6 +241,8 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
+      // Cancel any pending trick countdown — bomb overrides it
+      clearTrickCountdownTimer(room.code);
       const result = handleBomb(room, seat, cards);
       applyPlayResult(room, result);
       // Clear bomb window
@@ -278,6 +293,7 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
+      clearTrickCountdownTimer(room.code);
       const result = handleConcede(room, seat);
       applyPlayResult(room, result);
 
@@ -413,7 +429,7 @@ export function setupHandlers(io: Server): void {
       }, 5 * 60 * 1000);
     });
 
-    socket.on('respond-invite', ({ inviteId, accept, playerName }: { inviteId: string; accept: boolean; playerName?: string }) => {
+    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null }) => {
       const invite = getInvite(inviteId);
       if (!invite) {
         socket.emit('error', { message: 'Invite expired or not found' });
@@ -439,6 +455,7 @@ export function setupHandlers(io: Server): void {
       }
 
       const { room, seat } = result;
+      room.state.players[seat].photoURL = photoURL ?? null;
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
@@ -547,8 +564,9 @@ function broadcastState(io: Server, room: Room): void {
 }
 
 /**
- * Auto-skip players who can't beat the current play and have <4 cards (no bomb possible).
- * Returns the list of auto-skipped seat indices so we can notify them.
+ * Auto-skip players who can't possibly beat the current play based on card count alone.
+ * Only skips when: hand size < combo length (can't match) AND hand size < 4 (no bomb possible).
+ * Uses only public information (card count) to avoid leaking private hand info.
  */
 function autoSkipHelpless(io: Server, room: Room): void {
   let iterations = 0;
@@ -556,24 +574,31 @@ function autoSkipHelpless(io: Server, room: Room): void {
     const state = room.state;
     if (state.phase !== 'playing') break;
     if (state.currentTrick === null) break; // leading — can't auto-skip
-    if (state.dragonGiveaway || state.bombWindow) break;
+    if (state.dragonGiveaway || state.bombWindow || state.trickCountdown) break;
 
     const seat = state.turnIndex;
     const player = state.players[seat];
     if (player.isOut) break;
-    if (player.hand.length >= 4) break; // could have a bomb
 
-    const combos = findPlayableCombos(player.hand, state.currentTrick);
-    if (combos.length > 0) break; // can play something
+    const handSize = player.hand.length;
+    if (handSize >= 4) break; // could have a bomb
+    // For consecutive pairs, the combo length is total cards (e.g. 6 for 3 consecutive pairs)
+    if (handSize >= state.currentTrick.length) break; // enough cards to potentially play
 
     // Auto-pass this player
     const result = handlePassTurn(room, seat);
     applyPlayResult(room, result);
 
-    // Notify the auto-skipped player
-    const socketId = room.seatPlayers.get(seat);
-    if (socketId) {
-      io.to(socketId).emit('turn-auto-skipped');
+    // Notify all players about the auto-skip
+    io.to(room.code).emit('turn-auto-skipped', { seat });
+
+    if (result.trickCountdownStarted) {
+      // Start countdown — stop auto-skipping
+      const timer = setTimeout(() => {
+        resolveTrickCountdown(io, room);
+      }, 2000);
+      setTrickCountdownTimer(room.code, timer);
+      break;
     }
 
     if (result.roundResult) {
@@ -583,6 +608,35 @@ function autoSkipHelpless(io: Server, room: Room): void {
 
     iterations++;
   }
+}
+
+/**
+ * Resolve a trick countdown: award the trick to the winner after the 2-second delay.
+ */
+function resolveTrickCountdown(io: Server, room: Room): void {
+  if (!room.state.trickCountdown) return;
+
+  // If someone is considering a bomb, wait for them
+  if (room.state.bombWindow) {
+    const timer = setTimeout(() => {
+      resolveTrickCountdown(io, room);
+    }, 500);
+    setTrickCountdownTimer(room.code, timer);
+    return;
+  }
+
+  const result = handleAwardTrick(room);
+  applyPlayResult(room, result);
+
+  if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
+    const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
+    if (dragonWinnerSocketId) {
+      io.to(dragonWinnerSocketId).emit('need-dragon-choice');
+    }
+  }
+
+  autoSkipHelpless(io, room);
+  broadcastState(io, room);
 }
 
 function handleRoundResult(room: Room, roundResult: RoundResult): void {

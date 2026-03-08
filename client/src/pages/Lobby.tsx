@@ -135,7 +135,7 @@ export default function Lobby({ socket, auth }: Props) {
                 </span>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
-                    onClick={() => socket.respondInvite(inv.inviteId, true, playerName.trim() || profile?.preferences.preferredName || 'Player')}
+                    onClick={() => socket.respondInvite(inv.inviteId, true, playerName.trim() || profile?.preferences.preferredName || 'Player', profile?.photoURL)}
                     className="text-xs px-3 py-1 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors"
                   >
                     Join
@@ -189,7 +189,7 @@ export default function Lobby({ socket, auth }: Props) {
           <CreateRoomForm
             initialSettings={profile?.preferences.lastSettings}
             onCreateRoom={(randomPartners, settings) => {
-              socket.createRoom(playerName.trim(), randomPartners, settings);
+              socket.createRoom(playerName.trim(), randomPartners, settings, profile?.photoURL);
               socket.saveSettings(settings);
               auth.updateLastSettings(settings);
             }}
@@ -210,7 +210,7 @@ export default function Lobby({ socket, auth }: Props) {
             <button
               onClick={() => {
                 if (joinCode.length !== 4) return;
-                socket.joinRoom(joinCode, playerName.trim());
+                socket.joinRoom(joinCode, playerName.trim(), profile?.photoURL);
               }}
               disabled={joinCode.length !== 4}
               className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-bold text-lg transition-colors"
