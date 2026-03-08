@@ -20,6 +20,21 @@ function formatScore(score: number): string {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
+function TeamHeader({ p1, p2, compact }: { p1: ClientPlayer; p2: ClientPlayer; compact?: boolean }) {
+  const bothHavePhotos = p1.photoURL && p2.photoURL;
+  if (bothHavePhotos) {
+    const size = compact ? 'w-5 h-5' : 'w-6 h-6';
+    return (
+      <span className="inline-flex items-center gap-1">
+        <img src={p1.photoURL!} alt="" className={`${size} rounded-full`} referrerPolicy="no-referrer" />
+        <span className="text-gray-500 text-xs">&</span>
+        <img src={p2.photoURL!} alt="" className={`${size} rounded-full`} referrerPolicy="no-referrer" />
+      </span>
+    );
+  }
+  return <span>{p1.name} & {p2.name}</span>;
+}
+
 export default function RoundResults({ result, players, onNextRound, isGameOver, mySeat, roundEndReady, roundHistory }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
@@ -61,7 +76,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
             <tr>
               {[0, 1].map(team => (
                 <th key={team} className="text-white font-semibold pb-2 w-1/2">
-                  {players[team === 0 ? 0 : 1].name} & {players[team === 0 ? 2 : 3].name}
+                  <TeamHeader p1={players[team === 0 ? 0 : 1]} p2={players[team === 0 ? 2 : 3]} />
                 </th>
               ))}
             </tr>
@@ -120,14 +135,15 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
               <thead>
                 <tr className="text-gray-400 border-b border-gray-600">
                   <th className="py-1 text-left pl-2">Rd</th>
-                  <th className="py-1 text-right">
-                    <span className="hidden sm:inline">{players[0].name} & {players[2].name}</span>
-                    <span className="sm:hidden">T1</span>
-                  </th>
-                  <th className="py-1 text-right pr-2">
-                    <span className="hidden sm:inline">{players[1].name} & {players[3].name}</span>
-                    <span className="sm:hidden">T2</span>
-                  </th>
+                  {[0, 1].map(team => (
+                    <th key={team} className="py-1 text-right pr-2">
+                      <TeamHeader
+                        p1={players[team === 0 ? 0 : 1]}
+                        p2={players[team === 0 ? 2 : 3]}
+                        compact
+                      />
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>

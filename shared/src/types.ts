@@ -86,6 +86,7 @@ export type TichuCall = 'none' | 'small' | 'grand';
 export type Player = {
   id: string;
   name: string;
+  photoURL: string | null;
   seat: Seat;
   hand: Card[];
   tricksWon: Card[][]; // cards collected from won tricks

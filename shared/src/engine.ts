@@ -45,6 +45,7 @@ function createPlayer(id: string, name: string, seat: Seat): Player {
   return {
     id,
     name,
+    photoURL: null,
     seat,
     hand: [],
     tricksWon: [],
@@ -769,6 +770,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
   const clientPlayers = state.players.map(p => ({
     id: p.id,
     name: p.name,
+    photoURL: p.photoURL,
     seat: p.seat,
     tichuCall: p.tichuCall,
     hasPlayedFirstCard: p.hasPlayedFirstCard,

@@ -617,7 +617,15 @@ export default function Game({ socket, auth }: Props) {
           <div className="mt-2 max-w-lg mx-auto">
             <div className="flex justify-center items-end gap-4">
               <span className="text-xs text-gray-400">You received:</span>
-              {gameState.myReceivedCards.map((rc) => (
+              {[...gameState.myReceivedCards]
+                .sort((a, b) => {
+                  // Order: left (+3), partner (+2), right (+1) relative to mySeat
+                  const relA = (a.fromSeat - mySeat + 4) % 4;
+                  const relB = (b.fromSeat - mySeat + 4) % 4;
+                  const order = [3, 2, 1]; // left, partner, right
+                  return order.indexOf(relA) - order.indexOf(relB);
+                })
+                .map((rc) => (
                 <div key={`${rc.fromSeat}`} className="text-center">
                   <CardComponent card={rc.card} small />
                   <div className="text-[10px] text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>

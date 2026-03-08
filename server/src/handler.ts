@@ -83,18 +83,19 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('create-room', ({ playerName, randomPartners, settings }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings> }) => {
+    socket.on('create-room', ({ playerName, randomPartners, settings, photoURL }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
       }
       const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
+      room.state.players[0].photoURL = photoURL ?? null;
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
     });
 
-    socket.on('join-room', ({ roomCode, playerName }: { roomCode: string; playerName: string }) => {
+    socket.on('join-room', ({ roomCode, playerName, photoURL }: { roomCode: string; playerName: string; photoURL?: string | null }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
@@ -105,6 +106,7 @@ export function setupHandlers(io: Server): void {
         return;
       }
       const { room, seat } = result;
+      room.state.players[seat].photoURL = photoURL ?? null;
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
@@ -413,7 +415,7 @@ export function setupHandlers(io: Server): void {
       }, 5 * 60 * 1000);
     });
 
-    socket.on('respond-invite', ({ inviteId, accept, playerName }: { inviteId: string; accept: boolean; playerName?: string }) => {
+    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null }) => {
       const invite = getInvite(inviteId);
       if (!invite) {
         socket.emit('error', { message: 'Invite expired or not found' });
@@ -439,6 +441,7 @@ export function setupHandlers(io: Server): void {
       }
 
       const { room, seat } = result;
+      room.state.players[seat].photoURL = photoURL ?? null;
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
