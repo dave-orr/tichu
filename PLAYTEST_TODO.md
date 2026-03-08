@@ -19,10 +19,10 @@ Groups that share heavy edits to the same files (especially `Game.tsx`) should N
 ## Group B — Turn/Play UX
 *Key files: `Game.tsx`, `PlayArea.tsx`, new audio assets*
 
-- [ ] 2. Add glow around your cards + gentle chime when it becomes your turn
-- [ ] 3. Make glow around other players' cards more prominent when it's their turn
-- [ ] 14. Auto-skip turn with toast when player has <4 cards, no bomb possible, and can't beat current play (e.g. straight has more cards than hand)
-- [ ] 15. Add "pass next play" button for pre-queuing a pass on your next turn (respects wish rules)
+- [x] 2. Add glow around your cards + gentle chime when it becomes your turn
+- [x] 3. Make glow around other players' cards more prominent when it's their turn
+- [x] 14. Auto-skip turn with toast when player has <4 cards, no bomb possible, and can't beat current play (e.g. straight has more cards than hand)
+- [x] 15. Add "pass next play" button for pre-queuing a pass on your next turn (respects wish rules)
 
 ## Group C — Shared/Engine Logic
 *Key files: `types.ts`, `engine.ts`, `scoring.ts`, `combinations.ts`*

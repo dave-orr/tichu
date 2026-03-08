@@ -71,12 +71,33 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(234, 179, 8, 0.6); }
+  0%, 100% { box-shadow: 0 0 8px rgba(234, 179, 8, 0.5), 0 0 16px rgba(234, 179, 8, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(234, 179, 8, 0.8), 0 0 50px rgba(234, 179, 8, 0.3); }
 }
 
 .pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes my-turn-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.4), 0 0 20px rgba(234, 179, 8, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(234, 179, 8, 0.7), 0 0 60px rgba(234, 179, 8, 0.3); }
+}
+
+.my-turn-glow {
+  animation: my-turn-glow 1.5s ease-in-out infinite;
+}
+
+/* Toast notification */
+@keyframes toast-in-out {
+  0% { transform: translateY(20px); opacity: 0; }
+  10% { transform: translateY(0); opacity: 1; }
+  80% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+
+.toast-notification {
+  animation: toast-in-out 2s ease-out forwards;
 }
 
 /* ===== Game Announcements ===== */
