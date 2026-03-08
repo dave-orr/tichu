@@ -54,7 +54,16 @@ export default function PassingPhase({
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-3xl w-full text-center">
           <ScoreBoard gameState={gameState} />
-          <p className="mt-6 mb-4 text-gray-300">Waiting for other players to pass cards...</p>
+          <p className="mt-6 mb-4 text-gray-300">
+            {(() => {
+              const waiting = gameState.players
+                .filter(p => p.seat !== gameState.mySeat && !p.passedCards)
+                .map(p => p.name);
+              return waiting.length > 0
+                ? `Waiting for ${waiting.join(', ')}...`
+                : 'Waiting for other players to pass cards...';
+            })()}
+          </p>
           {passRecord && (
             <div className="flex justify-center gap-6 mb-4">
               {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (

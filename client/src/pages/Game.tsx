@@ -18,7 +18,7 @@ import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
 import EventLog, { useEventLog } from '../components/EventLog.js';
 import WishDisplay from '../components/WishDisplay.js';
-import { playTurnChime } from '../utils/sounds.js';
+import { playTurnChime, playGongSound } from '../utils/sounds.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -31,11 +31,24 @@ export default function Game({ socket, auth }: Props) {
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const prevTurnRef = useRef<boolean>(false);
   const gameEvents = useGameEvents(gameState, roundResult);
   const logEntries = useEventLog(gameState, roundResult);
+  const prevEventCountRef = useRef(0);
+
+  // Play gong when someone calls tichu/grand
+  useEffect(() => {
+    if (gameEvents.length > prevEventCountRef.current) {
+      const newEvents = gameEvents.slice(prevEventCountRef.current);
+      if (newEvents.some(e => e.type === 'tichu' || e.type === 'grand-tichu')) {
+        playGongSound();
+      }
+    }
+    prevEventCountRef.current = gameEvents.length;
+  }, [gameEvents]);
 
   // Reset card selection when phase changes (e.g., round end -> new round)
   const phase = gameState?.phase;
@@ -332,14 +345,44 @@ export default function Game({ socket, auth }: Props) {
         )}
 
         {/* Tichu call button */}
-        {!myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none' && phase === 'playing' && (
+        {!myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none' && phase === 'playing' && !showTichuConfirm && (
           <div className="text-center mb-2">
             <button
-              onClick={socket.callSmallTichu}
+              onClick={() => {
+                const otherCaller = players.find(p => p.seat !== mySeat && p.tichuCall !== 'none');
+                if (otherCaller) {
+                  setShowTichuConfirm(true);
+                } else {
+                  socket.callSmallTichu();
+                }
+              }}
               className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-bold transition-colors"
             >
               Call Tichu!
             </button>
+          </div>
+        )}
+        {showTichuConfirm && (
+          <div className="text-center mb-2 space-y-2">
+            <div className="text-sm text-yellow-400">
+              {players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
+                `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`
+              ).join(', ')}. Still call?
+            </div>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => { socket.callSmallTichu(); setShowTichuConfirm(false); }}
+                className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-bold transition-colors"
+              >
+                Yes, Call Tichu!
+              </button>
+              <button
+                onClick={() => setShowTichuConfirm(false)}
+                className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
