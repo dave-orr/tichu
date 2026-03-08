@@ -9,6 +9,7 @@ import {
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom,
+  setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers } from './stats.js';
@@ -190,6 +191,16 @@ export function setupHandlers(io: Server): void {
       const result = handlePassTurn(room, seat);
       applyPlayResult(room, result);
 
+      if (result.trickCountdownStarted) {
+        // Start 2-second countdown before awarding trick (gives time to bomb)
+        const timer = setTimeout(() => {
+          resolveTrickCountdown(io, room);
+        }, 2000);
+        setTrickCountdownTimer(room.code, timer);
+        broadcastState(io, room);
+        return;
+      }
+
       if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
         const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
         if (dragonWinnerSocketId) {
@@ -230,6 +241,8 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
+      // Cancel any pending trick countdown — bomb overrides it
+      clearTrickCountdownTimer(room.code);
       const result = handleBomb(room, seat, cards);
       applyPlayResult(room, result);
       // Clear bomb window
@@ -280,6 +293,7 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
+      clearTrickCountdownTimer(room.code);
       const result = handleConcede(room, seat);
       applyPlayResult(room, result);
 
@@ -560,7 +574,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
     const state = room.state;
     if (state.phase !== 'playing') break;
     if (state.currentTrick === null) break; // leading — can't auto-skip
-    if (state.dragonGiveaway || state.bombWindow) break;
+    if (state.dragonGiveaway || state.bombWindow || state.trickCountdown) break;
 
     const seat = state.turnIndex;
     const player = state.players[seat];
@@ -578,6 +592,15 @@ function autoSkipHelpless(io: Server, room: Room): void {
     // Notify all players about the auto-skip
     io.to(room.code).emit('turn-auto-skipped', { seat });
 
+    if (result.trickCountdownStarted) {
+      // Start countdown — stop auto-skipping
+      const timer = setTimeout(() => {
+        resolveTrickCountdown(io, room);
+      }, 2000);
+      setTrickCountdownTimer(room.code, timer);
+      break;
+    }
+
     if (result.roundResult) {
       io.to(room.code).emit('round-result', { result: result.roundResult });
       handleRoundResult(room, result.roundResult);
@@ -585,6 +608,35 @@ function autoSkipHelpless(io: Server, room: Room): void {
 
     iterations++;
   }
+}
+
+/**
+ * Resolve a trick countdown: award the trick to the winner after the 2-second delay.
+ */
+function resolveTrickCountdown(io: Server, room: Room): void {
+  if (!room.state.trickCountdown) return;
+
+  // If someone is considering a bomb, wait for them
+  if (room.state.bombWindow) {
+    const timer = setTimeout(() => {
+      resolveTrickCountdown(io, room);
+    }, 500);
+    setTrickCountdownTimer(room.code, timer);
+    return;
+  }
+
+  const result = handleAwardTrick(room);
+  applyPlayResult(room, result);
+
+  if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
+    const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
+    if (dragonWinnerSocketId) {
+      io.to(dragonWinnerSocketId).emit('need-dragon-choice');
+    }
+  }
+
+  autoSkipHelpless(io, room);
+  broadcastState(io, room);
 }
 
 function handleRoundResult(room: Room, roundResult: RoundResult): void {

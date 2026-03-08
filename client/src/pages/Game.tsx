@@ -34,6 +34,7 @@ export default function Game({ socket, auth }: Props) {
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
   const prevTurnRef = useRef<boolean>(false);
   const gameEvents = useGameEvents(gameState, roundResult);
   const logEntries = useEventLog(gameState, roundResult, autoSkippedSeat);
@@ -49,6 +50,21 @@ export default function Game({ socket, auth }: Props) {
     }
     prevEventCountRef.current = gameEvents.length;
   }, [gameEvents]);
+
+  // Trick countdown timer
+  useEffect(() => {
+    if (!gameState?.trickCountdown) {
+      setCountdownRemaining(null);
+      return;
+    }
+    const update = () => {
+      const remaining = Math.max(0, gameState.trickCountdown!.expiresAt - Date.now());
+      setCountdownRemaining(remaining);
+    };
+    update();
+    const interval = setInterval(update, 50);
+    return () => clearInterval(interval);
+  }, [gameState?.trickCountdown]);
 
   // Reset card selection when phase changes (e.g., round end -> new round)
   const phase = gameState?.phase;
@@ -473,8 +489,26 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
+        {/* Trick countdown */}
+        {phase === 'playing' && !bombMode && gameState.trickCountdown && countdownRemaining !== null && (
+          <div className="flex justify-center items-center gap-3 mt-3">
+            <div className="text-sm text-yellow-400">
+              {playerNames[gameState.trickCountdown.winner]} wins trick in{' '}
+              <span className="font-bold text-lg tabular-nums">{(countdownRemaining / 1000).toFixed(1)}s</span>
+            </div>
+            {hasBombInHand && !gameState.bombWindow && (
+              <button
+                onClick={enterBombMode}
+                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors animate-pulse"
+              >
+                Bomb!
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Action buttons */}
-        {phase === 'playing' && !bombMode && (
+        {phase === 'playing' && !bombMode && !gameState.trickCountdown && (
           <div className="flex justify-center gap-3 mt-3">
             {isMyTurn && !gameState.bombWindow && (
               <>
@@ -528,7 +562,9 @@ export default function Game({ socket, auth }: Props) {
             {hasBombInHand && !gameState.bombWindow && (
               <button
                 onClick={enterBombMode}
-                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
+                disabled={currentTrick === null}
+                title={currentTrick === null ? 'Wait for a card to be played' : undefined}
+                className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
               >
                 Bomb!
               </button>

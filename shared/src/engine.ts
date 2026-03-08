@@ -31,6 +31,7 @@ export function createInitialState(settings?: GameSettings): GameState {
     roundNumber: 0,
     deck: [],
     bombWindow: false,
+    trickCountdown: null,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
     settings: settings ?? DEFAULT_SETTINGS,
@@ -77,6 +78,7 @@ export function startNewRound(state: GameState): GameState {
     roundNumber: state.roundNumber + 1,
     deck,
     bombWindow: false,
+    trickCountdown: null,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
     playedCards: [],
@@ -253,6 +255,7 @@ export function applyPasses(
 export type PlayResult = {
   state: GameState;
   trickWon?: boolean;
+  trickCountdownStarted?: boolean;
   roundEnded?: boolean;
   roundResult?: RoundResult;
   needDragonChoice?: boolean;
@@ -420,7 +423,16 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
 
   // Trick is won when all other active players have passed
   if (newPassCount >= activePlayers - 1) {
-    return winTrick(state);
+    const winner = state.lastPlayedBy!;
+    // Start countdown to give time for bombs
+    return {
+      state: {
+        ...state,
+        passCount: newPassCount,
+        trickCountdown: { winner, expiresAt: Date.now() + 2000 },
+      },
+      trickCountdownStarted: true,
+    };
   }
 
   return {
@@ -430,6 +442,13 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
       turnIndex: getNextActiveSeat(state, seat, state.players),
     },
   };
+}
+
+// ===== Award Trick (called after countdown expires) =====
+
+export function awardTrick(state: GameState): PlayResult {
+  if (!state.trickCountdown) return { state };
+  return winTrick({ ...state, trickCountdown: null });
 }
 
 // ===== Trick Won =====
@@ -638,6 +657,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
     playedCards: [...state.playedCards, ...cards],
+    trickCountdown: null, // bomb cancels any pending countdown
   };
 
   if (shouldRoundEnd(newOutCount, newPlayers)) {
@@ -796,6 +816,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     outCount: state.outCount,
     roundNumber: state.roundNumber,
     bombWindow: state.bombWindow,
+    trickCountdown: state.trickCountdown,
     dragonGiveaway: state.dragonGiveaway,
     dragonGiveawayBy: state.dragonGiveawayBy,
     settings: state.settings,

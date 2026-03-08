@@ -128,6 +128,7 @@ export type GameState = {
   roundNumber: number;
   deck: Card[];                // remaining deck (only during deal)
   bombWindow: boolean;         // true = waiting for bomb responses
+  trickCountdown: { winner: Seat; expiresAt: number } | null; // countdown before awarding trick
   dragonGiveaway: boolean;     // true = dragon winner must choose opponent
   dragonGiveawayBy: Seat | null;
   settings: GameSettings;
