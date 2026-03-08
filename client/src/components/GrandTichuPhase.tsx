@@ -24,6 +24,12 @@ export default function GrandTichuPhase({ gameState, cards, decided, onDecide, g
               cards={cards}
               decided={decided}
               onDecide={onDecide}
+              otherCallers={gameState.players
+                .filter(p => p.seat !== gameState.mySeat && p.tichuCall === 'grand')
+                .map(p => p.name)}
+              waitingOn={gameState.players
+                .filter(p => p.seat !== gameState.mySeat && !p.grandTichuDecided)
+                .map(p => p.name)}
             />
           </div>
         </div>
