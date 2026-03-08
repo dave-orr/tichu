@@ -86,6 +86,7 @@ export type TichuCall = 'none' | 'small' | 'grand';
 export type Player = {
   id: string;
   name: string;
+  photoURL: string | null;
   seat: Seat;
   hand: Card[];
   tricksWon: Card[][]; // cards collected from won tricks
@@ -127,6 +128,7 @@ export type GameState = {
   roundNumber: number;
   deck: Card[];                // remaining deck (only during deal)
   bombWindow: boolean;         // true = waiting for bomb responses
+  trickCountdown: { winner: Seat; expiresAt: number } | null; // countdown before awarding trick
   dragonGiveaway: boolean;     // true = dragon winner must choose opponent
   dragonGiveawayBy: Seat | null;
   settings: GameSettings;

@@ -1,8 +1,39 @@
-import { ClientGameState, RANK_NAMES } from '@tichu/shared';
+import { ClientGameState, ClientPlayer } from '@tichu/shared';
 
 type Props = {
   gameState: ClientGameState;
 };
+
+function PlayerAvatar({ player, size = 'sm' }: { player: ClientPlayer; size?: 'sm' | 'md' }) {
+  const sizeClass = size === 'md' ? 'w-7 h-7' : 'w-5 h-5';
+  const textClass = size === 'md' ? 'text-sm' : 'text-xs';
+  if (player.photoURL) {
+    return <img src={player.photoURL} alt="" className={`${sizeClass} rounded-full inline-block`} referrerPolicy="no-referrer" />;
+  }
+  return <span className={`${textClass} font-semibold text-gray-200`}>{player.name}</span>;
+}
+
+function TeamDisplay({ p1, p2, score }: { p1: ClientPlayer; p2: ClientPlayer; score: number }) {
+  const bothHavePhotos = p1.photoURL && p2.photoURL;
+  return (
+    <div className="text-center">
+      <div className="flex items-center justify-center gap-1.5 mb-1">
+        {bothHavePhotos ? (
+          <>
+            <PlayerAvatar player={p1} size="md" />
+            <span className="text-gray-500 text-xs">&</span>
+            <PlayerAvatar player={p2} size="md" />
+          </>
+        ) : (
+          <span className="text-sm font-medium text-gray-200">
+            {p1.name} & {p2.name}
+          </span>
+        )}
+      </div>
+      <div className="text-2xl font-bold">{score}</div>
+    </div>
+  );
+}
 
 export default function ScoreBoard({ gameState }: Props) {
   const { teams, players } = gameState;
@@ -15,20 +46,8 @@ export default function ScoreBoard({ gameState }: Props) {
         )}
       </h3>
       <div className="grid grid-cols-2 gap-4">
-        <div className="text-center">
-          <div className="text-sm text-gray-400">Team 1</div>
-          <div className="text-sm text-gray-500">
-            {players[0].name} & {players[2].name}
-          </div>
-          <div className="text-2xl font-bold">{teams[0].score}</div>
-        </div>
-        <div className="text-center">
-          <div className="text-sm text-gray-400">Team 2</div>
-          <div className="text-sm text-gray-500">
-            {players[1].name} & {players[3].name}
-          </div>
-          <div className="text-2xl font-bold">{teams[1].score}</div>
-        </div>
+        <TeamDisplay p1={players[0]} p2={players[2]} score={teams[0].score} />
+        <TeamDisplay p1={players[1]} p2={players[3]} score={teams[1].score} />
       </div>
 
       {/* Tichu calls */}
@@ -45,14 +64,6 @@ export default function ScoreBoard({ gameState }: Props) {
         </div>
       )}
 
-      {/* Mah Jong wish */}
-      {gameState.mahJongWish && (
-        <div className="mt-2 pt-2 border-t border-gray-700 text-center">
-          <span className="text-sm text-yellow-300">
-            Wish: {RANK_NAMES[gameState.mahJongWish]}
-          </span>
-        </div>
-      )}
     </div>
   );
 }

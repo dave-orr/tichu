@@ -24,7 +24,7 @@ export function useSocket(idToken: string | null) {
   const [randomPartners, setRandomPartners] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
   const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
-  const [autoSkipped, setAutoSkipped] = useState(false);
+  const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -86,9 +86,9 @@ export function useSocket(idToken: string | null) {
       }
     });
 
-    socket.on('turn-auto-skipped', () => {
-      setAutoSkipped(true);
-      setTimeout(() => setAutoSkipped(false), 2000);
+    socket.on('turn-auto-skipped', ({ seat }: { seat: number }) => {
+      setAutoSkippedSeat(seat);
+      setTimeout(() => setAutoSkippedSeat(null), 2000);
     });
 
     socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
@@ -112,12 +112,12 @@ export function useSocket(idToken: string | null) {
     }
   }, [idToken]);
 
-  const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>) => {
-    socketRef.current?.emit('create-room', { playerName, randomPartners, settings });
+  const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>, photoURL?: string | null) => {
+    socketRef.current?.emit('create-room', { playerName, randomPartners, settings, photoURL: photoURL ?? null });
   }, []);
 
-  const joinRoom = useCallback((roomCode: string, playerName: string) => {
-    socketRef.current?.emit('join-room', { roomCode, playerName });
+  const joinRoom = useCallback((roomCode: string, playerName: string, photoURL?: string | null) => {
+    socketRef.current?.emit('join-room', { roomCode, playerName, photoURL: photoURL ?? null });
     setRoomCode(roomCode.toUpperCase());
   }, []);
 
@@ -192,8 +192,8 @@ export function useSocket(idToken: string | null) {
     socketRef.current?.emit('send-invite', { targetUid });
   }, []);
 
-  const respondInvite = useCallback((inviteId: string, accept: boolean, playerName?: string) => {
-    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName });
+  const respondInvite = useCallback((inviteId: string, accept: boolean, playerName?: string, photoURL?: string | null) => {
+    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName, photoURL: photoURL ?? null });
     setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
   }, []);
 
@@ -233,7 +233,7 @@ export function useSocket(idToken: string | null) {
     nextRound,
     swapSeats: swapSeatsAction,
     updateSettings,
-    autoSkipped,
+    autoSkippedSeat,
     pendingInvites,
     expiredInviteUids,
     fetchPlayers,
