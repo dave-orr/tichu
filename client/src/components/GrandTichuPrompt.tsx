@@ -17,7 +17,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
     return (
       <div className="text-center">
         <h3 className="text-xl font-bold mb-4 text-yellow-400">Grand Tichu</h3>
-        <p className="text-gray-300">
+        <p className="text-gray-300 text-lg">
           {waitingOn.length > 0
             ? `Waiting for ${waitingOn.join(', ')}...`
             : 'Waiting for other players to decide...'}
@@ -42,7 +42,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
   return (
     <div className="text-center space-y-4">
       <h3 className="text-xl font-bold text-yellow-400">Grand Tichu?</h3>
-      <p className="text-gray-300 text-sm">
+      <p className="text-gray-300 text-base">
         You've seen your first 8 cards. Call Grand Tichu for +200/-200 points.
       </p>
       <div className="flex justify-center flex-wrap gap-1">
@@ -52,7 +52,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
       </div>
       {showConfirm ? (
         <div className="space-y-2">
-          <div className="text-sm text-yellow-400">
+          <div className="text-base text-yellow-400">
             {otherCallers.join(', ')} already called Grand Tichu. Still call?
           </div>
           <div className="flex justify-center gap-4">

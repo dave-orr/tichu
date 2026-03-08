@@ -45,7 +45,7 @@ export default function CardsSeen({ myHand, playedCards }: Props) {
   }, [myHand, playedCards]);
 
   return (
-    <div className="bg-gray-800/80 rounded-lg p-2 text-xs">
+    <div className="bg-gray-800/80 rounded-lg p-2 text-sm">
       <div className="text-gray-400 text-center mb-1 font-semibold">Cards Remaining</div>
       <div className="flex flex-wrap justify-center gap-x-1 gap-y-0.5">
         {remaining.normalRemaining.map(({ rank, remaining: count }) => (

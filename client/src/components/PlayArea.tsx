@@ -190,7 +190,7 @@ export default function PlayArea({ currentTrick, currentTrickCards, lastPlayedBy
   return (
     <div className="flex flex-col items-center gap-2 animate-slide-up">
       {lastPlayedBy !== null && (
-        <div className="text-sm text-gray-300">
+        <div className="text-base text-gray-300">
           Played by <span className="font-bold text-yellow-400">{playerNames[lastPlayedBy]}</span>
         </div>
       )}
@@ -199,13 +199,13 @@ export default function PlayArea({ currentTrick, currentTrickCards, lastPlayedBy
           <CardComponent key={cardId(card)} card={card} />
         ))}
       </div>
-      <div className="text-xs text-gray-400">
+      <div className="text-sm text-gray-400">
         {comboLabel(currentTrick)}
       </div>
       {currentTrickCards.length > 1 && (
         <button
           onClick={() => setShowHistory(v => !v)}
-          className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors"
+          className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
         >
           {showHistory ? 'Hide' : 'Show'} trick history ({currentTrickCards.length} plays)
         </button>
