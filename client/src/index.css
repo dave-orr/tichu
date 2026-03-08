@@ -100,6 +100,27 @@ body {
   animation: toast-in-out 2s ease-out forwards;
 }
 
+/* Wish card animations */
+@keyframes wish-appear {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes wish-evaporate {
+  0% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
+  50% { transform: scale(1.1) translateY(-10px); opacity: 0.6; filter: blur(1px); }
+  100% { transform: scale(0.5) translateY(-30px); opacity: 0; filter: blur(4px); }
+}
+
+.wish-appear {
+  animation: wish-appear 0.4s ease-out forwards;
+}
+
+.wish-evaporate {
+  animation: wish-evaporate 0.8s ease-out forwards;
+}
+
 /* ===== Game Announcements ===== */
 
 .announce-tichu {

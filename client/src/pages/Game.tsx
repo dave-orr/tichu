@@ -16,6 +16,8 @@ import OpponentInfo from '../components/OpponentInfo.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
+import EventLog, { useEventLog } from '../components/EventLog.js';
+import WishDisplay from '../components/WishDisplay.js';
 import { playTurnChime } from '../utils/sounds.js';
 
 type Props = {
@@ -33,6 +35,7 @@ export default function Game({ socket, auth }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const prevTurnRef = useRef<boolean>(false);
   const gameEvents = useGameEvents(gameState, roundResult);
+  const logEntries = useEventLog(gameState, roundResult);
 
   // Reset card selection when phase changes (e.g., round end -> new round)
   const phase = gameState?.phase;
@@ -282,6 +285,8 @@ export default function Game({ socket, auth }: Props) {
 
         {/* Center play area */}
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+          {/* Active wish display */}
+          <WishDisplay wish={gameState.mahJongWish} />
           <div className="bg-felt/50 rounded-xl p-6 min-w-[300px] min-h-[150px] flex items-center justify-center">
             <PlayArea
               currentTrick={currentTrick}
@@ -512,6 +517,9 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
       </div>
+
+      {/* Event log */}
+      <EventLog entries={logEntries} />
     </div>
   );
 }

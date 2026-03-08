@@ -35,9 +35,9 @@ Groups that share heavy edits to the same files (especially `Game.tsx`) should N
 ## Group D — New Features
 *Key files: new components, additions to `Game.tsx`*
 
-- [ ] 9. Create scrollable text event log at bottom right showing all public game events (cards played, trick winners, dragon giveaways, etc.)
-- [ ] 12. Show active wish as card image centered above play area; evaporate animation when fulfilled
-- [ ] 21. Add button under played cards area to show all cards played this trick (not just the top play)
+- [x] 9. Create scrollable text event log at bottom right showing all public game events (cards played, trick winners, dragon giveaways, etc.)
+- [x] 12. Show active wish as card image centered above play area; evaporate animation when fulfilled
+- [x] 21. Add button under played cards area to show all cards played this trick (not just the top play)
 
 ## Group E — Dialogs/Modals/Text Fixes
 *Key files: scattered small changes across components*

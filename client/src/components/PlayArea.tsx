@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card as CardType, Combo, RANK_NAMES, NormalRank, cardId } from '@tichu/shared';
 import CardComponent from './Card.js';
 
@@ -172,6 +173,8 @@ function cardRank(card: CardType): number {
 }
 
 export default function PlayArea({ currentTrick, currentTrickCards, lastPlayedBy, playerNames }: Props) {
+  const [showHistory, setShowHistory] = useState(false);
+
   if (!currentTrick || currentTrickCards.length === 0) {
     return (
       <div className="flex items-center justify-center h-32 text-gray-400 italic">
@@ -199,6 +202,27 @@ export default function PlayArea({ currentTrick, currentTrickCards, lastPlayedBy
       <div className="text-xs text-gray-400">
         {comboLabel(currentTrick)}
       </div>
+      {currentTrickCards.length > 1 && (
+        <button
+          onClick={() => setShowHistory(v => !v)}
+          className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          {showHistory ? 'Hide' : 'Show'} trick history ({currentTrickCards.length} plays)
+        </button>
+      )}
+      {showHistory && currentTrickCards.length > 1 && (
+        <div className="flex flex-col gap-2 mt-1 pt-2 border-t border-gray-600/50 max-h-48 overflow-y-auto w-full">
+          {currentTrickCards.slice(0, -1).map((play, idx) => (
+            <div key={idx} className="flex gap-0.5 justify-center items-center">
+              <div className="flex gap-0.5">
+                {play.map(card => (
+                  <CardComponent key={cardId(card)} card={card} small />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
