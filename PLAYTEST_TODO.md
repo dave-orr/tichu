@@ -53,4 +53,4 @@ Groups that share heavy edits to the same files (especially `Game.tsx`) should N
 ## Group F — Pass Phase
 *Key files: `PassCards.tsx`, `Game.tsx` (pass section only)*
 
-- [ ] 20. Remove passed cards from hand visually after confirming pass (while waiting for others)
+- [x] 20. Remove passed cards from hand visually after confirming pass (while waiting for others)

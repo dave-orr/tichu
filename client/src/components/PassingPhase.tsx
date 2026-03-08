@@ -1,4 +1,5 @@
 import type { Card as CardType, Seat, ClientGameState } from '@tichu/shared';
+import { cardId } from '@tichu/shared';
 import ScoreBoard from './ScoreBoard.js';
 import PassCards from './PassCards.js';
 import CardComponent from './Card.js';
@@ -75,7 +76,14 @@ export default function PassingPhase({
             </div>
           )}
           <Hand
-            cards={myHand}
+            cards={passRecord
+              ? myHand.filter(c => {
+                  const id = cardId(c);
+                  return id !== cardId(passRecord.left.card) &&
+                    id !== cardId(passRecord.partner.card) &&
+                    id !== cardId(passRecord.right.card);
+                })
+              : myHand}
             selectedCards={new Set()}
             onToggleCard={() => {}}
             disabled
