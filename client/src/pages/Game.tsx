@@ -146,6 +146,13 @@ export default function Game({ socket, auth }: Props) {
     }
   }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState.bombWindow, socket]);
 
+  // Cancel auto-pass when the trick ends (new lead)
+  useEffect(() => {
+    if (currentTrick === null) {
+      setPassNextPlay(false);
+    }
+  }, [currentTrick]);
+
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
     mySeat,
