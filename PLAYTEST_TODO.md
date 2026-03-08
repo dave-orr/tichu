@@ -42,13 +42,13 @@ Groups that share heavy edits to the same files (especially `Game.tsx`) should N
 ## Group E — Dialogs/Modals/Text Fixes
 *Key files: scattered small changes across components*
 
-- [ ] 4. Fix capitalizations: "Four-of-a-Kind Bomb", "Straight Flush Bomb", audit others
-- [ ] 6. Add confirmation dialog when calling tichu/grand if someone else already called
-- [ ] 8. Fix dragon giveaway dialog: left opponent on left side, not right
-- [ ] 10. Play soft gong sound when someone calls tichu/grand
-- [ ] 13. Show which players we're waiting on whenever waiting for other players
-- [ ] 22. Add close/new game button to game over screen
-- [ ] 23. Fix stats percentages showing "undefined" when denominator is zero — show 0 instead
+- [x] 4. Fix capitalizations: "Four-of-a-Kind Bomb", "Straight Flush Bomb", audit others
+- [x] 6. Add confirmation dialog when calling tichu/grand if someone else already called
+- [x] 8. Fix dragon giveaway dialog: left opponent on left side, not right
+- [x] 10. Play soft gong sound when someone calls tichu/grand
+- [x] 13. Show which players we're waiting on whenever waiting for other players
+- [x] 22. Add close/new game button to game over screen
+- [x] 23. Fix stats percentages showing "undefined" when denominator is zero — show 0 instead
 
 ## Group F — Pass Phase
 *Key files: `PassCards.tsx`, `Game.tsx` (pass section only)*

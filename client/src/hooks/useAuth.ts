@@ -137,7 +137,11 @@ export function useAuth() {
   }, []);
 
   const updateProfile = useCallback((updated: UserProfile) => {
-    setProfile(updated);
+    // Spread DEFAULT_STATS under loaded stats so new fields default to 0
+    setProfile({
+      ...updated,
+      stats: { ...DEFAULT_STATS, ...updated.stats },
+    });
   }, []);
 
   const updateLastSettings = useCallback((settings: Partial<GameSettings>) => {

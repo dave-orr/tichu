@@ -1,4 +1,4 @@
-import { Seat, getTeamForSeat, ClientPlayer } from '@tichu/shared';
+import { Seat, getTeamForSeat, getLeftSeat, getRightSeat, ClientPlayer } from '@tichu/shared';
 
 type Props = {
   mySeat: Seat;
@@ -8,7 +8,12 @@ type Props = {
 
 export default function DragonGiveaway({ mySeat, players, onGive }: Props) {
   const myTeam = getTeamForSeat(mySeat);
-  const opponents = players.filter(p => getTeamForSeat(p.seat) !== myTeam);
+  const leftSeat = getLeftSeat(mySeat);
+  const rightSeat = getRightSeat(mySeat);
+  // Order: left opponent first, right opponent second
+  const opponents = [leftSeat, rightSeat]
+    .filter(s => getTeamForSeat(s) !== myTeam)
+    .map(s => players[s]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -20,13 +25,16 @@ export default function DragonGiveaway({ mySeat, players, onGive }: Props) {
           You must give the trick to one of your opponents.
         </p>
         <div className="flex gap-4 justify-center">
-          {opponents.map(opp => (
+          {opponents.map((opp, i) => (
             <button
               key={opp.seat}
               onClick={() => onGive(opp.seat)}
-              className="py-3 px-6 bg-purple-700 hover:bg-purple-600 rounded-lg font-bold transition-colors"
+              className="py-3 px-6 bg-purple-700 hover:bg-purple-600 rounded-lg font-bold transition-colors flex flex-col items-center"
             >
-              {opp.name}
+              <span>{opp.name}</span>
+              <span className="text-xs text-purple-300 font-normal">
+                {i === 0 ? '← Left' : 'Right →'}
+              </span>
             </button>
           ))}
         </div>

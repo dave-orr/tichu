@@ -178,10 +178,19 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
                 : `${players[1].name} & ${players[3].name} Win!`
               }
             </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 py-3 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
+            >
+              New Game
+            </button>
           </div>
         ) : iAmReady ? (
           <div className="text-center text-gray-400 py-3">
-            Waiting for others ({readyCount}/4)...
+            Waiting for {players
+              .filter(p => !roundEndReady.includes(p.seat))
+              .map(p => p.name)
+              .join(', ')}...
           </div>
         ) : (
           <button
