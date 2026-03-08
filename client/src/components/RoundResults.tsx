@@ -71,7 +71,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
         )}
 
         {/* Scoring table with aligned rows */}
-        <table className="w-full mb-6 text-sm">
+        <table className="w-full mb-6 text-base">
           <thead>
             <tr>
               {[0, 1].map(team => (
@@ -117,10 +117,10 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
 
         {/* Out order with tichu indicators */}
         <div className="text-center mb-6">
-          <div className="text-sm text-gray-400 mb-2">Out order</div>
+          <div className="text-base text-gray-400 mb-2">Out order</div>
           <div className="flex flex-col items-center gap-1">
             {result.outOrder.map((seat, i) => (
-              <div key={seat} className={`text-sm ${i === 0 ? 'text-yellow-400 font-bold' : 'text-gray-200'}`}>
+              <div key={seat} className={`text-base ${i === 0 ? 'text-yellow-400 font-bold' : 'text-gray-200'}`}>
                 {i + 1}. {players[seat].name}{renderTichuIndicator(seat)}
               </div>
             ))}
@@ -130,8 +130,8 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
         {/* Round history table */}
         {showHistory && (
           <div className="mb-6">
-            <div className="text-sm text-gray-400 text-center mb-2">Score History</div>
-            <table className="w-full text-xs">
+            <div className="text-base text-gray-400 text-center mb-2">Score History</div>
+            <table className="w-full text-sm">
               <thead>
                 <tr className="text-gray-400 border-b border-gray-600">
                   <th className="py-1 text-left pl-2">Rd</th>

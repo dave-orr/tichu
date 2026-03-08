@@ -408,7 +408,7 @@ export default function Game({ socket, auth }: Props) {
       {/* Toast notification */}
       {(toast || autoSkippedSeat !== null) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+          <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-base font-medium">
             {autoSkippedSeat !== null
               ? autoSkippedSeat === mySeat
                 ? 'Turn skipped — not enough cards'
@@ -439,7 +439,7 @@ export default function Game({ socket, auth }: Props) {
                   socket.callSmallTichu();
                 }
               }}
-              className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-bold transition-colors"
+              className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-base font-bold transition-colors"
             >
               Call Tichu!
             </button>
@@ -447,7 +447,7 @@ export default function Game({ socket, auth }: Props) {
         )}
         {showTichuConfirm && (
           <div className="text-center mb-2 space-y-2">
-            <div className="text-sm text-yellow-400">
+            <div className="text-base text-yellow-400">
               {players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
                 `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`
               ).join(', ')}. Still call?
@@ -455,13 +455,13 @@ export default function Game({ socket, auth }: Props) {
             <div className="flex justify-center gap-3">
               <button
                 onClick={() => { socket.callSmallTichu(); setShowTichuConfirm(false); }}
-                className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-bold transition-colors"
+                className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-base font-bold transition-colors"
               >
                 Yes, Call Tichu!
               </button>
               <button
                 onClick={() => setShowTichuConfirm(false)}
-                className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm transition-colors"
+                className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
               >
                 Cancel
               </button>
@@ -475,7 +475,7 @@ export default function Game({ socket, auth }: Props) {
           onToggleCard={toggleCard}
           disabled={phase !== 'playing'}
         />
-        <div className="text-center text-sm text-gray-400 mt-1">
+        <div className="text-center text-base text-gray-400 mt-1">
           {myPlayer.name}
           {gameState.settings.countPoints && myPlayer.trickCount > 0 && (
             <span className="ml-1 text-green-400">({myPlayer.capturedPoints}pts)</span>
@@ -530,7 +530,7 @@ export default function Game({ socket, auth }: Props) {
                   </button>
                 )}
                 {currentTrick && mustPlayWish && gameState.mahJongWish && (
-                  <div className="text-sm text-yellow-400 flex items-center px-4">
+                  <div className="text-base text-yellow-400 flex items-center px-4">
                     You must play a {RANK_NAMES[gameState.mahJongWish]}!
                   </div>
                 )}
@@ -538,13 +538,13 @@ export default function Game({ socket, auth }: Props) {
             )}
             {!isMyTurn && !gameState.bombWindow && !myPlayer.isOut && (
               <>
-                <div className="text-sm text-gray-400">
+                <div className="text-base text-gray-400">
                   Waiting for {playerNames[turnIndex]} to play...
                 </div>
                 {currentTrick !== null && !passNextPlay && (
                   <button
                     onClick={() => setPassNextPlay(true)}
-                    className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium text-gray-300 transition-colors"
+                    className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-base font-medium text-gray-300 transition-colors"
                   >
                     Pass Next Turn
                   </button>
@@ -552,7 +552,7 @@ export default function Game({ socket, auth }: Props) {
                 {passNextPlay && (
                   <button
                     onClick={() => setPassNextPlay(false)}
-                    className="py-2 px-4 bg-yellow-700 hover:bg-yellow-600 rounded-lg text-sm font-medium text-yellow-200 transition-colors"
+                    className="py-2 px-4 bg-yellow-700 hover:bg-yellow-600 rounded-lg text-base font-medium text-yellow-200 transition-colors"
                   >
                     Cancel Auto-Pass
                   </button>
@@ -575,7 +575,7 @@ export default function Game({ socket, auth }: Props) {
         {/* Bomb selection mode */}
         {bombMode && (
           <div className="flex justify-center gap-3 mt-3">
-            <div className="text-sm text-red-400 flex items-center">Select your bomb cards</div>
+            <div className="text-base text-red-400 flex items-center">Select your bomb cards</div>
             <button
               onClick={confirmBomb}
               disabled={!canBombNow}
@@ -597,7 +597,7 @@ export default function Game({ socket, auth }: Props) {
           <div className="flex justify-center mt-2">
             <button
               onClick={() => setShowConcedeConfirm(true)}
-              className="py-1 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors"
+              className="py-1 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-base transition-colors"
             >
               Concede Round
             </button>
@@ -607,67 +607,69 @@ export default function Game({ socket, auth }: Props) {
         {/* Concede confirmation */}
         {showConcedeConfirm && (
           <div className="flex justify-center items-center gap-3 mt-2">
-            <span className="text-sm text-yellow-400">End the round? Your hand goes to opponents.</span>
+            <span className="text-base text-yellow-400">End the round? Your hand goes to opponents.</span>
             <button
               onClick={handleConcede}
-              className="py-1 px-4 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-bold transition-colors"
+              className="py-1 px-4 bg-red-600 hover:bg-red-500 rounded-lg text-base font-bold transition-colors"
             >
               Yes, Concede
             </button>
             <button
               onClick={() => setShowConcedeConfirm(false)}
-              className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm transition-colors"
+              className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
             >
               Cancel
             </button>
           </div>
         )}
 
-        {/* Passed cards display — below hand */}
-        {gameState.settings.showPassedCards && passRecord && phase === 'playing' && (
-          <div className="mt-3 max-w-lg mx-auto">
-            <div className="flex justify-center items-end gap-4">
-              <span className="text-xs text-gray-400">You passed:</span>
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
-                const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
-                return (
-                  <div key={p.playerName} className="text-center">
-                    <div className="relative inline-block">
-                      <CardComponent card={p.card} small />
-                      {played && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+        {/* Passed & received cards display — side by side below hand */}
+        {phase === 'playing' && (gameState.settings.showPassedCards && passRecord || (!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0)) && (
+          <div className="mt-3 flex justify-center gap-8">
+            {gameState.settings.showPassedCards && passRecord && (
+              <div className="text-center">
+                <div className="text-sm text-gray-400 mb-1">Cards passed</div>
+                <div className="flex justify-center gap-3">
+                  {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
+                    const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+                    return (
+                      <div key={p.playerName} className="text-center">
+                        <div className="relative inline-block">
+                          <CardComponent card={p.card} small />
+                          {played && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Received cards display — below hand, visible until first play */}
-        {!myPlayer.hasPlayedFirstCard && phase === 'playing' && gameState.myReceivedCards.length > 0 && (
-          <div className="mt-2 max-w-lg mx-auto">
-            <div className="flex justify-center items-end gap-4">
-              <span className="text-xs text-gray-400">You received:</span>
-              {[...gameState.myReceivedCards]
-                .sort((a, b) => {
-                  // Order: left (+3), partner (+2), right (+1) relative to mySeat
-                  const relA = (a.fromSeat - mySeat + 4) % 4;
-                  const relB = (b.fromSeat - mySeat + 4) % 4;
-                  const order = [3, 2, 1]; // left, partner, right
-                  return order.indexOf(relA) - order.indexOf(relB);
-                })
-                .map((rc) => (
-                <div key={`${rc.fromSeat}`} className="text-center">
-                  <CardComponent card={rc.card} small />
-                  <div className="text-[10px] text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">to {p.playerName}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+            {!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0 && (
+              <div className="text-center">
+                <div className="text-sm text-gray-400 mb-1">Cards received</div>
+                <div className="flex justify-center gap-3">
+                  {[...gameState.myReceivedCards]
+                    .sort((a, b) => {
+                      // Order: left (+3), partner (+2), right (+1) relative to mySeat
+                      const relA = (a.fromSeat - mySeat + 4) % 4;
+                      const relB = (b.fromSeat - mySeat + 4) % 4;
+                      const order = [3, 2, 1]; // left, partner, right
+                      return order.indexOf(relA) - order.indexOf(relB);
+                    })
+                    .map((rc) => (
+                    <div key={`${rc.fromSeat}`} className="text-center">
+                      <CardComponent card={rc.card} small />
+                      <div className="text-xs text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

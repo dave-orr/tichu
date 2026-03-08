@@ -13,7 +13,7 @@ export default function MahJongWish({ onWish }: Props) {
         <h3 className="text-xl font-bold text-center mb-4 text-yellow-400">
           Mah Jong Wish
         </h3>
-        <p className="text-gray-300 text-sm text-center mb-4">
+        <p className="text-gray-300 text-base text-center mb-4">
           Name a card rank that opponents must play when they can.
         </p>
         <div className="grid grid-cols-4 gap-2">

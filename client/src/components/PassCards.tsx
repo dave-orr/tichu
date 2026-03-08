@@ -61,7 +61,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-bold text-center text-yellow-400">Pass Cards</h3>
-      <p className="text-sm text-gray-300 text-center">
+      <p className="text-base text-gray-300 text-center">
         Select one card to pass to each player
       </p>
 
@@ -78,11 +78,11 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
             }`}
             onClick={() => setCurrentTarget(target)}
           >
-            <div className="text-xs text-gray-400 mb-1">{label}</div>
+            <div className="text-sm text-gray-400 mb-1">{label}</div>
             {selections[target] ? (
               <CardComponent card={selections[target]!} small />
             ) : (
-              <div className="w-12 h-18 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-xs">
+              <div className="w-16 h-24 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-sm">
                 ?
               </div>
             )}
