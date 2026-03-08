@@ -660,13 +660,7 @@ export function concede(state: GameState, seat: Seat): PlayResult {
   const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
     hand: [...p.hand],
-    tricksWon: [...p.tricksWon],
   })));
-
-  // Award current trick to lastPlayedBy if there's one in progress
-  if (state.currentTrickCards.length > 0 && state.lastPlayedBy != null) {
-    newPlayers[state.lastPlayedBy].tricksWon.push(state.currentTrickCards.flat());
-  }
 
   // Assign outOrders: remaining opponents get next orders, conceding player is last
   let nextOrder = state.outCount + 1;
@@ -692,7 +686,18 @@ export function concede(state: GameState, seat: Seat): PlayResult {
 // ===== Round End =====
 
 function endRound(state: GameState): PlayResult {
-  const result = scoreRound(state);
+  // Award any in-progress trick to lastPlayedBy so those points aren't lost
+  let scoringState = state;
+  if (state.currentTrickCards.length > 0 && state.lastPlayedBy != null) {
+    const newPlayers = toPlayers(state.players.map(p => ({
+      ...p,
+      tricksWon: [...p.tricksWon],
+    })));
+    newPlayers[state.lastPlayedBy].tricksWon.push(state.currentTrickCards.flat());
+    scoringState = { ...state, players: newPlayers, currentTrick: null, currentTrickCards: [] };
+  }
+
+  const result = scoreRound(scoringState);
 
   // Update team scores
   const newTeams: [Team, Team] = [
@@ -700,7 +705,7 @@ function endRound(state: GameState): PlayResult {
     { ...state.teams[1], score: result.totalScores[1] },
   ];
 
-  const gameOver = isGameOver(result.totalScores);
+  const gameOver = isGameOver(result.totalScores, state.settings.targetScore);
 
   // Add round history entry
   const roundTotal: [number, number] = [

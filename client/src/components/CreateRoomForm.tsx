@@ -13,6 +13,7 @@ export default function CreateRoomForm({ initialSettings, onCreateRoom, onBack }
   const [cardsSeen, setCardsSeen] = useState(initialSettings?.cardsSeen ?? false);
   const [showPassedCards, setShowPassedCards] = useState(initialSettings?.showPassedCards ?? false);
   const [clockwise, setClockwise] = useState(initialSettings?.clockwise ?? false);
+  const [targetScore, setTargetScore] = useState(initialSettings?.targetScore ?? 1000);
 
   return (
     <div className="space-y-4">
@@ -76,9 +77,24 @@ export default function CreateRoomForm({ initialSettings, onCreateRoom, onBack }
           <p className="text-sm text-gray-400">Play passes clockwise instead of counterclockwise</p>
         </div>
       </label>
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800 border border-gray-600">
+        <div className="flex-1">
+          <span className="font-semibold">Target Score</span>
+          <p className="text-sm text-gray-400">Points needed to win the game</p>
+        </div>
+        <input
+          type="number"
+          value={targetScore}
+          onChange={e => setTargetScore(Math.max(100, Math.min(9999, Number(e.target.value) || 1000)))}
+          min={100}
+          max={9999}
+          step={50}
+          className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white"
+        />
+      </div>
       <button
         onClick={() => {
-          const settings = { countPoints, cardsSeen, showPassedCards, clockwise };
+          const settings = { countPoints, cardsSeen, showPassedCards, clockwise, targetScore };
           onCreateRoom(randomPartners, settings);
         }}
         className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"

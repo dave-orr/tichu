@@ -9,7 +9,11 @@ export default function ScoreBoard({ gameState }: Props) {
 
   return (
     <div className="bg-gray-900/80 rounded-lg p-3 text-sm">
-      <h3 className="font-bold text-center mb-2 text-yellow-400">Score</h3>
+      <h3 className="font-bold text-center mb-2 text-yellow-400">
+        Score{gameState.settings.targetScore !== 1000 && (
+          <span className="text-xs font-normal text-gray-400"> (to {gameState.settings.targetScore})</span>
+        )}
+      </h3>
       <div className="grid grid-cols-2 gap-4">
         <div className="text-center">
           <div className="text-xs text-gray-400">Team 1</div>

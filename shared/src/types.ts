@@ -57,6 +57,7 @@ export type GameSettings = {
   cardsSeen: boolean;     // show remaining card counts (cards not yet played)
   showPassedCards: boolean; // show cards you passed during play
   clockwise: boolean;     // play direction: true = clockwise, false = counterclockwise
+  targetScore: number;    // score needed to win (default 1000)
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -64,6 +65,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   cardsSeen: false,
   showPassedCards: false,
   clockwise: false,
+  targetScore: 1000,
 };
 
 // ===== Game State =====

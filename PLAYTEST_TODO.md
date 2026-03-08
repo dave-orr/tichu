@@ -27,10 +27,10 @@ Groups that share heavy edits to the same files (especially `Game.tsx`) should N
 ## Group C — Shared/Engine Logic
 *Key files: `types.ts`, `engine.ts`, `scoring.ts`, `combinations.ts`*
 
-- [ ] 5. Add game setting for custom target score (instead of always 1000)
-- [ ] 17. Show card count in straight labels, e.g. "7-card Straight, rank 12"
-- [ ] 18. Fix dragon rank from 16 to 15
-- [ ] 19. Fix card point scoring — account for points in players' hands at round end (85 points seen in a round)
+- [x] 5. Add game setting for custom target score (instead of always 1000)
+- [x] 17. Show card count in straight labels, e.g. "7-card Straight, rank 12"
+- [x] 18. Fix dragon rank from 16 to 15
+- [x] 19. Fix card point scoring — account for points in players' hands at round end (85 points seen in a round)
 
 ## Group D — New Features
 *Key files: new components, additions to `Game.tsx`*
