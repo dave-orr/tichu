@@ -520,43 +520,45 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
-        {/* Passed cards display — below hand */}
-        {gameState.settings.showPassedCards && passRecord && phase === 'playing' && (
-          <div className="mt-3 max-w-lg mx-auto">
-            <div className="flex justify-center items-end gap-4">
-              <span className="text-xs text-gray-400">You passed:</span>
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
-                const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
-                return (
-                  <div key={p.playerName} className="text-center">
-                    <div className="relative inline-block">
-                      <CardComponent card={p.card} small />
-                      {played && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+        {/* Passed & received cards display — side by side below hand */}
+        {phase === 'playing' && (gameState.settings.showPassedCards && passRecord || (!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0)) && (
+          <div className="mt-3 flex justify-center gap-8">
+            {gameState.settings.showPassedCards && passRecord && (
+              <div className="text-center">
+                <div className="text-xs text-gray-400 mb-1">Cards passed</div>
+                <div className="flex justify-center gap-3">
+                  {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
+                    const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+                    return (
+                      <div key={p.playerName} className="text-center">
+                        <div className="relative inline-block">
+                          <CardComponent card={p.card} small />
+                          {played && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Received cards display — below hand, visible until first play */}
-        {!myPlayer.hasPlayedFirstCard && phase === 'playing' && gameState.myReceivedCards.length > 0 && (
-          <div className="mt-2 max-w-lg mx-auto">
-            <div className="flex justify-center items-end gap-4">
-              <span className="text-xs text-gray-400">You received:</span>
-              {gameState.myReceivedCards.map((rc) => (
-                <div key={`${rc.fromSeat}`} className="text-center">
-                  <CardComponent card={rc.card} small />
-                  <div className="text-[10px] text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">to {p.playerName}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+            {!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0 && (
+              <div className="text-center">
+                <div className="text-xs text-gray-400 mb-1">Cards received</div>
+                <div className="flex justify-center gap-3">
+                  {gameState.myReceivedCards.map((rc) => (
+                    <div key={`${rc.fromSeat}`} className="text-center">
+                      <CardComponent card={rc.card} small />
+                      <div className="text-[10px] text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
