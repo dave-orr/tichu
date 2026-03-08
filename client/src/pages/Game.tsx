@@ -502,7 +502,7 @@ export default function Game({ socket, auth }: Props) {
                 )}
               </>
             )}
-            {!isMyTurn && !gameState.bombWindow && (
+            {!isMyTurn && !gameState.bombWindow && !myPlayer.isOut && (
               <>
                 <div className="text-sm text-gray-400">
                   Waiting for {playerNames[turnIndex]} to play...
