@@ -51,15 +51,22 @@ export default function Game({ socket, auth }: Props) {
     prevEventCountRef.current = gameEvents.length;
   }, [gameEvents]);
 
-  // Trick countdown timer
+  // Trick countdown timer — track locally from when we first see trickCountdown
+  const countdownStartRef = useRef<number | null>(null);
   useEffect(() => {
     if (!gameState?.trickCountdown) {
       setCountdownRemaining(null);
+      countdownStartRef.current = null;
       return;
     }
+    if (countdownStartRef.current === null) {
+      countdownStartRef.current = Date.now();
+    }
+    const startTime = countdownStartRef.current;
+    const duration = 3000;
     const update = () => {
-      const remaining = Math.max(0, gameState.trickCountdown!.expiresAt - Date.now());
-      setCountdownRemaining(remaining);
+      const elapsed = Date.now() - startTime;
+      setCountdownRemaining(Math.max(0, duration - elapsed));
     };
     update();
     const interval = setInterval(update, 50);

@@ -429,7 +429,7 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
       state: {
         ...state,
         passCount: newPassCount,
-        trickCountdown: { winner, expiresAt: Date.now() + 2000 },
+        trickCountdown: { winner },
       },
       trickCountdownStarted: true,
     };
