@@ -3,12 +3,13 @@ import type { GameSettings } from '@tichu/shared';
 
 type Props = {
   initialSettings?: Partial<GameSettings>;
+  initialRandomPartners?: boolean;
   onCreateRoom: (randomPartners: boolean, settings: GameSettings) => void;
   onBack: () => void;
 };
 
-export default function CreateRoomForm({ initialSettings, onCreateRoom, onBack }: Props) {
-  const [randomPartners, setRandomPartners] = useState(false);
+export default function CreateRoomForm({ initialSettings, initialRandomPartners, onCreateRoom, onBack }: Props) {
+  const [randomPartners, setRandomPartners] = useState(initialRandomPartners ?? false);
   const [countPoints, setCountPoints] = useState(initialSettings?.countPoints ?? false);
   const [cardsSeen, setCardsSeen] = useState(initialSettings?.cardsSeen ?? false);
   const [showPassedCards, setShowPassedCards] = useState(initialSettings?.showPassedCards ?? false);

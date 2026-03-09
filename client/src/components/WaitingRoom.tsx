@@ -12,6 +12,7 @@ type Props = {
   hasProfile: boolean;
   onSwapSeats: (from: Seat, to: Seat) => void;
   onUpdateSettings: (settings: Record<string, boolean | number>) => void;
+  onUpdateRandomPartners: (randomPartners: boolean) => void;
   onStartGame: () => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
   sendInvite: (targetUid: string) => void;
@@ -20,7 +21,7 @@ type Props = {
 
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
-  onSwapSeats, onUpdateSettings, onStartGame,
+  onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
   fetchPlayers, sendInvite, expiredInviteUids,
 }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
@@ -70,9 +71,6 @@ export default function WaitingRoom({
           />
         )}
 
-        {randomPartners && (
-          <p className="text-sm text-yellow-400 mb-4">Random partners enabled - seats will be shuffled on start</p>
-        )}
 
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-2">Players ({playerCount}/4)</h3>
@@ -114,6 +112,21 @@ export default function WaitingRoom({
         {/* Setup options */}
         <div className="mb-4 space-y-2">
           <h3 className="text-sm font-semibold text-gray-400 text-left">Setup Options</h3>
+          <label
+            className={`flex items-center gap-3 p-2 rounded-lg bg-gray-800 border border-gray-600 ${isOrganizer ? 'cursor-pointer' : 'opacity-70'}`}
+          >
+            <input
+              type="checkbox"
+              checked={randomPartners}
+              onChange={e => isOrganizer && onUpdateRandomPartners(e.target.checked)}
+              disabled={!isOrganizer}
+              className="w-4 h-4 rounded accent-yellow-500"
+            />
+            <div className="text-left">
+              <span className="text-sm font-semibold">Random Partners</span>
+              <p className="text-xs text-gray-400">Randomly assign teams when the game starts</p>
+            </div>
+          </label>
           {[
             { key: 'countPoints' as const, label: 'Count Points', desc: 'Show captured point totals by each player\'s name' },
             { key: 'cardsSeen' as const, label: 'Cards Seen', desc: 'Show how many of each card remain unplayed' },
