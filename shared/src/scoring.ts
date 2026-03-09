@@ -71,11 +71,12 @@ export function scoreRound(state: GameState): RoundResult {
         }
       }
 
-      // Any remaining hand cards go to the opposing team
+      // Any remaining hand cards go to the last player's opposing team
       // (normally only the last player has cards, but on concede others may too)
       if (player.hand.length > 0) {
-        const opposingTeam = (1 - team) as 0 | 1;
-        teamScores[opposingTeam] += sumPoints(player.hand);
+        const lastPlayerTeam = getTeamForSeat(lastPlayer);
+        const receivingTeam = (1 - lastPlayerTeam) as 0 | 1;
+        teamScores[receivingTeam] += sumPoints(player.hand);
       }
     }
   }

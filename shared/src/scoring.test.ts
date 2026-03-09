@@ -106,56 +106,43 @@ function makeState(players: [Player, Player, Player, Player]): GameState {
 }
 
 describe('scoreRound', () => {
-  it('scores concede correctly when forced-out player has cards in hand', () => {
-    // Seat 0 (team 0) went out first, seat 2 (team 0) went out second
-    // Seat 1 (team 1) has a 5 in hand (forced out via concede)
-    // Seat 3 (team 1) conceded and is last, has a King (10 pts) in hand
-    // Team 0 tricks: 55 pts. Team 1 tricks: 30 pts.
-    // Last player (seat 3) tricks (30) go to first-out team (team 0).
-    // Seat 1 hand (5 pts) -> team 0. Seat 3 hand (10 pts) -> team 0.
-    // Team 0: 55 + 30 + 5 + 10 = 100. Team 1: 0.
+  it('scores concede correctly — all remaining hands go to opponents of conceding player', () => {
+    // Seat 1 (team 1) out 1st. Seats 0, 2 (team 0), 3 (team 1) remain.
+    // Seat 3 (team 1) concedes → last player. Seats 0 and 2 forced out with cards.
+    // All remaining hand cards go to last player's opposing team (team 0).
     const state = makeState([
-      makePlayer(0, { outOrder: 1, tricksWon: [[c(10), c(5), c(13)]] }), // 25 pts tricks
-      makePlayer(1, { outOrder: 3, hand: [c(5)], tricksWon: [] }),       // forced out, 5 in hand
-      makePlayer(2, { outOrder: 2, tricksWon: [[c(10), c(5)]] }),        // 15 pts tricks
-      makePlayer(3, { outOrder: 4, hand: [c(13)], tricksWon: [[c(13), c(5), c(10)]] }), // conceded, 10 in hand, 25 pts tricks
+      makePlayer(0, { outOrder: 2, hand: [c(5)], tricksWon: [[c(10)]] }),  // team 0, forced out, 5 in hand, 10 in tricks
+      makePlayer(1, { outOrder: 1, tricksWon: [[c(13)]] }),                // team 1, out 1st, 10 in tricks
+      makePlayer(2, { outOrder: 3, hand: [c(10)], tricksWon: [] }),        // team 0, forced out, 10 in hand
+      makePlayer(3, { outOrder: 4, hand: [c(5)], tricksWon: [[c(13)]] }), // team 1, conceded last, 5 in hand, 10 in tricks
     ]);
 
-    // Trick points: team 0 has 25+15=40 from own tricks
-    // Last player is seat 3 (outOrder 4), their 25 pts tricks go to first-out (seat 0, team 0)
-    // So team 0 gets 40 + 25 = 65 from tricks
-    // Hand cards: seat 1 hand (5) -> team 0, seat 3 hand (10) -> team 0
-    // Team 0 total: 65 + 5 + 10 = 80
-    // Team 1 total: 0
-    // Wait, that doesn't add to 100. Let me recalculate...
-    // Total card points in tricks: 25 + 0 + 15 + 25 = 65. In hands: 5 + 10 = 15. Total = 80.
-    // That's because I didn't distribute 100 pts worth of cards. Let me fix.
+    const result = scoreRound(state);
+    // Last player is seat 3 (team 1). All hands go to team 0.
+    // Seat 0 tricks (10) → team 0. Seat 1 tricks (10) → team 1.
+    // Seat 2 tricks (0) → team 0. Seat 3 tricks (10) → first-out team (team 1).
+    // Hands: seat 0 (5) + seat 2 (10) + seat 3 (5) = 20 → all to team 0.
+    // Team 0: 10 + 0 + 20 = 30. Team 1: 10 + 10 = 20. Total = 50 (not full deck, that's fine).
+    expect(result.teamScores[0]).toBe(30);
+    expect(result.teamScores[1]).toBe(20);
+  });
 
-    const state2 = makeState([
-      makePlayer(0, { outOrder: 1, tricksWon: [[c(10), c(5), c(13), { type: 'special', name: 'dragon' }]] }), // 50 pts
-      makePlayer(1, { outOrder: 3, hand: [c(5)], tricksWon: [] }),        // forced out, 5 in hand
-      makePlayer(2, { outOrder: 2, tricksWon: [[c(10), c(5), c(13)]] }),  // 25 pts
-      makePlayer(3, { outOrder: 4, hand: [c(13)], tricksWon: [[c(10), { type: 'special', name: 'phoenix' }]] }), // conceded, 10 in hand, -15 pts tricks
-    ]);
-    // Tricks: 50 + 0 + 25 + (-15) = 60. Hands: 5 + 10 = 15. Not 100 either.
-    // Doesn't matter — the test just needs to verify hand cards are scored.
-
-    // Seat 0 (team 0) out 1st, seat 1 (team 1) out 2nd (no double victory)
-    // Seat 3 (team 1) concedes, making seat 2 (team 0) forced out 3rd with cards
-    // Seat 3 is last (4th)
-    const simpleState = makeState([
-      makePlayer(0, { outOrder: 1, tricksWon: [[c(5)]] }),       // team 0, 5 pts tricks
-      makePlayer(1, { outOrder: 2, tricksWon: [] }),              // team 1, out 2nd
+  it('concede: forced-out teammate hand cards go to own team, not opponents', () => {
+    // Key scenario: seat 2 (team 0) forced out has cards.
+    // Seat 3 (team 1) conceded (last). All hands → team 0 (opponents of last player).
+    // Seat 2's hand should go to team 0 (their own team), NOT team 1.
+    const state = makeState([
+      makePlayer(0, { outOrder: 1, tricksWon: [] }),               // team 0, out 1st
+      makePlayer(1, { outOrder: 2, tricksWon: [] }),               // team 1, out 2nd
       makePlayer(2, { outOrder: 3, hand: [c(5)], tricksWon: [] }), // team 0, forced out, 5 in hand
-      makePlayer(3, { outOrder: 4, hand: [], tricksWon: [] }),    // team 1, conceded last, no cards
+      makePlayer(3, { outOrder: 4, hand: [c(10)], tricksWon: [] }), // team 1, conceded, 10 in hand
     ]);
 
-    const result = scoreRound(simpleState);
-    // Team 0 gets: 5 (seat 0 tricks). Seat 2 hand (5) goes to opposing team 1.
-    // Last player seat 3 has no tricks/hand.
-    // Team 0: 5. Team 1: 5.
-    expect(result.teamScores[0]).toBe(5);
-    expect(result.teamScores[1]).toBe(5);
+    const result = scoreRound(state);
+    // All hands → team 0 (opponents of seat 3/team 1).
+    // Team 0: 5 + 10 = 15. Team 1: 0.
+    expect(result.teamScores[0]).toBe(15);
+    expect(result.teamScores[1]).toBe(0);
   });
 
   it('normal round end scores to 100', () => {
