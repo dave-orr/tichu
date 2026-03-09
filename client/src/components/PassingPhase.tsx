@@ -33,7 +33,7 @@ export default function PassingPhase({
       <>
         <GameAnnouncements events={gameEvents} />
         <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="max-w-3xl w-full">
+          <div className="max-w-5xl w-full">
             <ScoreBoard gameState={gameState} />
             <div className="mt-6">
               <PassCards
@@ -53,7 +53,7 @@ export default function PassingPhase({
     <>
       <GameAnnouncements events={gameEvents} />
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-3xl w-full text-center">
+        <div className="max-w-5xl w-full text-center">
           <ScoreBoard gameState={gameState} />
           <p className="mt-6 mb-4 text-gray-300 text-lg">
             {(() => {

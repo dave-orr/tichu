@@ -6,9 +6,10 @@ type Props = {
   label: string;
   showPoints?: boolean;
   horizontal?: boolean;
+  vertical?: boolean;
 };
 
-export default function OpponentInfo({ player, isCurrentTurn, label, showPoints, horizontal }: Props) {
+export default function OpponentInfo({ player, isCurrentTurn, label, showPoints, horizontal, vertical }: Props) {
   return (
     <div className={`text-center ${isCurrentTurn ? 'pulse-glow rounded-lg p-2' : 'p-2'}`}>
       <div className="text-sm text-gray-400">{label}</div>
@@ -24,7 +25,7 @@ export default function OpponentInfo({ player, isCurrentTurn, label, showPoints,
         </div>
       )}
       <div className="mt-1">
-        <CardBack count={player.cardCount} horizontal={horizontal} />
+        <CardBack count={player.cardCount} horizontal={horizontal || vertical} rotated={vertical} />
       </div>
       {player.trickCount > 0 && (
         <div className="text-sm text-gray-400 mt-1">{player.trickCount} tricks</div>

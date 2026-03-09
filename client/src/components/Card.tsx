@@ -72,12 +72,12 @@ function SpecialCardContent({ name }: { name: string }) {
   }
 }
 
-export function CardBack({ count, horizontal }: { count?: number; horizontal?: boolean }) {
+export function CardBack({ count, horizontal, rotated }: { count?: number; horizontal?: boolean; rotated?: boolean }) {
   if (count !== undefined && count === 0) {
     return <div className="text-gray-500 text-base italic">Out</div>;
   }
   if (horizontal) {
-    return (
+    const cardRow = (
       <div className="flex items-center gap-2 justify-center">
         <div className="flex">
           {Array.from({ length: Math.min(count ?? 1, 14) }).map((_, i) => (
@@ -85,10 +85,24 @@ export function CardBack({ count, horizontal }: { count?: number; horizontal?: b
           ))}
         </div>
         {count !== undefined && (
-          <div className="text-sm text-gray-300">{count} cards</div>
+          <div className="text-sm text-gray-300">{count}</div>
         )}
       </div>
     );
+    if (rotated) {
+      // Calculate width of the horizontal strip so we can reserve matching height
+      // Each card is w-10 (40px), overlapping by 20px, plus gap+label ~30px
+      const cardCount = Math.min(count ?? 1, 14);
+      const stripWidth = cardCount > 0 ? 40 + (cardCount - 1) * 20 + 30 : 40;
+      return (
+        <div className="flex justify-center" style={{ height: stripWidth }}>
+          <div className="rotate-90 origin-center">
+            {cardRow}
+          </div>
+        </div>
+      );
+    }
+    return cardRow;
   }
   return (
     <div className="flex flex-wrap gap-0.5 justify-center max-w-[80px]">

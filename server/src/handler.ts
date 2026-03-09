@@ -195,7 +195,7 @@ export function setupHandlers(io: Server): void {
         // Start 2-second countdown before awarding trick (gives time to bomb)
         const timer = setTimeout(() => {
           resolveTrickCountdown(io, room);
-        }, 2000);
+        }, 3000);
         setTrickCountdownTimer(room.code, timer);
         broadcastState(io, room);
         return;

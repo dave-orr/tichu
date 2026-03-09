@@ -377,9 +377,9 @@ function playDog(state: GameState, seat: Seat): PlayResult {
 
   // Pass lead to partner
   let partnerSeat = getPartnerSeat(seat);
-  // If partner is out, go to next active player after partner
+  // If partner is out, go to next active player after partner (clockwise from partner)
   if (newPlayers[partnerSeat].isOut) {
-    partnerSeat = getNextActiveSeat(state, seat, newPlayers);
+    partnerSeat = getNextActiveSeat(state, partnerSeat, newPlayers);
   }
 
   if (shouldRoundEnd(newOutCount, newPlayers)) {
@@ -429,7 +429,7 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
       state: {
         ...state,
         passCount: newPassCount,
-        trickCountdown: { winner, expiresAt: Date.now() + 2000 },
+        trickCountdown: { winner },
       },
       trickCountdownStarted: true,
     };
