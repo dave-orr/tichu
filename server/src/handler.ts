@@ -40,8 +40,27 @@ function createRateLimiter(windowMs: number, limit: number) {
 
 const rateLimiter = createRateLimiter(1000, 20); // 20 events per second per socket
 
+// Per-IP connection limiter: max concurrent connections from one IP
+const MAX_CONNECTIONS_PER_IP = 8;
+const connectionsPerIp = new Map<string, number>();
+
+function getIp(socket: Socket): string {
+  return socket.handshake.headers['x-forwarded-for'] as string
+    || socket.handshake.address
+    || 'unknown';
+}
+
 export function setupHandlers(io: Server): void {
   io.on('connection', async (socket: Socket) => {
+    const ip = getIp(socket);
+    const currentCount = connectionsPerIp.get(ip) ?? 0;
+    if (currentCount >= MAX_CONNECTIONS_PER_IP) {
+      socket.emit('error', { message: 'Too many connections' });
+      socket.disconnect(true);
+      return;
+    }
+    connectionsPerIp.set(ip, currentCount + 1);
+
     console.log(`Player connected: ${socket.id}`);
 
     // Rate limit all incoming events
@@ -552,6 +571,12 @@ export function setupHandlers(io: Server): void {
       console.log(`Player disconnected: ${socket.id}`);
       removePlayer(socket.id);
       rateLimiter.cleanup(socket.id);
+      const count = connectionsPerIp.get(ip) ?? 1;
+      if (count <= 1) {
+        connectionsPerIp.delete(ip);
+      } else {
+        connectionsPerIp.set(ip, count - 1);
+      }
     });
   });
 }
