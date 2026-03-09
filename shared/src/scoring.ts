@@ -65,13 +65,17 @@ export function scoreRound(state: GameState): RoundResult {
         for (const trick of player.tricksWon) {
           teamScores[firstOutTeam] += sumPoints(trick);
         }
-        // Last player's hand goes to opponents
-        const opposingTeam = (1 - team) as 0 | 1;
-        teamScores[opposingTeam] += sumPoints(player.hand);
       } else {
         for (const trick of player.tricksWon) {
           teamScores[team] += sumPoints(trick);
         }
+      }
+
+      // Any remaining hand cards go to the opposing team
+      // (normally only the last player has cards, but on concede others may too)
+      if (player.hand.length > 0) {
+        const opposingTeam = (1 - team) as 0 | 1;
+        teamScores[opposingTeam] += sumPoints(player.hand);
       }
     }
   }
