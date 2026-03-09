@@ -372,6 +372,7 @@ export default function Game({ socket, auth }: Props) {
             isCurrentTurn={turnIndex === relativeSeats[3]}
             label="Left"
             showPoints={gameState.settings.countPoints}
+            vertical
           />
         </div>
 
@@ -401,6 +402,7 @@ export default function Game({ socket, auth }: Props) {
             isCurrentTurn={turnIndex === relativeSeats[1]}
             label="Right"
             showPoints={gameState.settings.countPoints}
+            vertical
           />
         </div>
       </div>
