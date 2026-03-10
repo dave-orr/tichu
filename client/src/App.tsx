@@ -32,6 +32,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-felt-dark text-white">
+      {socket.connectionState === 'disconnected' && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-red-800 text-white text-center py-2 px-4 text-sm font-medium shadow-lg">
+          Disconnected from server — reconnecting…
+        </div>
+      )}
       {!inGame ? (
         <Lobby socket={socket} auth={authState} />
       ) : (
