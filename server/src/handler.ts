@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer } from '@tichu/shared';
 import {
-  createRoom, joinRoom, getRoomBySocket, removePlayer,
+  createRoom, joinRoom, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
@@ -130,6 +130,13 @@ export function setupHandlers(io: Server): void {
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
+    });
+
+    socket.on('check-room', ({ roomCode }: { roomCode: string }) => {
+      const room = getRoom(roomCode);
+      if (!room) {
+        socket.emit('room-lost');
+      }
     });
 
     socket.on('start-game', () => {

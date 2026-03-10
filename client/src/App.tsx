@@ -37,6 +37,22 @@ export default function App() {
           Disconnected from server — reconnecting…
         </div>
       )}
+      {socket.roomLost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-sm mx-4 text-center shadow-xl">
+            <h2 className="text-xl font-bold mb-2">Game session lost</h2>
+            <p className="text-gray-300 mb-4">
+              The server restarted and the game is no longer available.
+            </p>
+            <button
+              onClick={socket.resetRoom}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded font-medium transition-colors"
+            >
+              Back to lobby
+            </button>
+          </div>
+        </div>
+      )}
       {!inGame ? (
         <Lobby socket={socket} auth={authState} />
       ) : (
