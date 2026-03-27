@@ -6,6 +6,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { setupHandlers } from './handler.js';
+import { createApiRouter } from './api.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +28,10 @@ const io = new Server(httpServer, {
 });
 
 setupHandlers(io);
+
+// AI player HTTP API
+app.use(express.json());
+app.use('/api', createApiRouter(io));
 
 // Serve static client files in production
 const clientDist = path.resolve(__dirname, '../../client/dist');

@@ -28,6 +28,7 @@ export function useSocket(idToken: string | null) {
   const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
   const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
   const [roomLost, setRoomLost] = useState(false);
+  const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -61,10 +62,11 @@ export function useSocket(idToken: string | null) {
       setRandomPartners(randomPartners);
     });
 
-    socket.on('game-state', ({ state }: { state: ClientGameState }) => {
+    socket.on('game-state', ({ state, aiOpenSeats }: { state: ClientGameState; aiOpenSeats?: number[] }) => {
       setGameState(state);
       gameStateRef.current = state;
       setError(null);
+      if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
       // Clear round result when the phase moves past roundEnd
       if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
         setRoundResult(null);
@@ -223,6 +225,14 @@ export function useSocket(idToken: string | null) {
     socketRef.current?.emit('save-settings', { settings });
   }, []);
 
+  const markSeatAi = useCallback((seat: Seat) => {
+    socketRef.current?.emit('mark-seat-ai', { seat });
+  }, []);
+
+  const unmarkSeatAi = useCallback((seat: Seat) => {
+    socketRef.current?.emit('unmark-seat-ai', { seat });
+  }, []);
+
   const resetRoom = useCallback(() => {
     setGameState(null);
     gameStateRef.current = null;
@@ -268,6 +278,9 @@ export function useSocket(idToken: string | null) {
     respondInvite,
     roomLost,
     resetRoom,
+    aiOpenSeats,
+    markSeatAi,
+    unmarkSeatAi,
     loadProfile,
     saveSettings,
   };

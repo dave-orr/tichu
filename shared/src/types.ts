@@ -96,6 +96,7 @@ export type Player = {
   outOrder: number;     // 0 = not out, 1 = first out, 2 = second, etc.
   grandTichuDecided: boolean; // has decided whether to call grand tichu
   passedCards: boolean;  // has selected cards to pass
+  isAi: boolean;         // true for API-connected AI players
 };
 
 export type Team = {
@@ -175,6 +176,7 @@ export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
   cardCount: number;       // how many cards they hold
   trickCount: number;      // how many tricks they've won
   capturedPoints: number;  // total card points captured so far
+  isAi: boolean;           // true for API-connected AI players
 };
 
 export type RoundHistoryEntry = {
