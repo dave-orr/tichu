@@ -27,6 +27,7 @@ export function createInitialState(settings?: GameSettings): GameState {
     turnIndex: 0,
     lastPlayedBy: null,
     mahJongWish: null,
+    mahJongWishPending: false,
     outCount: 0,
     roundNumber: 0,
     deck: [],
@@ -75,6 +76,7 @@ export function startNewRound(state: GameState): GameState {
     turnIndex: 0,
     lastPlayedBy: null,
     mahJongWish: null,
+    mahJongWishPending: false,
     outCount: 0,
     roundNumber: state.roundNumber + 1,
     deck,
@@ -267,6 +269,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   if (state.phase !== 'playing') return { state };
   if (state.turnIndex !== seat) return { state };
   if (state.dragonGiveaway) return { state };
+  if (state.mahJongWishPending) return { state }; // wait for wish to be set
 
   const player = state.players[seat];
   if (player.isOut) return { state };
@@ -344,6 +347,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     passCount: 0,
     lastPlayedBy: seat,
     mahJongWish: newWish,
+    mahJongWishPending: needMahJongWish,
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
     playedCards: [...state.playedCards, ...cards],
@@ -407,6 +411,7 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
   if (state.phase !== 'playing') return { state };
   if (state.turnIndex !== seat) return { state };
   if (state.currentTrick === null) return { state }; // Can't pass on lead
+  if (state.mahJongWishPending) return { state }; // wait for wish to be set
 
   // Cannot pass if you have the wished card and can legally play it
   if (state.mahJongWish != null) {
@@ -548,8 +553,8 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
 
 // ===== Mah Jong Wish =====
 
-export function setMahJongWish(state: GameState, rank: NormalRank): GameState {
-  return { ...state, mahJongWish: rank };
+export function setMahJongWish(state: GameState, rank: NormalRank | null): GameState {
+  return { ...state, mahJongWish: rank, mahJongWishPending: false };
 }
 
 /** Check if a player can make any legal play that includes the wished rank */
@@ -613,6 +618,7 @@ function checkWishCompliance(state: GameState, seat: Seat, cards: Card[]): boole
 
 export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResult {
   if (state.phase !== 'playing') return { state };
+  if (state.mahJongWishPending) return { state };
 
   const player = state.players[seat];
   if (player.isOut) return { state };
@@ -821,6 +827,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     trickCountdown: state.trickCountdown,
     dragonGiveaway: state.dragonGiveaway,
     dragonGiveawayBy: state.dragonGiveawayBy,
+    mahJongWishPending: state.mahJongWishPending,
     settings: state.settings,
     playedCards: state.playedCards,
     roundEndReady: state.roundEndReady,

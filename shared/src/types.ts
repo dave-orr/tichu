@@ -125,6 +125,7 @@ export type GameState = {
   turnIndex: Seat;             // whose turn it is
   lastPlayedBy: Seat | null;   // who played the current top combo
   mahJongWish: NormalRank | null; // active wish (null = no wish)
+  mahJongWishPending: boolean;    // true = mah jong was played, waiting for wish selection
   outCount: number;            // how many players are out
   roundNumber: number;
   deck: Card[];                // remaining deck (only during deal)

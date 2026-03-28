@@ -482,8 +482,10 @@ export function handleDragonGiveaway(room: Room, seat: Seat, to: Seat): PlayResu
   return result;
 }
 
-export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank): void {
-  room.accumulator.mahJongWishes.push({ seat, rank });
+export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank | null): void {
+  if (rank != null) {
+    room.accumulator.mahJongWishes.push({ seat, rank });
+  }
   room.state = setMahJongWish(room.state, rank);
 }
 
