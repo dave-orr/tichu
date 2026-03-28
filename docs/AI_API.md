@@ -138,6 +138,7 @@ Every `game-state` SSE event contains a `ClientGameState` object. This is the sa
   passCount: number,         // consecutive passes in current trick
   lastPlayedBy: 0 | 1 | 2 | 3 | null, // who played the current combo
   mahJongWish: 2..14 | null, // active wish rank (null = no wish)
+  mahJongWishPending: boolean, // true = mah jong was played, waiting for wish selection (game blocked)
   dragonGiveaway: boolean,   // true = someone must give dragon trick to opponent
   dragonGiveawayBy: 0 | 1 | 2 | 3 | null, // who must choose
   bombWindow: boolean,       // true = bomb window is open
@@ -376,14 +377,16 @@ When you win a trick that contains the Dragon, you must give the trick to an opp
 
 #### Mah Jong Wish
 
-When you play the Mah Jong card, you must declare a wish rank.
+When you play the Mah Jong card, you may declare a wish rank (or decline).
 
 ```json
 {"type": "mah-jong-wish", "rank": 8}
+{"type": "mah-jong-wish", "rank": null}
 ```
 
-- `rank`: integer 2-14 (2 through Ace).
-- You'll know you need to do this when you receive a `need-mah-jong-wish` SSE event.
+- `rank`: integer 2-14 (2 through Ace), or `null` to decline (no wish).
+- You'll know you need to do this when `state.mahJongWishPending === true` and `state.lastPlayedBy === mySeat`, or when you receive a `need-mah-jong-wish` SSE event.
+- **The game is blocked until you respond** -- no other player can play or pass while `mahJongWishPending` is true.
 
 #### Concede
 
@@ -424,10 +427,10 @@ Is phase "passing"?
     → Send pass-cards
 
 Is phase "playing"?
+  → Is mahJongWishPending true AND lastPlayedBy === mySeat?
+    → Send mah-jong-wish (rank 2-14, or null to decline)
   → Is dragonGiveaway true AND dragonGiveawayBy === mySeat?
     → Send give-dragon-trick
-  → Did you just receive "need-mah-jong-wish" event?
-    → Send mah-jong-wish
   → Is turnIndex === mySeat?
     → (Optional) Send call-small-tichu if !hasPlayedFirstCard and you want to bet
     → Send play-cards or pass-turn

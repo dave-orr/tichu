@@ -251,14 +251,14 @@ export function setupHandlers(io: Server): void {
     });
 
     socket.on('mah-jong-wish', ({ rank }: { rank: unknown }) => {
-      if (!isValidNormalRank(rank)) {
+      if (rank !== null && !isValidNormalRank(rank)) {
         socket.emit('error', { message: 'Invalid rank' });
         return;
       }
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      handleMahJongWish(room, seat, rank);
+      handleMahJongWish(room, seat, rank as NormalRank | null);
       broadcastState(io, room);
     });
 

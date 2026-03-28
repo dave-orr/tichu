@@ -254,7 +254,7 @@ export function createApiRouter(io: Server): Router {
         }
 
         case 'mah-jong-wish': {
-          if (!isValidNormalRank(action.rank)) {
+          if (action.rank !== null && !isValidNormalRank(action.rank)) {
             res.status(400).json({ error: 'Invalid rank' });
             return;
           }

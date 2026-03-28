@@ -82,11 +82,7 @@ export default function Game({ socket, auth }: Props) {
   }, [phase]);
 
   // Detect pending Mah Jong wish (Mah Jong played but wish not yet selected)
-  const pendingWish = gameState?.phase === 'playing' &&
-    gameState.mahJongWish === null &&
-    gameState.currentTrickCards.length > 0 &&
-    gameState.currentTrickCards[gameState.currentTrickCards.length - 1]
-      .some(c => c.type === 'special' && c.name === 'mahjong');
+  const pendingWish = gameState?.phase === 'playing' && gameState.mahJongWishPending;
 
   // Play chime when it becomes our turn (but not while wish is pending)
   const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
@@ -339,7 +335,9 @@ export default function Game({ socket, auth }: Props) {
       <GameAnnouncements events={gameEvents} />
 
       {/* Modals */}
-      {needMahJongWish && <MahJongWish onWish={socket.mahJongWish} />}
+      {(needMahJongWish || (gameState.mahJongWishPending && gameState.lastPlayedBy === mySeat)) && (
+        <MahJongWish onWish={socket.mahJongWish} />
+      )}
       {gameState.dragonGiveaway && gameState.dragonGiveawayBy === mySeat && (
         <DragonGiveaway
           mySeat={mySeat}

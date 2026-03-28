@@ -183,7 +183,7 @@ export function useSocket(idToken: string | null) {
     socketRef.current?.emit('give-dragon-trick', { to });
   }, []);
 
-  const mahJongWish = useCallback((rank: NormalRank) => {
+  const mahJongWish = useCallback((rank: NormalRank | null) => {
     socketRef.current?.emit('mah-jong-wish', { rank });
     setNeedMahJongWish(false);
   }, []);
