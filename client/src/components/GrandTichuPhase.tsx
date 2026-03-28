@@ -17,7 +17,7 @@ export default function GrandTichuPhase({ gameState, cards, decided, onDecide, g
     <>
       <GameAnnouncements events={gameEvents} />
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full">
+        <div className="w-full max-w-5xl">
           <ScoreBoard gameState={gameState} />
           <div className="mt-6">
             <GrandTichuPrompt

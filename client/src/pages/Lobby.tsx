@@ -52,6 +52,7 @@ export default function Lobby({ socket, auth }: Props) {
         aiOpenSeats={socket.aiOpenSeats}
         onSwapSeats={socket.swapSeats}
         onUpdateSettings={socket.updateSettings}
+        onUpdateRandomPartners={socket.updateRandomPartners}
         onStartGame={socket.startGame}
         onMarkSeatAi={socket.markSeatAi}
         onUnmarkSeatAi={socket.unmarkSeatAi}
@@ -191,9 +192,10 @@ export default function Lobby({ socket, auth }: Props) {
         {mode === 'create' && (
           <CreateRoomForm
             initialSettings={profile?.preferences.lastSettings}
+            initialRandomPartners={profile?.preferences.lastRandomPartners}
             onCreateRoom={(randomPartners, settings) => {
               socket.createRoom(playerName.trim(), randomPartners, settings, profile?.photoURL);
-              socket.saveSettings(settings);
+              socket.saveSettings(settings, randomPartners);
               auth.updateLastSettings(settings);
             }}
             onBack={() => setMode('menu')}

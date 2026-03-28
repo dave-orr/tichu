@@ -106,6 +106,10 @@ export function useSocket(idToken: string | null) {
       setTimeout(() => setAutoSkippedSeat(null), 2000);
     });
 
+    socket.on('random-partners-updated', ({ randomPartners }: { randomPartners: boolean }) => {
+      setRandomPartners(randomPartners);
+    });
+
     socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
       roomCodeRef.current = roomCode;
@@ -221,8 +225,12 @@ export function useSocket(idToken: string | null) {
     });
   }, []);
 
-  const saveSettings = useCallback((settings: Partial<GameSettings>) => {
-    socketRef.current?.emit('save-settings', { settings });
+  const saveSettings = useCallback((settings: Partial<GameSettings>, randomPartners?: boolean) => {
+    socketRef.current?.emit('save-settings', { settings, randomPartners });
+  }, []);
+
+  const updateRandomPartners = useCallback((randomPartners: boolean) => {
+    socketRef.current?.emit('update-random-partners', { randomPartners });
   }, []);
 
   const markSeatAi = useCallback((seat: Seat) => {
@@ -283,5 +291,6 @@ export function useSocket(idToken: string | null) {
     unmarkSeatAi,
     loadProfile,
     saveSettings,
+    updateRandomPartners,
   };
 }

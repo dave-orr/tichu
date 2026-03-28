@@ -50,8 +50,8 @@ export default function ScoreBoard({ gameState }: Props) {
         <TeamDisplay p1={players[1]} p2={players[3]} score={teams[1].score} />
       </div>
 
-      {/* Tichu calls */}
-      {players.some(p => p.tichuCall !== 'none') && (
+      {/* Tichu calls or "Points Hand" when no one can call */}
+      {players.some(p => p.tichuCall !== 'none') ? (
         <div className="mt-2 pt-2 border-t border-gray-700">
           {players.filter(p => p.tichuCall !== 'none').map(p => (
             <div key={p.seat} className="text-sm text-center">
@@ -61,6 +61,10 @@ export default function ScoreBoard({ gameState }: Props) {
               </span>
             </div>
           ))}
+        </div>
+      ) : gameState.phase === 'playing' && players.every(p => p.isOut || p.hasPlayedFirstCard) && (
+        <div className="mt-2 pt-2 border-t border-gray-700 text-sm text-center text-gray-400">
+          Points Hand
         </div>
       )}
 
