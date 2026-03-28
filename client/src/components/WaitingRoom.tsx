@@ -10,10 +10,13 @@ type Props = {
   isOrganizer: boolean;
   randomPartners: boolean;
   hasProfile: boolean;
+  aiOpenSeats: number[];
   onSwapSeats: (from: Seat, to: Seat) => void;
   onUpdateSettings: (settings: Record<string, boolean | number>) => void;
   onUpdateRandomPartners: (randomPartners: boolean) => void;
   onStartGame: () => void;
+  onMarkSeatAi: (seat: Seat) => void;
+  onUnmarkSeatAi: (seat: Seat) => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
   sendInvite: (targetUid: string) => void;
   expiredInviteUids: Set<string>;
@@ -21,7 +24,8 @@ type Props = {
 
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
-  onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
+  aiOpenSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
+  onMarkSeatAi, onUnmarkSeatAi,
   fetchPlayers, sendInvite, expiredInviteUids,
 }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
@@ -76,23 +80,42 @@ export default function WaitingRoom({
           <h3 className="text-lg font-semibold mb-2">Players ({playerCount}/4)</h3>
           <div className="grid grid-cols-2 gap-2">
             {gameState.players.map((p, i) => {
+              const seat = i as Seat;
               const isSelected = swapFrom === i;
               const isSwappable = canSwapSeats && p.name;
+              const isAiOpen = aiOpenSeats.includes(i);
+              const isAiPlayer = p.isAi;
               return (
                 <div
                   key={i}
-                  onClick={() => handleSeatClick(i as Seat)}
+                  onClick={() => handleSeatClick(seat)}
                   className={`p-2 rounded transition-colors ${
-                    p.name ? 'bg-green-700' : 'bg-gray-700'
+                    isAiPlayer ? 'bg-blue-700' : p.name ? 'bg-green-700' : isAiOpen ? 'bg-blue-900 border border-blue-500' : 'bg-gray-700'
                   } ${isSelected ? 'ring-2 ring-yellow-400' : ''} ${
                     isSwappable ? 'cursor-pointer hover:bg-green-600' : ''
                   }`}
                 >
                   <span className="text-xs text-gray-300">
                     {SEAT_NAMES[i]}
+                    {isAiPlayer && <span className="ml-1 text-blue-300">(Bot)</span>}
                   </span>
                   <br />
-                  {p.name || 'Waiting...'}
+                  {p.name || (isAiOpen ? 'Waiting for bot...' : 'Waiting...')}
+                  {!p.name && isOrganizer && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        isAiOpen ? onUnmarkSeatAi(seat) : onMarkSeatAi(seat);
+                      }}
+                      className={`mt-1 text-xs px-2 py-0.5 rounded transition-colors ${
+                        isAiOpen
+                          ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                          : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                      }`}
+                    >
+                      {isAiOpen ? 'Cancel AI' : 'Open for AI'}
+                    </button>
+                  )}
                 </div>
               );
             })}

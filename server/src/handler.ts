@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PlayResult } from '@tichu/shared';
 import {
-  createRoom, joinRoom, getRoomBySocket, removePlayer,
+  createRoom, joinRoom, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
@@ -10,6 +10,7 @@ import {
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom,
   setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
+  markSeatForAi, unmarkSeatForAi, isApiPlayer,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers } from './stats.js';
@@ -40,8 +41,27 @@ function createRateLimiter(windowMs: number, limit: number) {
 
 const rateLimiter = createRateLimiter(1000, 20); // 20 events per second per socket
 
+// Per-IP connection limiter: max concurrent connections from one IP
+const MAX_CONNECTIONS_PER_IP = 8;
+const connectionsPerIp = new Map<string, number>();
+
+function getIp(socket: Socket): string {
+  return socket.handshake.headers['x-forwarded-for'] as string
+    || socket.handshake.address
+    || 'unknown';
+}
+
 export function setupHandlers(io: Server): void {
   io.on('connection', async (socket: Socket) => {
+    const ip = getIp(socket);
+    const currentCount = connectionsPerIp.get(ip) ?? 0;
+    if (currentCount >= MAX_CONNECTIONS_PER_IP) {
+      socket.emit('error', { message: 'Too many connections' });
+      socket.disconnect(true);
+      return;
+    }
+    connectionsPerIp.set(ip, currentCount + 1);
+
     console.log(`Player connected: ${socket.id}`);
 
     // Rate limit all incoming events
@@ -114,6 +134,13 @@ export function setupHandlers(io: Server): void {
       socket.emit('random-partners-updated', { randomPartners: room.randomPartners });
     });
 
+    socket.on('check-room', ({ roomCode }: { roomCode: string }) => {
+      const room = getRoom(roomCode);
+      if (!room) {
+        socket.emit('room-lost');
+      }
+    });
+
     socket.on('start-game', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
@@ -168,21 +195,7 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       const result = handlePlayCards(room, seat, cards);
-      applyPlayResult(room, result);
-
-      if (result.needMahJongWish) {
-        socket.emit('need-mah-jong-wish');
-      }
-      if (result.needDragonChoice) {
-        socket.emit('need-dragon-choice');
-      }
-      if (result.roundResult) {
-        io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room, result.roundResult);
-      }
-
-      if (!result.roundResult) autoSkipHelpless(io, room);
-      broadcastState(io, room);
+      processPlayResult(io, room, seat, result);
     });
 
     socket.on('pass-turn', () => {
@@ -190,31 +203,7 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       const result = handlePassTurn(room, seat);
-      applyPlayResult(room, result);
-
-      if (result.trickCountdownStarted) {
-        // Start 2-second countdown before awarding trick (gives time to bomb)
-        const timer = setTimeout(() => {
-          resolveTrickCountdown(io, room);
-        }, 3000);
-        setTrickCountdownTimer(room.code, timer);
-        broadcastState(io, room);
-        return;
-      }
-
-      if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
-        const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
-        if (dragonWinnerSocketId) {
-          io.to(dragonWinnerSocketId).emit('need-dragon-choice');
-        }
-      }
-      if (result.roundResult) {
-        io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room, result.roundResult);
-      }
-
-      if (!result.roundResult) autoSkipHelpless(io, room);
-      broadcastState(io, room);
+      processPlayResult(io, room, seat, result);
     });
 
     socket.on('bomb-announce', () => {
@@ -242,20 +231,11 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      // Cancel any pending trick countdown — bomb overrides it
       clearTrickCountdownTimer(room.code);
       const result = handleBomb(room, seat, cards);
-      applyPlayResult(room, result);
-      // Clear bomb window
-      room.state = { ...room.state, bombWindow: false };
-
-      if (result.roundResult) {
-        io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room, result.roundResult);
-      }
-
-      if (!result.roundResult) autoSkipHelpless(io, room);
-      broadcastState(io, room);
+      // Clear bomb window in the result state before processing
+      const modifiedResult = { ...result, state: { ...result.state, bombWindow: false } };
+      processPlayResult(io, room, seat, modifiedResult);
     });
 
     socket.on('give-dragon-trick', ({ to }: { to: unknown }) => {
@@ -267,15 +247,7 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       const result = handleDragonGiveaway(room, seat, to);
-      applyPlayResult(room, result);
-
-      if (result.roundResult) {
-        io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room, result.roundResult);
-      }
-
-      if (!result.roundResult) autoSkipHelpless(io, room);
-      broadcastState(io, room);
+      processPlayResult(io, room, seat, result);
     });
 
     socket.on('mah-jong-wish', ({ rank }: { rank: unknown }) => {
@@ -296,14 +268,7 @@ export function setupHandlers(io: Server): void {
       const { room, seat } = found;
       clearTrickCountdownTimer(room.code);
       const result = handleConcede(room, seat);
-      applyPlayResult(room, result);
-
-      if (result.roundResult) {
-        io.to(room.code).emit('round-result', { result: result.roundResult });
-        handleRoundResult(room, result.roundResult);
-      }
-
-      broadcastState(io, room);
+      processPlayResult(io, room, seat, result);
     });
 
     socket.on('next-round', () => {
@@ -372,6 +337,44 @@ export function setupHandlers(io: Server): void {
       if (swapSeats(room, seatA, seatB)) {
         broadcastState(io, room);
       }
+    });
+
+    // ===== AI Seat Management =====
+
+    socket.on('mark-seat-ai', ({ seat }: { seat: unknown }) => {
+      if (!isValidSeat(seat)) {
+        socket.emit('error', { message: 'Invalid seat' });
+        return;
+      }
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can manage AI seats' });
+        return;
+      }
+      const result = markSeatForAi(room, seat);
+      if (result.error) {
+        socket.emit('error', { message: result.error });
+        return;
+      }
+      broadcastState(io, room);
+    });
+
+    socket.on('unmark-seat-ai', ({ seat }: { seat: unknown }) => {
+      if (!isValidSeat(seat)) {
+        socket.emit('error', { message: 'Invalid seat' });
+        return;
+      }
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can manage AI seats' });
+        return;
+      }
+      unmarkSeatForAi(room, seat);
+      broadcastState(io, room);
     });
 
     // ===== Invite System =====
@@ -574,15 +577,77 @@ export function setupHandlers(io: Server): void {
       console.log(`Player disconnected: ${socket.id}`);
       removePlayer(socket.id);
       rateLimiter.cleanup(socket.id);
+      const count = connectionsPerIp.get(ip) ?? 1;
+      if (count <= 1) {
+        connectionsPerIp.delete(ip);
+      } else {
+        connectionsPerIp.set(ip, count - 1);
+      }
     });
   });
 }
 
-function broadcastState(io: Server, room: Room): void {
+// SSE push callback, set by api.ts
+let sseBroadcastCallback: ((room: Room) => void) | null = null;
+export function setSseBroadcastCallback(cb: (room: Room) => void): void {
+  sseBroadcastCallback = cb;
+}
+
+// Notify callback for per-seat events (need-mah-jong-wish, need-dragon-choice), set by api.ts
+let sseNotifyCallback: ((roomCode: string, seat: Seat, event: string, data?: unknown) => void) | null = null;
+export function setSseNotifyCallback(cb: (roomCode: string, seat: Seat, event: string, data?: unknown) => void): void {
+  sseNotifyCallback = cb;
+}
+
+export function broadcastState(io: Server, room: Room): void {
+  const aiOpenSeats = Array.from(room.aiOpenSeats);
   for (const [socketId, seat] of room.playerSockets) {
+    if (isApiPlayer(socketId)) continue;
     const clientState = toClientState(room.state, seat);
-    io.to(socketId).emit('game-state', { state: clientState });
+    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats });
   }
+  sseBroadcastCallback?.(room);
+}
+
+/** Notify a specific seat about an event (handles both socket and API players) */
+function notifySeat(io: Server, room: Room, seat: Seat, event: string, data?: unknown): void {
+  const socketId = room.seatPlayers.get(seat);
+  if (!socketId) return;
+  if (isApiPlayer(socketId)) {
+    sseNotifyCallback?.(room.code, seat, event, data);
+  } else {
+    io.to(socketId).emit(event, data);
+  }
+}
+
+/**
+ * Shared post-action logic for play-cards, pass-turn, bomb, give-dragon-trick, concede.
+ * Handles: applyPlayResult, notifications, trick countdown, round result, auto-skip, broadcast.
+ */
+export function processPlayResult(io: Server, room: Room, seat: Seat, result: PlayResult): void {
+  applyPlayResult(room, result);
+
+  if (result.needMahJongWish) {
+    notifySeat(io, room, seat, 'need-mah-jong-wish');
+  }
+  if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
+    notifySeat(io, room, result.state.dragonGiveawayBy, 'need-dragon-choice');
+  }
+  if (result.trickCountdownStarted) {
+    const timer = setTimeout(() => {
+      resolveTrickCountdown(io, room);
+    }, 3000);
+    setTrickCountdownTimer(room.code, timer);
+    broadcastState(io, room);
+    return;
+  }
+  if (result.roundResult) {
+    io.to(room.code).emit('round-result', { result: result.roundResult });
+    sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
+    handleRoundResult(room, result.roundResult);
+  }
+  if (!result.roundResult) autoSkipHelpless(io, room);
+  broadcastState(io, room);
 }
 
 /**
@@ -625,6 +690,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
 
     if (result.roundResult) {
       io.to(room.code).emit('round-result', { result: result.roundResult });
+      sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
       handleRoundResult(room, result.roundResult);
     }
 
@@ -651,10 +717,7 @@ function resolveTrickCountdown(io: Server, room: Room): void {
   applyPlayResult(room, result);
 
   if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
-    const dragonWinnerSocketId = room.seatPlayers.get(result.state.dragonGiveawayBy);
-    if (dragonWinnerSocketId) {
-      io.to(dragonWinnerSocketId).emit('need-dragon-choice');
-    }
+    notifySeat(io, room, result.state.dragonGiveawayBy, 'need-dragon-choice');
   }
 
   autoSkipHelpless(io, room);

@@ -56,6 +56,7 @@ function createPlayer(id: string, name: string, seat: Seat): Player {
     outOrder: 0,
     grandTichuDecided: false,
     passedCards: false,
+    isAi: false,
   };
 }
 
@@ -798,6 +799,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     outOrder: p.outOrder,
     grandTichuDecided: p.grandTichuDecided,
     passedCards: p.passedCards,
+    isAi: p.isAi,
     cardCount: p.hand.length,
     trickCount: p.tricksWon.length,
     capturedPoints: sumPoints(p.tricksWon.flat()),

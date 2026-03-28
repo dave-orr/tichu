@@ -4,10 +4,9 @@ Findings from a security review of the Tichu codebase.
 
 ## Critical
 
-### No rate limiting on Socket.IO events
+### ~~No rate limiting on Socket.IO events~~ ✅ DONE
 - **Location:** `server/src/handler.ts`, `server/src/index.ts`
-- A client can flood the server with unlimited events (play-cards, bomb-announce/cancel, etc.) causing degraded performance or crashes for all players.
-- No per-IP connection limits either — a single origin can open unbounded connections.
+- **Fixed:** Added per-socket rate limiting (20 events/sec) via `socket.use` middleware, with automatic cleanup on disconnect. Added per-IP connection limiting (max 8 concurrent connections per IP) that rejects new connections with disconnect when exceeded.
 
 ### ~~No server-side input validation on game payloads~~ ✅ DONE
 - **Location:** `server/src/handler.ts`, `server/src/validation.ts`, `server/src/rooms.ts`

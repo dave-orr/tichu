@@ -27,6 +27,7 @@ export type Room = {
   organizer: string;                // socket.id of room creator
   gameId: string;
   accumulator: RoundAccumulator;
+  aiOpenSeats: Set<Seat>;           // seats marked as open for AI players
 };
 
 const rooms = new Map<string, Room>();
@@ -211,6 +212,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     organizer: socketId,
     gameId,
     accumulator: createAccumulator(gameId, [0, 0]),
+    aiOpenSeats: new Set(),
   };
 
   rooms.set(code, room);
@@ -498,4 +500,75 @@ export function startNextRound(room: Room): void {
   const prevWasDown300 = room.accumulator.wasDown300;
   room.state = startNewRound(room.state);
   room.accumulator = createAccumulator(room.gameId, scores, prevWasDown300);
+}
+
+// ===== AI Player API =====
+
+export function isApiPlayer(socketId: string): boolean {
+  return socketId.startsWith('api:');
+}
+
+export function markSeatForAi(room: Room, seat: Seat): { error?: string } {
+  if (room.state.phase !== 'waiting') return { error: 'Game already in progress' };
+  if (room.seatPlayers.has(seat)) return { error: 'Seat is occupied' };
+  room.aiOpenSeats.add(seat);
+  return {};
+}
+
+export function unmarkSeatForAi(room: Room, seat: Seat): void {
+  room.aiOpenSeats.delete(seat);
+}
+
+export function addApiPlayer(
+  room: Room, name: string, preferredSeat?: Seat
+): { seat: Seat } | { error: string } {
+  if (room.state.phase !== 'waiting') return { error: 'Game already in progress' };
+
+  // Find an AI-open seat
+  let seat: Seat | null = null;
+  if (preferredSeat !== undefined && room.aiOpenSeats.has(preferredSeat)) {
+    seat = preferredSeat;
+  } else {
+    for (const s of room.aiOpenSeats) {
+      seat = s;
+      break;
+    }
+  }
+  if (seat === null) return { error: 'No open AI seats' };
+
+  const syntheticId = `api:${room.code}:${seat}`;
+  room.state.players[seat].id = syntheticId;
+  room.state.players[seat].name = name;
+  room.state.players[seat].isAi = true;
+  room.playerSockets.set(syntheticId, seat);
+  room.seatPlayers.set(seat, syntheticId);
+  room.aiOpenSeats.delete(seat);
+
+  return { seat };
+}
+
+export function removeApiPlayer(room: Room, seat: Seat): { error?: string } {
+  const socketId = room.seatPlayers.get(seat);
+  if (!socketId || !isApiPlayer(socketId)) return { error: 'Seat is not an AI player' };
+  if (room.state.phase !== 'waiting') return { error: 'Cannot remove AI during game' };
+
+  room.playerSockets.delete(socketId);
+  room.seatPlayers.delete(seat);
+  room.state.players[seat].id = '';
+  room.state.players[seat].name = '';
+  room.state.players[seat].isAi = false;
+  room.aiOpenSeats.add(seat); // return to AI-open pool
+
+  return {};
+}
+
+export function findRoomWithOpenAiSeat(): { room: Room; seat: Seat } | null {
+  for (const room of rooms.values()) {
+    if (room.state.phase !== 'waiting') continue;
+    if (room.aiOpenSeats.size === 0) continue;
+    // Pick the first AI-open seat
+    const seat = room.aiOpenSeats.values().next().value;
+    if (seat !== undefined) return { room, seat };
+  }
+  return null;
 }

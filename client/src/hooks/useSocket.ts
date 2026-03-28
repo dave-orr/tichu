@@ -14,6 +14,8 @@ export function useSocket(idToken: string | null) {
   const socketRef = useRef<Socket | null>(null);
   const tokenRef = useRef(idToken);
   tokenRef.current = idToken;
+  const roomCodeRef = useRef<string | null>(null);
+  const gameStateRef = useRef<ClientGameState | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [roomCode, setRoomCode] = useState<string | null>(null);
@@ -25,6 +27,8 @@ export function useSocket(idToken: string | null) {
   const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
   const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
   const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
+  const [roomLost, setRoomLost] = useState(false);
+  const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -37,21 +41,32 @@ export function useSocket(idToken: string | null) {
 
     socket.on('connect', () => {
       setConnectionState('connected');
+      // On reconnect, check if our room still exists on the server
+      if (roomCodeRef.current && gameStateRef.current) {
+        socket.emit('check-room', { roomCode: roomCodeRef.current });
+      }
     });
 
     socket.on('disconnect', () => {
       setConnectionState('disconnected');
     });
 
+    socket.on('room-lost', () => {
+      setRoomLost(true);
+    });
+
     socket.on('room-created', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
+      roomCodeRef.current = roomCode;
       setIsOrganizer(true);
       setRandomPartners(randomPartners);
     });
 
-    socket.on('game-state', ({ state }: { state: ClientGameState }) => {
+    socket.on('game-state', ({ state, aiOpenSeats }: { state: ClientGameState; aiOpenSeats?: number[] }) => {
       setGameState(state);
+      gameStateRef.current = state;
       setError(null);
+      if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
       // Clear round result when the phase moves past roundEnd
       if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
         setRoundResult(null);
@@ -97,6 +112,7 @@ export function useSocket(idToken: string | null) {
 
     socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
+      roomCodeRef.current = roomCode;
       setIsOrganizer(false);
       setRandomPartners(randomPartners);
       setPendingInvites([]);
@@ -122,7 +138,9 @@ export function useSocket(idToken: string | null) {
 
   const joinRoom = useCallback((roomCode: string, playerName: string, photoURL?: string | null) => {
     socketRef.current?.emit('join-room', { roomCode, playerName, photoURL: photoURL ?? null });
-    setRoomCode(roomCode.toUpperCase());
+    const code = roomCode.toUpperCase();
+    setRoomCode(code);
+    roomCodeRef.current = code;
   }, []);
 
   const startGame = useCallback(() => {
@@ -215,6 +233,25 @@ export function useSocket(idToken: string | null) {
     socketRef.current?.emit('update-random-partners', { randomPartners });
   }, []);
 
+  const markSeatAi = useCallback((seat: Seat) => {
+    socketRef.current?.emit('mark-seat-ai', { seat });
+  }, []);
+
+  const unmarkSeatAi = useCallback((seat: Seat) => {
+    socketRef.current?.emit('unmark-seat-ai', { seat });
+  }, []);
+
+  const resetRoom = useCallback(() => {
+    setGameState(null);
+    gameStateRef.current = null;
+    setRoomCode(null);
+    roomCodeRef.current = null;
+    setRoomLost(false);
+    setRoundResult(null);
+    setIsOrganizer(false);
+    setError(null);
+  }, []);
+
   return {
     connectionState,
     gameState,
@@ -247,6 +284,11 @@ export function useSocket(idToken: string | null) {
     fetchPlayers,
     sendInvite,
     respondInvite,
+    roomLost,
+    resetRoom,
+    aiOpenSeats,
+    markSeatAi,
+    unmarkSeatAi,
     loadProfile,
     saveSettings,
     updateRandomPartners,
