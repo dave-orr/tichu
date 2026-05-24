@@ -188,6 +188,14 @@ body {
   animation: dragon-fly 1.8s ease-in-out;
 }
 
+@keyframes seat-play-in {
+  0% { transform: scale(0.85) translateY(-6px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.seat-play {
+  animation: seat-play-in 0.25s ease-out;
+}
+
 @keyframes dragon-handoff {
   0% { transform: scale(0.6); opacity: 0; }
   15% { transform: scale(1.1); opacity: 1; }

@@ -36,7 +36,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       { players: [1, 3], score: 0 },
     ],
     currentTrick: null,
-    currentTrickCards: [],
+    currentTrickPlays: [],
     passCount: 0,
     turnIndex: 0,
     lastPlayedBy: null,
@@ -77,7 +77,7 @@ describe('passTurn — pass-count threshold when leader is out', () => {
       turnIndex: 1,
       lastPlayedBy: 0,
       currentTrick: trickSeven,
-      currentTrickCards: [[c(7)]],
+      currentTrickPlays: [{ seat: 0, cards: [c(7)] }],
       outCount: 2,
     });
 
@@ -109,7 +109,7 @@ describe('passTurn — pass-count threshold when leader is out', () => {
       turnIndex: 1,
       lastPlayedBy: 0,
       currentTrick: trickSeven,
-      currentTrickCards: [[c(7)]],
+      currentTrickPlays: [{ seat: 0, cards: [c(7)] }],
       mahJongWish: 5,
     });
 
@@ -133,7 +133,7 @@ describe('passTurn — pass-count threshold when leader is out', () => {
       turnIndex: 3,
       lastPlayedBy: 0,
       currentTrick: trickSeven,
-      currentTrickCards: [[c(7)]],
+      currentTrickPlays: [{ seat: 0, cards: [c(7)] }],
       passCount: 2,
     });
 
