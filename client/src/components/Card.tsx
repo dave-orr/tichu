@@ -85,13 +85,19 @@ export function CardBack({ count, horizontal, rotated }: { count?: number; horiz
       </div>
     );
     if (rotated) {
-      // Calculate width of the horizontal strip so we can reserve matching height.
-      // Each card is w-10 (40px) overlapping by 20px.
+      // Each card-back is 40w × 56h with 20px overlap. After a 90° rotation the
+      // strip's visual size is 56 wide × (40 + (n-1)*20) tall, but CSS transforms
+      // don't update layout — so reserve the rotated dimensions explicitly and
+      // counter-translate to keep the content inside that box.
       const cardCount = Math.min(count ?? 1, 14);
-      const stripWidth = cardCount > 0 ? 40 + (cardCount - 1) * 20 : 40;
+      const stripHeight = cardCount > 0 ? 40 + (cardCount - 1) * 20 : 40;
+      const stripWidth = 56;
       return (
-        <div className="flex justify-center" style={{ height: stripWidth }}>
-          <div className="rotate-90 origin-center">
+        <div className="relative" style={{ width: stripWidth, height: stripHeight }}>
+          <div
+            className="absolute top-0 left-0"
+            style={{ transform: `translateX(${stripWidth}px) rotate(90deg)`, transformOrigin: 'top left' }}
+          >
             {cardRow}
           </div>
         </div>

@@ -3,7 +3,7 @@ import { CardBack } from './Card.js';
 type Props = {
   player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
-  label: string;
+  label?: string;
   showPoints?: boolean;
   horizontal?: boolean;
   vertical?: boolean;
@@ -12,7 +12,7 @@ type Props = {
 export default function OpponentInfo({ player, isCurrentTurn, label, showPoints, horizontal, vertical }: Props) {
   return (
     <div className={`text-center ${isCurrentTurn ? 'pulse-glow rounded-lg p-2' : 'p-2'}`}>
-      <div className="text-sm text-gray-400">{label}</div>
+      {label && <div className="text-sm text-gray-400">{label}</div>}
       <div className={`font-bold text-base ${isCurrentTurn ? 'text-yellow-400' : ''}`}>
         {player.name}
         {player.cardCount > 0 && (
