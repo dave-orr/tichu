@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, getPartnerSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
@@ -92,6 +92,34 @@ export default function Game({ socket, auth }: Props) {
     }
     prevTurnRef.current = !!isMyTurnNow;
   }, [isMyTurnNow, pendingWish]);
+
+  // Urgency nudge — blue glow on action buttons after 5s, flashing after 30s
+  const dragonGiveawayForMe = !!(gameState?.dragonGiveaway && gameState?.dragonGiveawayBy === gameState?.mySeat);
+  const myTurnAwaitingAction = !!isMyTurnNow
+    && !pendingWish
+    && !needMahJongWish
+    && !gameState?.bombWindow
+    && !gameState?.trickCountdown
+    && !dragonGiveawayForMe;
+  const [turnElapsedMs, setTurnElapsedMs] = useState(0);
+  useEffect(() => {
+    if (!myTurnAwaitingAction) {
+      setTurnElapsedMs(0);
+      return;
+    }
+    const start = Date.now();
+    setTurnElapsedMs(0);
+    const interval = setInterval(() => setTurnElapsedMs(Date.now() - start), 200);
+    return () => clearInterval(interval);
+  }, [myTurnAwaitingAction]);
+  const urgencyFlashing = turnElapsedMs >= 30000;
+  const urgencyT = Math.max(0, Math.min(1, (turnElapsedMs - 5000) / 25000));
+  const urgencyGlowStyle: CSSProperties | undefined = urgencyT > 0 && !urgencyFlashing
+    ? {
+        boxShadow: `0 0 ${10 + urgencyT * 20}px ${2 + urgencyT * 4}px rgba(59, 130, 246, ${0.25 + urgencyT * 0.7}), 0 0 ${20 + urgencyT * 40}px ${4 + urgencyT * 8}px rgba(59, 130, 246, ${0.1 + urgencyT * 0.3})`,
+        borderRadius: '12px',
+      }
+    : undefined;
 
   // Set document title with player name
   useEffect(() => {
@@ -514,7 +542,10 @@ export default function Game({ socket, auth }: Props) {
 
         {/* Action buttons */}
         {phase === 'playing' && !bombMode && !gameState.trickCountdown && (
-          <div className="flex justify-center gap-3 mt-3">
+          <div
+            className={`flex justify-center gap-3 mt-3 ${urgencyFlashing ? 'urgency-flash' : ''}`}
+            style={urgencyGlowStyle}
+          >
             {isMyTurn && !gameState.bombWindow && (
               <>
                 <button

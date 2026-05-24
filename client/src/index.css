@@ -88,6 +88,16 @@ body {
   animation: my-turn-glow 1.5s ease-in-out infinite;
 }
 
+/* Urgency flash for stalled-turn nudge after 30s */
+@keyframes urgency-flash {
+  0%, 100% { box-shadow: 0 0 30px 6px rgba(59, 130, 246, 0.95), 0 0 60px 12px rgba(59, 130, 246, 0.45); }
+  50% { box-shadow: 0 0 12px 2px rgba(59, 130, 246, 0.4), 0 0 24px 4px rgba(59, 130, 246, 0.15); }
+}
+.urgency-flash {
+  animation: urgency-flash 0.5s ease-in-out infinite;
+  border-radius: 12px;
+}
+
 /* Toast notification */
 @keyframes toast-in-out {
   0% { transform: translateY(20px); opacity: 0; }
