@@ -425,10 +425,15 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
   }
 
   const newPassCount = state.passCount + 1;
-  const activePlayers = state.players.filter(p => !p.isOut).length;
 
-  // Trick is won when all other active players have passed
-  if (newPassCount >= activePlayers - 1) {
+  // Trick is won when every still-active player other than the last player to
+  // play has passed. Note that the last player may themselves have gone out on
+  // their final play — in that case they're no longer in `active`, so we don't
+  // get to subtract them.
+  const passersNeeded = state.players.filter(
+    p => !p.isOut && p.seat !== state.lastPlayedBy
+  ).length;
+  if (newPassCount >= passersNeeded) {
     const winner = state.lastPlayedBy!;
     // Start countdown to give time for bombs
     return {
@@ -654,6 +659,12 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     newPlayers[seat].outOrder = newOutCount;
   }
 
+  // A bomb that contains the wished rank fulfills the wish, just like a normal play.
+  let newWish = state.mahJongWish;
+  if (newWish != null && cards.some(c => c.type === 'normal' && c.rank === newWish)) {
+    newWish = null;
+  }
+
   const newState: GameState = {
     ...state,
     players: newPlayers,
@@ -664,6 +675,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
     playedCards: [...state.playedCards, ...cards],
+    mahJongWish: newWish,
     trickCountdown: null, // bomb cancels any pending countdown
   };
 
@@ -708,12 +720,12 @@ export function concede(state: GameState, seat: Seat): PlayResult {
     outCount: 4,
     currentTrick: null,
     currentTrickCards: [],
-  });
+  }, seat);
 }
 
 // ===== Round End =====
 
-function endRound(state: GameState): PlayResult {
+function endRound(state: GameState, concededBy?: Seat): PlayResult {
   // Award any in-progress trick to lastPlayedBy so those points aren't lost
   let scoringState = state;
   if (state.currentTrickCards.length > 0 && state.lastPlayedBy != null) {
@@ -725,7 +737,7 @@ function endRound(state: GameState): PlayResult {
     scoringState = { ...state, players: newPlayers, currentTrick: null, currentTrickCards: [] };
   }
 
-  const result = scoreRound(scoringState);
+  const result: RoundResult = { ...scoreRound(scoringState), concededBy };
 
   // Update team scores
   const newTeams: [Team, Team] = [

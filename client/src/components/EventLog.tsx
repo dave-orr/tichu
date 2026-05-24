@@ -96,12 +96,20 @@ export function useEventLog(
         newEntries.push(`${names[passer]} passed`);
       }
 
-      // Dragon giveaway completed
+      // Dragon giveaway completed — receiver is the player whose trickCount
+      // increased (turnIndex stays on the giver, who leads the next trick).
       if (prev.dragonGiveaway && !gameState.dragonGiveaway && prev.dragonGiveawayBy !== null) {
         const giver = names[prev.dragonGiveawayBy];
-        // Figure out who received: the new trick winner
-        const receiver = gameState.turnIndex;
-        newEntries.push(`${giver} gave the Dragon trick to ${names[receiver]}`);
+        let receiverIdx = -1;
+        for (let i = 0; i < 4; i++) {
+          if (gameState.players[i].trickCount > prev.players[i].trickCount) {
+            receiverIdx = i;
+            break;
+          }
+        }
+        if (receiverIdx >= 0) {
+          newEntries.push(`${giver} gave the Dragon trick to ${names[receiverIdx]}`);
+        }
       }
 
       // Mah Jong wish set
@@ -124,6 +132,9 @@ export function useEventLog(
 
     // Round result
     if (roundResult && roundResult !== prevRoundRef.current && gameState) {
+      if (roundResult.concededBy !== undefined) {
+        newEntries.push(`${names[roundResult.concededBy]} conceded the round`);
+      }
       if (roundResult.isDoubleVictory) {
         newEntries.push(`Double victory! Team ${(roundResult.doubleVictoryTeam ?? 0) + 1} wins the round`);
       }

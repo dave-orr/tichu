@@ -195,6 +195,7 @@ export type RoundResult = {
   doubleVictoryTeam?: 0 | 1;
   totalScores: [number, number]; // cumulative
   outOrder: [Seat, Seat, Seat, Seat]; // order players went out (last = still had cards)
+  concededBy?: Seat; // set when the round ended via concession
 };
 
 // ===== Round Log (for analytics) =====
