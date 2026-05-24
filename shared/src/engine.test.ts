@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { passTurn } from './engine.js';
+import { passTurn, playBomb } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -90,6 +90,33 @@ describe('passTurn — pass-count threshold when leader is out', () => {
     const after2 = passTurn(after1.state, 2);
     expect(after2.trickCountdownStarted).toBe(true);
     expect(after2.state.trickCountdown).toEqual({ winner: 0 });
+  });
+
+  it('a bomb fulfills an outstanding Mah Jong wish for the bomb rank', () => {
+    // Wish is set for 5s. Seat 1 is on turn but seat 2 (out-of-turn) bombs
+    // with four 5s. The wish should clear.
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(8)], hasPlayedFirstCard: true }),
+      makePlayer(1, { hand: [c(9)], hasPlayedFirstCard: true }),
+      makePlayer(2, {
+        hand: [c(5, 'jade'), c(5, 'sword'), c(5, 'pagoda'), c(5, 'star'), c(11)],
+        hasPlayedFirstCard: true,
+      }),
+      makePlayer(3, { hand: [c(12)], hasPlayedFirstCard: true }),
+    ];
+    const state = makeState({
+      players,
+      turnIndex: 1,
+      lastPlayedBy: 0,
+      currentTrick: trickSeven,
+      currentTrickCards: [[c(7)]],
+      mahJongWish: 5,
+    });
+
+    const bomb: Card[] = [c(5, 'jade'), c(5, 'sword'), c(5, 'pagoda'), c(5, 'star')];
+    const after = playBomb(state, 2, bomb);
+    expect(after.state.lastPlayedBy).toBe(2);
+    expect(after.state.mahJongWish).toBeNull();
   });
 
   it('awards on the single remaining pass when the leader is still in', () => {

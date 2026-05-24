@@ -1,7 +1,9 @@
+import type { TichuCall } from '@tichu/shared';
 import { CardBack } from './Card.js';
+import TichuBadge from './TichuBadge.js';
 
 type Props = {
-  player: { name: string; cardCount: number; isOut: boolean; tichuCall: string; trickCount: number; capturedPoints: number };
+  player: { name: string; cardCount: number; isOut: boolean; tichuCall: TichuCall; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
   label?: string;
   showPoints?: boolean;
@@ -15,6 +17,7 @@ export default function OpponentInfo({ player, isCurrentTurn, label, showPoints,
       {label && <div className="text-sm text-gray-400">{label}</div>}
       <div className={`font-bold text-base ${isCurrentTurn ? 'text-yellow-400' : ''}`}>
         {player.name}
+        <TichuBadge call={player.tichuCall} />
         {player.cardCount > 0 && (
           <span className="ml-1 text-gray-300 font-normal">({player.cardCount})</span>
         )}
@@ -22,11 +25,6 @@ export default function OpponentInfo({ player, isCurrentTurn, label, showPoints,
           <span className="ml-1 text-green-400 font-normal">({player.capturedPoints}pts)</span>
         )}
       </div>
-      {player.tichuCall !== 'none' && (
-        <div className={`text-sm ${player.tichuCall === 'grand' ? 'text-red-400' : 'text-orange-400'}`}>
-          {player.tichuCall === 'grand' ? 'GRAND' : 'Tichu'}
-        </div>
-      )}
       <div className="mt-1">
         <CardBack count={player.cardCount} horizontal={horizontal || vertical} rotated={vertical} />
       </div>

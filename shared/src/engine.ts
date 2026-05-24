@@ -659,6 +659,12 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     newPlayers[seat].outOrder = newOutCount;
   }
 
+  // A bomb that contains the wished rank fulfills the wish, just like a normal play.
+  let newWish = state.mahJongWish;
+  if (newWish != null && cards.some(c => c.type === 'normal' && c.rank === newWish)) {
+    newWish = null;
+  }
+
   const newState: GameState = {
     ...state,
     players: newPlayers,
@@ -669,6 +675,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     outCount: newOutCount,
     turnIndex: getNextActiveSeat(state, seat, newPlayers),
     playedCards: [...state.playedCards, ...cards],
+    mahJongWish: newWish,
     trickCountdown: null, // bomb cancels any pending countdown
   };
 

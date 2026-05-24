@@ -14,6 +14,7 @@ import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 import OpponentInfo from '../components/OpponentInfo.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
+import TichuBadge from '../components/TichuBadge.js';
 import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
 import EventLog, { useEventLog } from '../components/EventLog.js';
@@ -510,6 +511,7 @@ export default function Game({ socket, auth }: Props) {
         />
         <div className="text-center text-base text-gray-400 mt-1">
           {myPlayer.name}
+          <TichuBadge call={myPlayer.tichuCall} />
           {gameState.settings.countPoints && myPlayer.trickCount > 0 && (
             <span className="ml-1 text-green-400">({myPlayer.capturedPoints}pts)</span>
           )}
