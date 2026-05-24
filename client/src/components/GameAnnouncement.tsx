@@ -3,8 +3,9 @@ import type { ClientGameState, RoundResult } from '@tichu/shared';
 
 export type GameEvent = {
   id: number;
-  type: 'tichu' | 'grand-tichu' | 'dog' | 'out' | 'tichu-made' | 'grand-made';
+  type: 'tichu' | 'grand-tichu' | 'dog' | 'out' | 'tichu-made' | 'grand-made' | 'dragon-given';
   playerName: string;
+  receiverName?: string;
 };
 
 const DURATIONS: Record<GameEvent['type'], number> = {
@@ -14,6 +15,7 @@ const DURATIONS: Record<GameEvent['type'], number> = {
   out: 2500,
   'tichu-made': 3500,
   'grand-made': 4000,
+  'dragon-given': 3000,
 };
 
 export function useGameEvents(
@@ -53,6 +55,25 @@ export function useGameEvents(
       for (let i = 0; i < 4; i++) {
         if (prev.players[i].outOrder === 0 && gameState.players[i].outOrder > 0) {
           detected.push({ type: 'out', playerName: gameState.players[i].name });
+        }
+      }
+
+      // Dragon trick given to an opponent — the receiver is the player whose
+      // trickCount went up while the giveaway flag dropped.
+      if (prev.dragonGiveaway && !gameState.dragonGiveaway && prev.dragonGiveawayBy !== null) {
+        let receiverIdx = -1;
+        for (let i = 0; i < 4; i++) {
+          if (gameState.players[i].trickCount > prev.players[i].trickCount) {
+            receiverIdx = i;
+            break;
+          }
+        }
+        if (receiverIdx >= 0) {
+          detected.push({
+            type: 'dragon-given',
+            playerName: gameState.players[prev.dragonGiveawayBy].name,
+            receiverName: gameState.players[receiverIdx].name,
+          });
         }
       }
     }
@@ -198,6 +219,23 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
             {event.playerName} made it!
           </div>
           <Sparkles count={32} spread={200} colors={CELEBRATION_COLORS} />
+        </div>
+      );
+
+    case 'dragon-given':
+      return (
+        <div className="announce-dragon text-center relative">
+          <div className="text-5xl flex items-center justify-center gap-3">
+            <span className="dragon-fly">🐉</span>
+            <span className="text-purple-300 text-3xl">→</span>
+          </div>
+          <div className="text-3xl font-black text-purple-300 announce-text-shadow-purple mt-2 tracking-wide">
+            {event.receiverName}
+          </div>
+          <div className="text-base text-purple-200 mt-1">
+            gets the Dragon trick from {event.playerName}
+          </div>
+          <Sparkles count={18} spread={140} colors={['#a78bfa', '#c084fc', '#f0abfc', '#ef4444']} />
         </div>
       );
   }
