@@ -78,22 +78,17 @@ export function CardBack({ count, horizontal, rotated }: { count?: number; horiz
   }
   if (horizontal) {
     const cardRow = (
-      <div className="flex items-center gap-2 justify-center">
-        <div className="flex">
-          {Array.from({ length: Math.min(count ?? 1, 14) }).map((_, i) => (
-            <div key={i} className="card-back" style={{ marginLeft: i > 0 ? '-20px' : '0' }} />
-          ))}
-        </div>
-        {count !== undefined && (
-          <div className="text-sm text-gray-300">{count}</div>
-        )}
+      <div className="flex justify-center">
+        {Array.from({ length: Math.min(count ?? 1, 14) }).map((_, i) => (
+          <div key={i} className="card-back" style={{ marginLeft: i > 0 ? '-20px' : '0' }} />
+        ))}
       </div>
     );
     if (rotated) {
-      // Calculate width of the horizontal strip so we can reserve matching height
-      // Each card is w-10 (40px), overlapping by 20px, plus gap+label ~30px
+      // Calculate width of the horizontal strip so we can reserve matching height.
+      // Each card is w-10 (40px) overlapping by 20px.
       const cardCount = Math.min(count ?? 1, 14);
-      const stripWidth = cardCount > 0 ? 40 + (cardCount - 1) * 20 + 30 : 40;
+      const stripWidth = cardCount > 0 ? 40 + (cardCount - 1) * 20 : 40;
       return (
         <div className="flex justify-center" style={{ height: stripWidth }}>
           <div className="rotate-90 origin-center">
@@ -109,9 +104,6 @@ export function CardBack({ count, horizontal, rotated }: { count?: number; horiz
       {Array.from({ length: Math.min(count ?? 1, 14) }).map((_, i) => (
         <div key={i} className="card-back" style={{ marginLeft: i > 0 ? '-6px' : '0' }} />
       ))}
-      {count !== undefined && (
-        <div className="text-sm text-gray-300 w-full text-center mt-1">{count} cards</div>
-      )}
     </div>
   );
 }
