@@ -124,6 +124,9 @@ export function useEventLog(
 
     // Round result
     if (roundResult && roundResult !== prevRoundRef.current && gameState) {
+      if (roundResult.concededBy !== undefined) {
+        newEntries.push(`${names[roundResult.concededBy]} conceded the round`);
+      }
       if (roundResult.isDoubleVictory) {
         newEntries.push(`Double victory! Team ${(roundResult.doubleVictoryTeam ?? 0) + 1} wins the round`);
       }
