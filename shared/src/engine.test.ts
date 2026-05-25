@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { passTurn, playBomb } from './engine.js';
+import { passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -117,6 +117,61 @@ describe('passTurn — pass-count threshold when leader is out', () => {
     const after = playBomb(state, 2, bomb);
     expect(after.state.lastPlayedBy).toBe(2);
     expect(after.state.mahJongWish).toBeNull();
+  });
+
+  it('holds the turn on the Mah Jong player until they pick a wish', () => {
+    // Seat 0 has the Mah Jong and leads with it. The turn must stay on seat 0
+    // (so seat 1 doesn't see "Your turn!" while the wish dialog is open) and
+    // any play/pass attempt by seat 1 must be rejected.
+    const mahjong: Card = { type: 'special', name: 'mahjong' };
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [mahjong, c(8), c(9)], hasPlayedFirstCard: false }),
+      makePlayer(1, { hand: [c(10), c(11)], hasPlayedFirstCard: false }),
+      makePlayer(2, { hand: [c(12), c(13)], hasPlayedFirstCard: false }),
+      makePlayer(3, { hand: [c(14), c(2)], hasPlayedFirstCard: false }),
+    ];
+    const state = makeState({ players, turnIndex: 0 });
+
+    const afterMahjong = playCards(state, 0, [mahjong]);
+    expect(afterMahjong.needMahJongWish).toBe(true);
+    expect(afterMahjong.state.mahJongWishPending).toBe(true);
+    // Turn stays on seat 0 — does NOT advance to seat 1.
+    expect(afterMahjong.state.turnIndex).toBe(0);
+    expect(afterMahjong.state.lastPlayedBy).toBe(0);
+
+    // Seat 1 cannot play while the wish is pending.
+    const seat1Tries = playCards(afterMahjong.state, 1, [c(10)]);
+    expect(seat1Tries.state).toBe(afterMahjong.state);
+
+    // Seat 1 cannot pass either.
+    const seat1Passes = passTurn(afterMahjong.state, 1);
+    expect(seat1Passes.state).toBe(afterMahjong.state);
+
+    // Once seat 0 sets the wish, the turn advances (clockwise default → seat 1)
+    // and the pending flag clears.
+    const afterWish = setMahJongWish(afterMahjong.state, 5);
+    expect(afterWish.mahJongWishPending).toBe(false);
+    expect(afterWish.mahJongWish).toBe(5);
+    expect(afterWish.turnIndex).toBe(1);
+  });
+
+  it('declining the wish (null) also releases the turn', () => {
+    const mahjong: Card = { type: 'special', name: 'mahjong' };
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [mahjong, c(8)], hasPlayedFirstCard: false }),
+      makePlayer(1, { hand: [c(10), c(11)] }),
+      makePlayer(2, { hand: [c(12), c(13)] }),
+      makePlayer(3, { hand: [c(14), c(2)] }),
+    ];
+    const state = makeState({ players, turnIndex: 0 });
+
+    const afterMahjong = playCards(state, 0, [mahjong]);
+    expect(afterMahjong.state.turnIndex).toBe(0);
+
+    const afterWish = setMahJongWish(afterMahjong.state, null);
+    expect(afterWish.mahJongWish).toBeNull();
+    expect(afterWish.mahJongWishPending).toBe(false);
+    expect(afterWish.turnIndex).toBe(1);
   });
 
   it('awards on the single remaining pass when the leader is still in', () => {

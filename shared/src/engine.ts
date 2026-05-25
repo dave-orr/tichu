@@ -349,7 +349,9 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     mahJongWish: newWish,
     mahJongWishPending: needMahJongWish,
     outCount: newOutCount,
-    turnIndex: getNextActiveSeat(state, seat, newPlayers),
+    // Hold the turn on the Mah Jong player until they pick a wish — otherwise
+    // the next player sees "Your turn!" while the wish dialog is open.
+    turnIndex: needMahJongWish ? seat : getNextActiveSeat(state, seat, newPlayers),
     playedCards: [...state.playedCards, ...cards],
   };
 
@@ -559,7 +561,13 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
 // ===== Mah Jong Wish =====
 
 export function setMahJongWish(state: GameState, rank: NormalRank | null): GameState {
-  return { ...state, mahJongWish: rank, mahJongWishPending: false };
+  const newState: GameState = { ...state, mahJongWish: rank, mahJongWishPending: false };
+  // While the wish was pending we held turnIndex on the wishing player; now
+  // release it to the next active seat.
+  if (state.mahJongWishPending) {
+    newState.turnIndex = getNextActiveSeat(newState, state.turnIndex, newState.players);
+  }
+  return newState;
 }
 
 /** Check if a player can make any legal play that includes the wished rank */
