@@ -169,10 +169,19 @@ export default function EventLog({ entries }: { entries: LogEntry[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new entries arrive
+  // Auto-scroll to bottom when new entries arrive, but only if the user is
+  // already near the bottom — don't yank them away from older entries they
+  // scrolled up to read.
+  const wasAtBottomRef = useRef(true);
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    wasAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 16;
+  };
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (el && wasAtBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [entries.length]);
 
@@ -198,7 +207,7 @@ export default function EventLog({ entries }: { entries: LogEntry[] }) {
           ✕
         </button>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
         {entries.length === 0 && (
           <div className="text-sm text-gray-500 italic">No events yet</div>
         )}
