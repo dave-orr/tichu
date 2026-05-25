@@ -95,8 +95,6 @@ export type PendingInvite = {
 const pendingInvites = new Map<string, PendingInvite>();
 const invitesByTarget = new Map<string, Set<string>>();
 
-const INVITE_EXPIRY_MS = 5 * 60 * 1000;
-
 export function createInvite(roomCode: string, fromUid: string, fromName: string, targetUid: string): PendingInvite | null {
   const room = getRoom(roomCode);
   if (!room) return null;
@@ -140,15 +138,10 @@ export function getInvite(inviteId: string): PendingInvite | undefined {
 export function getInvitesForUser(uid: string): PendingInvite[] {
   const ids = invitesByTarget.get(uid);
   if (!ids) return [];
-  const now = Date.now();
   const result: PendingInvite[] = [];
   for (const id of ids) {
     const inv = pendingInvites.get(id);
     if (!inv) continue;
-    if (now - inv.createdAt > INVITE_EXPIRY_MS) {
-      removeInvite(id);
-      continue;
-    }
     const room = getRoom(inv.roomCode);
     if (!room || room.state.phase !== 'waiting' || room.seatPlayers.size >= 4) {
       removeInvite(id);
