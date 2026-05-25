@@ -85,7 +85,7 @@ function makeState(players: [Player, Player, Player, Player]): GameState {
       { players: [1, 3], score: 0 },
     ],
     currentTrick: null,
-    currentTrickCards: [],
+    currentTrickPlays: [],
     passCount: 0,
     turnIndex: 0,
     lastPlayedBy: null,

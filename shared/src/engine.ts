@@ -22,7 +22,7 @@ export function createInitialState(settings?: GameSettings): GameState {
       { players: [1, 3], score: 0 },
     ],
     currentTrick: null,
-    currentTrickCards: [],
+    currentTrickPlays: [],
     passCount: 0,
     turnIndex: 0,
     lastPlayedBy: null,
@@ -71,7 +71,7 @@ export function startNewRound(state: GameState): GameState {
     ...state,
     phase: 'grandTichuWindow',
     currentTrick: null,
-    currentTrickCards: [],
+    currentTrickPlays: [],
     passCount: 0,
     turnIndex: 0,
     lastPlayedBy: null,
@@ -343,7 +343,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     ...state,
     players: newPlayers,
     currentTrick: combo,
-    currentTrickCards: [...state.currentTrickCards, cards],
+    currentTrickPlays: [...state.currentTrickPlays, { seat, cards }],
     passCount: 0,
     lastPlayedBy: seat,
     mahJongWish: newWish,
@@ -397,7 +397,7 @@ function playDog(state: GameState, seat: Seat): PlayResult {
       players: newPlayers,
       turnIndex: partnerSeat,
       currentTrick: null,
-      currentTrickCards: [],
+      currentTrickPlays: [],
       passCount: 0,
       outCount: newOutCount,
       playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card],
@@ -466,7 +466,7 @@ export function awardTrick(state: GameState): PlayResult {
 
 function winTrick(state: GameState): PlayResult {
   const winner = state.lastPlayedBy!;
-  const trickCards = state.currentTrickCards.flat();
+  const trickCards = state.currentTrickPlays.flatMap(p => p.cards);
 
   // Check if Dragon won the trick
   const dragonInTrick = state.currentTrick?.cards.some(
@@ -505,7 +505,7 @@ function winTrick(state: GameState): PlayResult {
       ...state,
       players: newPlayers,
       currentTrick: null,
-      currentTrickCards: [],
+      currentTrickPlays: [],
       passCount: 0,
       turnIndex: nextLeader,
       lastPlayedBy: null,
@@ -525,7 +525,7 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
   const theirTeam = getTeamForSeat(toOpponent);
   if (myTeam === theirTeam) return { state };
 
-  const trickCards = state.currentTrickCards.flat();
+  const trickCards = state.currentTrickPlays.flatMap(p => p.cards);
   const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
     tricksWon: [...p.tricksWon],
@@ -541,7 +541,7 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
     ...state,
     players: newPlayers,
     currentTrick: null,
-    currentTrickCards: [],
+    currentTrickPlays: [],
     passCount: 0,
     turnIndex: nextLeader,
     lastPlayedBy: null,
@@ -669,7 +669,7 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
     ...state,
     players: newPlayers,
     currentTrick: combo,
-    currentTrickCards: [...state.currentTrickCards, cards],
+    currentTrickPlays: [...state.currentTrickPlays, { seat, cards }],
     passCount: 0,
     lastPlayedBy: seat,
     outCount: newOutCount,
@@ -719,7 +719,7 @@ export function concede(state: GameState, seat: Seat): PlayResult {
     players: newPlayers,
     outCount: 4,
     currentTrick: null,
-    currentTrickCards: [],
+    currentTrickPlays: [],
   }, seat);
 }
 
@@ -728,13 +728,13 @@ export function concede(state: GameState, seat: Seat): PlayResult {
 function endRound(state: GameState, concededBy?: Seat): PlayResult {
   // Award any in-progress trick to lastPlayedBy so those points aren't lost
   let scoringState = state;
-  if (state.currentTrickCards.length > 0 && state.lastPlayedBy != null) {
+  if (state.currentTrickPlays.length > 0 && state.lastPlayedBy != null) {
     const newPlayers = toPlayers(state.players.map(p => ({
       ...p,
       tricksWon: [...p.tricksWon],
     })));
-    newPlayers[state.lastPlayedBy].tricksWon.push(state.currentTrickCards.flat());
-    scoringState = { ...state, players: newPlayers, currentTrick: null, currentTrickCards: [] };
+    newPlayers[state.lastPlayedBy].tricksWon.push(state.currentTrickPlays.flatMap(p => p.cards));
+    scoringState = { ...state, players: newPlayers, currentTrick: null, currentTrickPlays: [] };
   }
 
   const result: RoundResult = { ...scoreRound(scoringState), concededBy };
@@ -828,7 +828,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     players: toPlayers(clientPlayers),
     teams: state.teams,
     currentTrick: state.currentTrick,
-    currentTrickCards: state.currentTrickCards,
+    currentTrickPlays: state.currentTrickPlays,
     passCount: state.passCount,
     turnIndex: state.turnIndex,
     lastPlayedBy: state.lastPlayedBy,

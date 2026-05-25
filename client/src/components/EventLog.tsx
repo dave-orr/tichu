@@ -65,8 +65,8 @@ export function useEventLog(
       }
 
       // Cards played
-      if (gameState.currentTrickCards.length > prev.currentTrickCards.length) {
-        const newPlay = gameState.currentTrickCards[gameState.currentTrickCards.length - 1];
+      if (gameState.currentTrickPlays.length > prev.currentTrickPlays.length) {
+        const newPlay = gameState.currentTrickPlays[gameState.currentTrickPlays.length - 1].cards;
         const isDog = newPlay.length === 1 && newPlay[0].type === 'special' && newPlay[0].name === 'dog';
         if (isDog) {
           const playerIdx = prev.turnIndex;
@@ -78,8 +78,8 @@ export function useEventLog(
         }
       }
 
-      // Trick won (currentTrickCards went from non-empty to empty)
-      if (prev.currentTrickCards.length > 0 && gameState.currentTrickCards.length === 0) {
+      // Trick won (currentTrickPlays went from non-empty to empty)
+      if (prev.currentTrickPlays.length > 0 && gameState.currentTrickPlays.length === 0) {
         // Someone won the trick. The new leader is turnIndex.
         // But if dragon giveaway just happened, check for that
         if (prev.dragonGiveaway && !gameState.dragonGiveaway) {
@@ -91,7 +91,7 @@ export function useEventLog(
       }
 
       // Pass count changes (someone passed their turn)
-      if (gameState.passCount > prev.passCount && gameState.currentTrickCards.length === prev.currentTrickCards.length) {
+      if (gameState.passCount > prev.passCount && gameState.currentTrickPlays.length === prev.currentTrickPlays.length) {
         const passer = prev.turnIndex;
         newEntries.push(`${names[passer]} passed`);
       }

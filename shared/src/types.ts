@@ -120,7 +120,7 @@ export type GameState = {
   players: [Player, Player, Player, Player];
   teams: [Team, Team]; // team 0 = seats 0,2; team 1 = seats 1,3
   currentTrick: Combo | null;
-  currentTrickCards: Card[][]; // all plays in current trick for display
+  currentTrickPlays: TrickPlay[]; // all plays in current trick, in order
   passCount: number;           // consecutive passes
   turnIndex: Seat;             // whose turn it is
   lastPlayedBy: Seat | null;   // who played the current top combo
@@ -138,6 +138,11 @@ export type GameState = {
   roundEndReady: Seat[];       // seats that have acknowledged round results
   roundHistory: RoundHistoryEntry[]; // score history for all completed rounds
   receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]]; // cards received from passing, per seat
+};
+
+export type TrickPlay = {
+  seat: Seat;
+  cards: Card[];
 };
 
 // ===== Socket Events =====

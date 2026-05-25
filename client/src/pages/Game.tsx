@@ -5,7 +5,6 @@ import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
 import Hand from '../components/Hand.js';
 import CardComponent from '../components/Card.js';
-import PlayArea from '../components/PlayArea.js';
 import ScoreBoard from '../components/ScoreBoard.js';
 import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
@@ -13,8 +12,30 @@ import RoundResults from '../components/RoundResults.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 import OpponentInfo from '../components/OpponentInfo.js';
+import SeatPlay from '../components/SeatPlay.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import TichuBadge from '../components/TichuBadge.js';
+import type { Combo, NormalRank } from '@tichu/shared';
+
+function comboLabel(combo: Combo): string {
+  const r = combo.rank in RANK_NAMES
+    ? RANK_NAMES[combo.rank as NormalRank]
+    : combo.rank === 1
+      ? '1'
+      : combo.rank === 15
+        ? 'Dragon'
+        : String(combo.rank);
+  switch (combo.type) {
+    case 'single': return `Single, ${r}`;
+    case 'pair': return `Pair, ${r}s`;
+    case 'triple': return `Triple, ${r}s`;
+    case 'fullHouse': return `Full House, ${r}s`;
+    case 'straight': return `${combo.length}-Straight, high ${r}`;
+    case 'consecutivePairs': return `${combo.length / 2} Pairs, high ${r}`;
+    case 'fourOfAKindBomb': return `4-Bomb, ${r}s`;
+    case 'straightFlushBomb': return `${combo.length}-SF Bomb, high ${r}`;
+  }
+}
 import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
 import EventLog, { useEventLog } from '../components/EventLog.js';
@@ -174,9 +195,15 @@ export default function Game({ socket, auth }: Props) {
   if (!gameState) return null;
 
   const {
-    phase: _, players, mySeat, myHand, currentTrick, currentTrickCards,
+    phase: _, players, mySeat, myHand, currentTrick, currentTrickPlays,
     turnIndex, lastPlayedBy, teams,
   } = gameState;
+
+  // Most recent play per seat for this trick (later plays overwrite earlier ones).
+  const lastPlayBySeat: Record<Seat, CardType[]> = { 0: [], 1: [], 2: [], 3: [] };
+  for (const play of currentTrickPlays) {
+    lastPlayBySeat[play.seat] = play.cards;
+  }
 
   const isMyTurn = turnIndex === mySeat && phase === 'playing';
   const myPlayer = players[mySeat];
@@ -386,8 +413,8 @@ export default function Game({ socket, auth }: Props) {
         />
       )}
 
-      {/* Top area: partner */}
-      <div className="flex justify-center items-center p-3 gap-4">
+      {/* Top: partner info, with their last play stacked below */}
+      <div className="flex flex-col items-center p-2 gap-2">
         <OpponentInfo
           player={players[relativeSeats[2]]}
           isCurrentTurn={turnIndex === relativeSeats[2]}
@@ -395,12 +422,18 @@ export default function Game({ socket, auth }: Props) {
           showPoints={gameState.settings.countPoints}
           horizontal
         />
+        <SeatPlay
+          key={lastPlayBySeat[relativeSeats[2]].map(cardId).join('|') || 'empty'}
+          cards={lastPlayBySeat[relativeSeats[2]]}
+          isTopOfTrick={lastPlayedBy === relativeSeats[2]}
+          combo={currentTrick}
+        />
       </div>
 
-      {/* Middle area: left opponent, play area, right opponent */}
+      {/* Middle: left info + play, center info, right play + info */}
       <div className="flex-1 flex items-center">
         {/* Left opponent */}
-        <div className="w-32 flex flex-col items-center p-2">
+        <div className="w-32 flex flex-col items-center p-2 shrink-0">
           <OpponentInfo
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
@@ -408,19 +441,27 @@ export default function Game({ socket, auth }: Props) {
             vertical
           />
         </div>
+        <div className="flex items-center justify-end pr-3">
+          <SeatPlay
+            key={lastPlayBySeat[relativeSeats[3]].map(cardId).join('|') || 'empty'}
+            cards={lastPlayBySeat[relativeSeats[3]]}
+            isTopOfTrick={lastPlayedBy === relativeSeats[3]}
+            combo={currentTrick}
+          />
+        </div>
 
-        {/* Center play area */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
-          {/* Active wish display */}
+        {/* Center: wish, top-combo label, turn indicator */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-4 min-w-[200px]">
           <WishDisplay wish={gameState.mahJongWish} />
-          <div className="bg-felt/50 rounded-xl p-6 min-w-[300px] min-h-[150px] flex items-center justify-center">
-            <PlayArea
-              currentTrick={currentTrick}
-              currentTrickCards={currentTrickCards}
-              lastPlayedBy={lastPlayedBy}
-              playerNames={playerNames}
-            />
-          </div>
+          {currentTrick && lastPlayedBy !== null && (
+            <div className="text-sm text-gray-300 text-center">
+              <div className="text-xs uppercase tracking-wide text-gray-500">To beat</div>
+              <div className="text-yellow-300 font-semibold">{comboLabel(currentTrick)}</div>
+            </div>
+          )}
+          {!currentTrick && (
+            <div className="text-sm text-gray-500 italic">Waiting for lead</div>
+          )}
           {isMyTurn && (
             <div className="text-yellow-400 font-bold animate-pulse">
               Your turn!
@@ -428,8 +469,16 @@ export default function Game({ socket, auth }: Props) {
           )}
         </div>
 
+        <div className="flex items-center justify-start pl-3">
+          <SeatPlay
+            key={lastPlayBySeat[relativeSeats[1]].map(cardId).join('|') || 'empty'}
+            cards={lastPlayBySeat[relativeSeats[1]]}
+            isTopOfTrick={lastPlayedBy === relativeSeats[1]}
+            combo={currentTrick}
+          />
+        </div>
         {/* Right opponent */}
-        <div className="w-32 flex flex-col items-center p-2">
+        <div className="w-32 flex flex-col items-center p-2 shrink-0">
           <OpponentInfo
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
@@ -438,6 +487,18 @@ export default function Game({ socket, auth }: Props) {
           />
         </div>
       </div>
+
+      {/* My last play, just above my hand */}
+      {lastPlayBySeat[mySeat].length > 0 && (
+        <div className="flex justify-center pb-1">
+          <SeatPlay
+            key={lastPlayBySeat[mySeat].map(cardId).join('|')}
+            cards={lastPlayBySeat[mySeat]}
+            isTopOfTrick={lastPlayedBy === mySeat}
+            combo={currentTrick}
+          />
+        </div>
+      )}
 
       {/* Toast notification */}
       {(toast || autoSkippedSeat !== null) && (
