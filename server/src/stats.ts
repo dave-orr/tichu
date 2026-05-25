@@ -46,28 +46,27 @@ export async function updateStatsForRound(
       updates['stats.roundsWonFirstOut'] = inc(1);
     }
 
+    const scoreDiff = acc.scoresAtRoundStart[team] - acc.scoresAtRoundStart[otherTeam];
+    const ahead200 = scoreDiff > 200;
+    const behind200 = scoreDiff < -200;
+    if (ahead200) updates['stats.roundsWhenAhead200'] = inc(1);
+    if (behind200) updates['stats.roundsWhenBehind200'] = inc(1);
+
     // Tichu call tracking
     if (player.tichuCall === 'small') {
       updates['stats.tichuCalls'] = inc(1);
       if (player.outOrder === 1) {
         updates['stats.tichuSuccesses'] = inc(1);
       }
-      // Score-context tracking
-      if (acc.scoresAtRoundStart[team] < acc.scoresAtRoundStart[otherTeam]) {
-        updates['stats.tichuCallsWhenBehind'] = inc(1);
-      } else {
-        updates['stats.tichuCallsWhenAhead'] = inc(1);
-      }
+      if (ahead200) updates['stats.tichuCallsWhenAhead200'] = inc(1);
+      if (behind200) updates['stats.tichuCallsWhenBehind200'] = inc(1);
     } else if (player.tichuCall === 'grand') {
       updates['stats.grandTichuCalls'] = inc(1);
       if (player.outOrder === 1) {
         updates['stats.grandTichuSuccesses'] = inc(1);
       }
-      if (acc.scoresAtRoundStart[team] < acc.scoresAtRoundStart[otherTeam]) {
-        updates['stats.grandCallsWhenBehind'] = inc(1);
-      } else {
-        updates['stats.grandCallsWhenAhead'] = inc(1);
-      }
+      if (ahead200) updates['stats.grandCallsWhenAhead200'] = inc(1);
+      if (behind200) updates['stats.grandCallsWhenBehind200'] = inc(1);
     }
 
     // Double victory
