@@ -1,11 +1,20 @@
+import { useEffect, useState } from 'react';
+import type { PartnerStats } from '@tichu/shared';
 import type { UserStats as UserStatsType } from '../hooks/useAuth.js';
 
 type Props = {
   stats: UserStatsType;
+  fetchPartnerStats: () => Promise<{ partners: PartnerStats[] }>;
   onClose: () => void;
 };
 
-export default function UserStats({ stats, onClose }: Props) {
+export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) {
+  const [partners, setPartners] = useState<PartnerStats[] | null>(null);
+
+  useEffect(() => {
+    fetchPartnerStats().then(({ partners }) => setPartners(partners));
+  }, [fetchPartnerStats]);
+
   const winRate = stats.gamesPlayed > 0
     ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
     : 0;
@@ -124,6 +133,38 @@ export default function UserStats({ stats, onClose }: Props) {
               />
             </div>
           </div>
+
+          {partners && partners.length > 0 && (
+            <div className="border-t border-gray-700 mt-3 pt-3">
+              <h4 className="text-xs text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
+              <div className="space-y-1">
+                {partners.map(p => {
+                  const rate = p.gamesPlayed > 0
+                    ? Math.round((p.gamesWon / p.gamesPlayed) * 100)
+                    : null;
+                  return (
+                    <div key={p.partnerUid} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {p.partnerPhoto ? (
+                          <img src={p.partnerPhoto} alt="" className="w-6 h-6 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs flex-shrink-0">
+                            {p.partnerName[0]}
+                          </div>
+                        )}
+                        <span className="truncate">{p.partnerName}</span>
+                      </div>
+                      <span className="font-semibold flex-shrink-0">
+                        {p.gamesPlayed > 0
+                          ? `${p.gamesWon}/${p.gamesPlayed} (${rate}%)`
+                          : `${p.roundsPlayed} rd`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
