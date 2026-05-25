@@ -11,10 +11,10 @@ export default function CardComponent({ card, selected, onClick, small }: Props)
   if (card.type === 'special') {
     return (
       <div
-        className={`card special-${card.name} ${selected ? 'selected' : ''} ${small ? 'w-16 h-24 text-xs' : ''}`}
+        className={`card special-${card.name} ${selected ? 'selected' : ''} ${small ? 'w-24 h-36' : ''}`}
         onClick={onClick}
       >
-        <SpecialCardContent name={card.name} />
+        <SpecialCardContent name={card.name} small={small} />
       </div>
     );
   }
@@ -22,49 +22,52 @@ export default function CardComponent({ card, selected, onClick, small }: Props)
   const suitClass = `suit-${card.suit}`;
   return (
     <div
-      className={`card ${suitClass} ${selected ? 'selected' : ''} ${small ? 'w-16 h-24 text-xs' : ''}`}
+      className={`card ${suitClass} ${selected ? 'selected' : ''} ${small ? 'w-24 h-36' : ''}`}
       onClick={onClick}
     >
-      <div className="text-base font-bold absolute top-1 left-1.5">
+      <div className={`font-bold absolute top-1 left-1.5 leading-none ${small ? 'text-base' : 'text-2xl'}`}>
         {RANK_NAMES[card.rank]}
       </div>
-      <div className="text-4xl">{SUIT_SYMBOLS[card.suit]}</div>
-      <div className="text-base font-bold absolute bottom-1 right-1.5 rotate-180">
+      <div className={small ? 'text-4xl' : 'text-6xl'}>{SUIT_SYMBOLS[card.suit]}</div>
+      <div className={`font-bold absolute bottom-1 right-1.5 rotate-180 leading-none ${small ? 'text-base' : 'text-2xl'}`}>
         {RANK_NAMES[card.rank]}
       </div>
     </div>
   );
 }
 
-function SpecialCardContent({ name }: { name: string }) {
+function SpecialCardContent({ name, small }: { name: string; small?: boolean }) {
+  const big = small ? 'text-4xl' : 'text-6xl';
+  const corner = small ? 'text-base' : 'text-2xl';
+  const label = small ? 'text-xs' : 'text-sm';
   switch (name) {
     case 'mahjong':
       return (
         <>
-          <div className="text-base font-bold absolute top-1 left-1.5">1</div>
-          <div className="text-2xl font-bold">MJ</div>
-          <div className="text-xs">Mah Jong</div>
+          <div className={`${corner} font-bold absolute top-1 left-1.5 leading-none`}>1</div>
+          <div className={`${small ? 'text-2xl' : 'text-4xl'} font-bold`}>MJ</div>
+          <div className={label}>Mah Jong</div>
         </>
       );
     case 'dog':
       return (
         <>
-          <div className="text-4xl">🐕</div>
-          <div className="text-xs">Dog</div>
+          <div className={big}>🐕</div>
+          <div className={label}>Dog</div>
         </>
       );
     case 'phoenix':
       return (
         <>
-          <div className="text-4xl">🔥</div>
-          <div className="text-xs">Phoenix</div>
+          <div className={big}>🔥</div>
+          <div className={label}>Phoenix</div>
         </>
       );
     case 'dragon':
       return (
         <>
-          <div className="text-4xl">🐉</div>
-          <div className="text-xs">Dragon</div>
+          <div className={big}>🐉</div>
+          <div className={label}>Dragon</div>
         </>
       );
     default:

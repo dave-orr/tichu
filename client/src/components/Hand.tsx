@@ -10,7 +10,7 @@ type Props = {
 
 export default function Hand({ cards, selectedCards, onToggleCard, disabled }: Props) {
   // Overlap cards so they fit on one line (larger cards need more overlap)
-  const overlap = cards.length > 10 ? -30 : cards.length > 7 ? -18 : cards.length > 4 ? -6 : 0;
+  const overlap = cards.length > 10 ? -80 : cards.length > 7 ? -55 : cards.length > 4 ? -25 : 0;
   return (
     <div className="flex justify-center">
       {cards.map((card, i) => {

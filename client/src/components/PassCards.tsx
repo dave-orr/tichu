@@ -82,7 +82,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
             {selections[target] ? (
               <CardComponent card={selections[target]!} small />
             ) : (
-              <div className="w-16 h-24 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-sm">
+              <div className="w-24 h-36 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-sm">
                 ?
               </div>
             )}

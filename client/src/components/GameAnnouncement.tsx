@@ -6,6 +6,8 @@ export type GameEvent = {
   type: 'tichu' | 'grand-tichu' | 'dog' | 'out' | 'tichu-made' | 'grand-made' | 'dragon-given';
   playerName: string;
   receiverName?: string;
+  // Direction from the viewer to the receiver: 'down' = self, 'up' = partner, 'left' / 'right' = opponents.
+  receiverDirection?: 'up' | 'down' | 'left' | 'right';
 };
 
 const DURATIONS: Record<GameEvent['type'], number> = {
@@ -69,10 +71,15 @@ export function useGameEvents(
           }
         }
         if (receiverIdx >= 0) {
+          // Direction relative to the viewer (mySeat at the bottom of the table).
+          const rel = (receiverIdx - gameState.mySeat + 4) % 4;
+          const receiverDirection: 'up' | 'down' | 'left' | 'right' =
+            rel === 0 ? 'down' : rel === 1 ? 'right' : rel === 2 ? 'up' : 'left';
           detected.push({
             type: 'dragon-given',
             playerName: gameState.players[prev.dragonGiveawayBy].name,
             receiverName: gameState.players[receiverIdx].name,
+            receiverDirection,
           });
         }
       }
@@ -222,12 +229,19 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
         </div>
       );
 
-    case 'dragon-given':
+    case 'dragon-given': {
+      const dir = event.receiverDirection ?? 'right';
+      const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : dir === 'left' ? '←' : '→';
+      const vertical = dir === 'up' || dir === 'down';
+      const flyClass = `dragon-fly-${dir}`;
       return (
         <div className="announce-dragon text-center relative">
-          <div className="text-5xl flex items-center justify-center gap-3">
-            <span className="dragon-fly">🐉</span>
-            <span className="text-purple-300 text-3xl">→</span>
+          <div className={`text-5xl flex items-center justify-center gap-3 ${vertical ? 'flex-col' : ''}`}>
+            {dir === 'left' && <span className="text-purple-300 text-3xl">{arrow}</span>}
+            {dir === 'up' && <span className="text-purple-300 text-3xl">{arrow}</span>}
+            <span className={flyClass}>🐉</span>
+            {dir === 'right' && <span className="text-purple-300 text-3xl">{arrow}</span>}
+            {dir === 'down' && <span className="text-purple-300 text-3xl">{arrow}</span>}
           </div>
           <div className="text-3xl font-black text-purple-300 announce-text-shadow-purple mt-2 tracking-wide">
             {event.receiverName}
@@ -238,6 +252,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
           <Sparkles count={18} spread={140} colors={['#a78bfa', '#c084fc', '#f0abfc', '#ef4444']} />
         </div>
       );
+    }
   }
 }
 
