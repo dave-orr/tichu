@@ -45,12 +45,10 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
   const renderPlayer = (p: InvitablePlayer) => {
     const buttonLabel = invited.has(p.uid)
       ? 'Invited'
-      : !p.isOnline
-        ? 'Offline'
-        : !p.isAvailable
-          ? 'In Game'
-          : 'Invite';
-    const canInvite = p.isAvailable && !invited.has(p.uid);
+      : p.isOnline && !p.isAvailable
+        ? 'In Game'
+        : 'Invite';
+    const canInvite = !invited.has(p.uid) && !(p.isOnline && !p.isAvailable);
 
     return (
       <div key={p.uid} className="flex items-center justify-between p-2 rounded-lg bg-gray-700">
