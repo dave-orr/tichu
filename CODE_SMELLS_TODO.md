@@ -164,3 +164,137 @@ would be cleaner and avoid threading the large object through component trees.
     start game button). Owns its own `swapFrom` and `showInvitePanel` state.
   - `CreateRoomForm.tsx` — room creation form with all game setting checkboxes.
     Owns its own checkbox state, initialized from profile preferences.
+
+---
+
+# Review 2026-05-31 (multi-agent pass; first review in a while)
+
+Findings from a careful read of shared/engine, server, stats, client core, and all
+components. **Nothing below has been fixed** — these are recorded for triage.
+Security-specific items live in `SECURITY_TODO.md`; this file holds correctness
+bugs and design smells. Each item is tagged **[confirmed]** (traced the logic) or
+**[suspected]** (needs a repro/test).
+
+## Engine / shared correctness
+
+### E1. Mah Jong wish not enforced on a fresh lead — HIGH [confirmed]
+**`shared/src/engine.ts:308`** Wish compliance only runs `if (state.mahJongWish != null && state.currentTrick)`.
+When a player wins a trick and *leads* the next one while a wish is still active,
+`currentTrick` is null so the check is skipped — the leader can lead anything and
+ignore the wish, violating the rule that the wish persists across tricks until
+fulfilled. (`canPlayWishedRankFromHand` already has a `!trick` lead branch that is
+never consulted on a lead.)
+
+### E2. Pass-count can mis-resolve when the last player went out on their final play — HIGH [suspected]
+**`shared/src/engine.ts:432-449` (passTurn)** `passersNeeded` counts active players
+excluding `lastPlayedBy`, but `lastPlayedBy` is never cleared when that player goes
+out, so the required-pass count depends on whether the out player is still counted.
+Needs targeted tests for "win the trick on your last card with only 2 players left."
+
+### E3. Phoenix single comparison in `canBeat` bypasses rank — HIGH/MED [confirmed]
+**`shared/src/combinations.ts:374-377`** A Phoenix single returns `canBeat = true`
+against any non-Dragon single regardless of rank, while `playCards` *also* mutates
+`combo.rank = currentTrick.rank + 0.5` (`engine.ts:293-295`). The dual handling is
+redundant and inconsistent and can authorize an illegal "beat" (e.g. Phoenix over a
+previously-played Phoenix-as-Ace). Consolidate to one mechanism.
+
+### E4. Combo identification trusts `phoenixAs` hint without adjacency/range checks — MED [confirmed]
+**`shared/src/combinations.ts:287-289` (straight), `:238,249` (consec pairs)** The
+phoenix-extend branch sets `topRank = phoenixAs > top ? phoenixAs : top` with no check
+that `phoenixAs` is contiguous (top+1), so a bad hint mints a non-contiguous straight
+with an inflated rank. The low-extend branches also allow rank 1 (`>= 1`) for pairs,
+which is impossible (no normal rank-1 card) — guard should be `>= 2`.
+
+### E5. Full-house phoenix default silently picks the higher rank as the triple — MED [suspected]
+**`shared/src/combinations.ts:163-172`** With two natural pairs + Phoenix and no
+`phoenixAs` hint (the validation path in `playCards` never passes one), the engine
+always interprets the higher pair as the triple, so a player who wants the lower
+triple to legally duck/match can't express it.
+
+### E6. `endRound` may mis-award a pending Dragon trick — LOW [suspected]
+**`shared/src/engine.ts:736-746`** If a round ends while an un-awarded Dragon trick
+sits on the table, `endRound` pushes those cards (incl. the 25-pt Dragon) to
+`lastPlayedBy`'s team instead of forcing the opponent giveaway. The direct concede
+path is guarded (`!dragonGiveaway`), but verify the `playDog`/`playBomb`/`giveDragonTrick`
+paths can't reach `endRound` with a Dragon trick pending. Needs a test.
+
+### E7. `getNextActiveSeat` can return an out player — LOW [confirmed]
+**`shared/src/engine.ts:800-811`** Loops only `attempts < 4`; if 3 players are out it
+can land back on an out seat with no guard. Should be unreachable (round ends at
+3-out) but there's no assertion, so bad state stalls the game silently.
+
+### E8. Minor smells — LOW
+- `getNormalRank` (`combinations.ts:7-14`) is dead code (only `singleCardRank` is used).
+- Dog rank convention is inconsistent: `cardSortValue` uses 0, `singleCardRank`/`identifyCombo` use -1 (`deck.ts` vs `combinations.ts:23-27`). Harmless (Dog never compared) but confusing.
+- `passCards`/`callGrandTichu` (`engine.ts:130-184`) shallow-copy the players array then replace one index; correct today but fragile vs the deep-copy pattern in `playCards`. `applyPasses` (`:200-216`) assumes all 4 seats present in `passes` with no defensive check.
+
+## Stats / persistence correctness
+
+### S1. `batch.update()` on a possibly-nonexistent user doc fails the whole batch, silently — HIGH [confirmed]
+**`server/src/stats.ts:98,151`** `updateStatsForRound`/`updateStatsForGameEnd` use
+`batch.update()`, which Firestore rejects with NOT_FOUND if `users/{uid}` doesn't
+exist (it's only created in the `load-profile` handler). A player who plays without
+ever triggering `load-profile` makes the *entire atomic batch* fail, dropping that
+round's stats for **all** players — and the error is swallowed by fire-and-forget
+`.catch(console.error)` in `handler.ts:717-737`. `updateTeamStats` already uses
+`set(..., {merge:true})`; make the others consistent.
+
+### S2. Tie games are credited as a win for team 1 — MED [confirmed]
+**`server/src/stats.ts:119,244`** (and **`shared/src/scoring.ts:111-118` getWinner**)
+`team0Score > team1Score ? 0 : 1` awards ties to team 1. Tichu can legitimately tie
+(both cross target same round). Affects `gamesWon`, `closeGameWins`, `comebackWins`.
+
+### S3. `playedWith` array grows unbounded — MED [confirmed]
+**`server/src/stats.ts:95`** Every round `arrayUnion`s all co-player uids with no
+cap. Over time this inflates write size, read cost (`fetchInvitableUsers` reads the
+whole list), and risks the 1 MiB Firestore document limit.
+
+### S4. Non-transactional, error-swallowing stat writes — LOW/MED [confirmed]
+**`server/src/stats.ts` + `handler.ts:717-737`** Four independent fire-and-forget
+writes (round log, per-user, per-team, game-end). Per-field `increment` is atomic,
+but cross-function consistency isn't — a partial failure permanently diverges
+per-user vs per-team aggregates, with no metric/retry/alert. Also `fetchInvitableUsers`
+(`stats.ts:354`) comments "by last activity" but has no `orderBy` — results are
+arbitrary, not recent.
+
+## Client correctness / React
+
+### C1. Hooks declared after an early return — Rules-of-Hooks violation (latent) — MED [confirmed, currently masked]
+**`client/src/pages/Game.tsx:193`** `if (!gameState) return null;` precedes hooks at
+~212, 223 (useEffect) and ~252, 260, 269 (useMemo). This *would* crash on a
+null→non-null transition, BUT I verified it's currently masked: `App.tsx:61` only
+mounts `<Game>` when `gameState` is truthy, and when it goes null the parent swaps to
+`<Lobby>` so `Game` never renders with null. Still fragile — move all hooks above the
+early return so a future refactor can't reintroduce the crash.
+
+### C2. `resetRoom` leaves stale cross-room state — MED [confirmed]
+**`client/src/hooks/useSocket.ts:244-253`** Clears `gameState`/`roomCode`/`roundResult`
+but not `aiOpenSeats`, `pendingInvites`, `expiredInviteUids`, `randomPartners`,
+`autoSkippedSeat`, `needMahJongWish` — these can leak into the next room's UI after a
+session is lost.
+
+### C3. Uncleared timers fire setState after unmount — MED/LOW [confirmed]
+- `WishDisplay.tsx:21-24` — 800ms evaporate `setTimeout` never cleared; also leaks if `wish` toggles again mid-animation.
+- `GameAnnouncement.tsx:101-105` — per-event removal `setTimeout`s not tracked/cleared on unmount.
+- `Game.tsx:218` (toast) and `useSocket.ts:106` (autoSkip) — 2s `setTimeout`s not cleared.
+
+### C4. RoundResults mislabels double-victory team when `doubleVictoryTeam` is undefined — MED [confirmed]
+**`client/src/components/RoundResults.tsx:67-68`** Indexes `result.doubleVictoryTeam === 0 ? ... : ...`,
+so `undefined` silently falls into the team-1 branch. EventLog uses `?? 0` for the
+same field — RoundResults should match.
+
+### C5. Effects re-run on every broadcast via unstable refs — LOW/MED [confirmed]
+- `Game.tsx:145-191` — title + tab-flash effects depend on `gameState?.players`, a fresh array each broadcast; they tear down/rebuild listeners and fight over `document.title` every update.
+- `Game.tsx:212-220` — auto-pass effect depends on `socket` (a new object each render from `useSocket`), so it re-runs every render (guarded, but fragile). Consider memoizing the `useSocket` return.
+
+### C6. Misc client smells — LOW
+- `Game.tsx:421,435,461,474` — `PlayerPanel` `key` includes the seat's played card ids, so the panel fully remounts every play (intended for the seat-play animation, but it defeats `transition-shadow` on the turn ring). [by design — verify]
+- `InvitePanel.tsx:63` — `p.displayName[0]` throws/renders undefined on an empty name.
+- `RoundResults.tsx:41` — `readyCount` computed but unused (dead code).
+- `useSocket.ts:33-39` — stale-token race: if the socket connects before `idToken` is set and the token then arrives a tick before `connect` fires, the `authenticate` emit can be missed. Consider emitting `authenticate` inside the `connect` handler.
+
+## Cross-cutting design smells — MED/LOW
+- **Duplicated event-detection logic:** `useGameEvents` (`GameAnnouncement.tsx`) and `useEventLog` (`EventLog.tsx`) independently re-derive the same transitions (tichu calls, dog, going-out, dragon-receiver) from prev-vs-current state with near-identical loops — two sources of truth that can drift.
+- **Duplicated constants:** `RANKS [2..14]` / `SPECIALS` redefined in `CardsSeen.tsx:10-11`, `MahJongWish.tsx:7`, and the rank list in `Game.tsx` `comboLabel` — should come from `@tichu/shared`.
+- **Fragile layout math:** `Card.tsx:92-99` hand-computes rotated card-strip geometry (`40 + (n-1)*20`, `stripWidth = 56`) that must stay in sync with `.card-back` CSS and the `-20/-28/-6px` overlaps scattered across `Card/Hand/SeatPlay`; a CSS size change silently breaks it. `PlayerPanel.tsx:26` also hardcodes `min-h/min-w`.
+- **Prop drilling** (still open from item #20): the whole `useSocket` return is threaded through `Game`/`Lobby`; a context provider would be cleaner.
