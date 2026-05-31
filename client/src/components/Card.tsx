@@ -5,14 +5,18 @@ type Props = {
   selected?: boolean;
   onClick?: () => void;
   small?: boolean;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
 };
 
-export default function CardComponent({ card, selected, onClick, small }: Props) {
+export default function CardComponent({ card, selected, onClick, small, draggable, onDragStart }: Props) {
   if (card.type === 'special') {
     return (
       <div
         className={`card special-${card.name} ${selected ? 'selected' : ''} ${small ? 'w-16 h-24 text-xs' : ''}`}
         onClick={onClick}
+        draggable={draggable}
+        onDragStart={onDragStart}
       >
         <SpecialCardContent name={card.name} />
       </div>
@@ -24,6 +28,8 @@ export default function CardComponent({ card, selected, onClick, small }: Props)
     <div
       className={`card ${suitClass} ${selected ? 'selected' : ''} ${small ? 'w-16 h-24 text-xs' : ''}`}
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
     >
       <div className="text-base font-bold absolute top-1 left-1.5">
         {RANK_NAMES[card.rank]}
