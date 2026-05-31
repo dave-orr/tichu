@@ -83,9 +83,9 @@ Tagged [confirmed] (traced) or [suspected] (needs repro).
 - **Location:** `server/src/rooms.ts:242-276`
 - Reconnection matches a seat purely by `playerName` string equality, then rebinds that seat's socket to the caller — no token/uid check. Anyone who knows the room code and a display name can hijack that seat and see its hand via per-seat broadcast. No socket handler in `handler.ts` appears to call `reconnectToRoom`, so it may be dead/partially-wired — confirm before relying on it, but as written it's a hand-takeover primitive.
 
-#### Per-IP connection limit is bypassed via forged `x-forwarded-for` [confirmed]
-- **Location:** `server/src/handler.ts:48-52`
-- `getIp` trusts the client-supplied `x-forwarded-for` first. An attacker sets a random XFF per connection and `MAX_CONNECTIONS_PER_IP` (8) never triggers, defeating the connection-flood protection. XFF can also be a comma list (proxy append) and is used verbatim as the map key — also a correctness bug. Only trust XFF when behind a known proxy and parse the correct hop.
+#### ~~Per-IP connection limit is bypassed via forged `x-forwarded-for`~~ FIXED 2026-05-31
+- **Location:** `server/src/handler.ts` (`getIp`)
+- `getIp` now only consults `x-forwarded-for` when `TRUST_PROXY=1`/`true` (set in production behind the reverse proxy); otherwise it uses the real `socket.handshake.address`. When trusted, it parses the leftmost (originating client) hop from the comma-separated chain instead of using the header verbatim. Documented `TRUST_PROXY` in `server/.env.example`.
 
 #### Stat farming via human + AI games [confirmed]
 - **Location:** `server/src/stats.ts` (all writers) + `handler.ts:712`

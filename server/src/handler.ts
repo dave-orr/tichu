@@ -45,10 +45,21 @@ const rateLimiter = createRateLimiter(1000, 20); // 20 events per second per soc
 const MAX_CONNECTIONS_PER_IP = 8;
 const connectionsPerIp = new Map<string, number>();
 
+// Only trust the X-Forwarded-For header when explicitly told we're behind a
+// trusted reverse proxy (TRUST_PROXY=1 in production). Otherwise a client can
+// forge XFF to dodge the per-IP connection limit, so we use the real socket
+// address. When trusted, XFF may be a comma-separated chain ("client, proxy1,
+// proxy2") — the leftmost entry is the originating client.
+const TRUST_PROXY = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+
 function getIp(socket: Socket): string {
-  return socket.handshake.headers['x-forwarded-for'] as string
-    || socket.handshake.address
-    || 'unknown';
+  if (TRUST_PROXY) {
+    const xff = socket.handshake.headers['x-forwarded-for'];
+    const raw = Array.isArray(xff) ? xff[0] : xff;
+    const first = raw?.split(',')[0].trim();
+    if (first) return first;
+  }
+  return socket.handshake.address || 'unknown';
 }
 
 export function setupHandlers(io: Server): void {

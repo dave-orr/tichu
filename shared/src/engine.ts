@@ -299,9 +299,11 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
     return { state };
   }
 
-  // If there's no current trick, this is a lead — any valid combo works
-  // Check Mah Jong wish enforcement
-  if (state.mahJongWish != null && state.currentTrick) {
+  // Mah Jong wish enforcement — applies both when following (currentTrick set)
+  // and when leading a new trick (currentTrick null): the wish persists across
+  // tricks until fulfilled, so a player who holds the wished rank must play it
+  // whenever they can make a legal play that includes it.
+  if (state.mahJongWish != null) {
     if (!checkWishCompliance(state, seat, cards)) {
       return { state }; // Must play the wished rank if possible
     }
