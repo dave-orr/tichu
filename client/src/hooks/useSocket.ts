@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, RoundResult } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -210,6 +210,12 @@ export function useSocket(idToken: string | null) {
     });
   }, []);
 
+  const fetchPartnerStats = useCallback((): Promise<{ partners: PartnerStats[] }> => {
+    return new Promise(resolve => {
+      socketRef.current?.emit('fetch-partner-stats', resolve);
+    });
+  }, []);
+
   const sendInvite = useCallback((targetUid: string) => {
     socketRef.current?.emit('send-invite', { targetUid });
   }, []);
@@ -282,6 +288,7 @@ export function useSocket(idToken: string | null) {
     pendingInvites,
     expiredInviteUids,
     fetchPlayers,
+    fetchPartnerStats,
     sendInvite,
     respondInvite,
     roomLost,

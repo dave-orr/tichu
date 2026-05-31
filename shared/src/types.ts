@@ -50,6 +50,15 @@ export type InvitablePlayer = {
   isAvailable: boolean;
 };
 
+export type PartnerStats = {
+  partnerUid: string;
+  partnerName: string;
+  partnerPhoto: string | null;
+  gamesPlayed: number;
+  gamesWon: number;
+  roundsPlayed: number;
+};
+
 // ===== Game Settings =====
 
 export type GameSettings = {

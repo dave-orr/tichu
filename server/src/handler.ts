@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PlayResult } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, PlayResult } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -13,7 +13,7 @@ import {
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers, fetchPartnerStats } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards,
@@ -406,6 +406,21 @@ export function setupHandlers(io: Server): void {
       });
 
       callback({ players });
+    });
+
+    socket.on('fetch-partner-stats', async (callback: (data: { partners: PartnerStats[] }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ partners: [] });
+        return;
+      }
+      try {
+        const partners = await fetchPartnerStats(uid);
+        callback({ partners });
+      } catch (err) {
+        console.error('Failed to fetch partner stats:', err);
+        callback({ partners: [] });
+      }
     });
 
     socket.on('send-invite', ({ targetUid }: { targetUid: string }) => {

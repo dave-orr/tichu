@@ -34,10 +34,12 @@ export type UserStats = {
   closeGamesPlayed: number;
   comebackWins: number;
   comebackOpportunities: number;
-  tichuCallsWhenBehind: number;
-  tichuCallsWhenAhead: number;
-  grandCallsWhenBehind: number;
-  grandCallsWhenAhead: number;
+  roundsWhenAhead200: number;
+  roundsWhenBehind200: number;
+  tichuCallsWhenAhead200: number;
+  tichuCallsWhenBehind200: number;
+  grandCallsWhenAhead200: number;
+  grandCallsWhenBehind200: number;
 };
 
 export type UserPreferences = {
@@ -63,10 +65,12 @@ const DEFAULT_STATS: UserStats = {
   closeGamesPlayed: 0,
   comebackWins: 0,
   comebackOpportunities: 0,
-  tichuCallsWhenBehind: 0,
-  tichuCallsWhenAhead: 0,
-  grandCallsWhenBehind: 0,
-  grandCallsWhenAhead: 0,
+  roundsWhenAhead200: 0,
+  roundsWhenBehind200: 0,
+  tichuCallsWhenAhead200: 0,
+  tichuCallsWhenBehind200: 0,
+  grandCallsWhenAhead200: 0,
+  grandCallsWhenBehind200: 0,
 };
 
 export function useAuth() {

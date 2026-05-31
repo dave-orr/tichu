@@ -121,7 +121,11 @@ export default function Lobby({ socket, auth }: Props) {
 
         {/* Stats modal */}
         {showStats && profile && (
-          <UserStats stats={profile.stats} onClose={() => setShowStats(false)} />
+          <UserStats
+            stats={profile.stats}
+            fetchPartnerStats={socket.fetchPartnerStats}
+            onClose={() => setShowStats(false)}
+          />
         )}
 
         {error && (
