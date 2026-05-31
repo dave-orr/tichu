@@ -11,10 +11,8 @@ import DragonGiveaway from '../components/DragonGiveaway.js';
 import RoundResults from '../components/RoundResults.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
-import OpponentInfo from '../components/OpponentInfo.js';
-import SeatPlay from '../components/SeatPlay.js';
+import PlayerPanel from '../components/PlayerPanel.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
-import TichuBadge from '../components/TichuBadge.js';
 import type { Combo, NormalRank } from '@tichu/shared';
 
 function comboLabel(combo: Combo): string {
@@ -413,92 +411,77 @@ export default function Game({ socket, auth }: Props) {
         />
       )}
 
-      {/* Top: partner info, with their last play stacked below */}
-      <div className="flex flex-col items-center p-2 gap-2">
-        <OpponentInfo
-          player={players[relativeSeats[2]]}
-          isCurrentTurn={turnIndex === relativeSeats[2]}
-          label="Partner"
-          showPoints={gameState.settings.countPoints}
-          horizontal
-        />
-        <SeatPlay
-          key={lastPlayBySeat[relativeSeats[2]].map(cardId).join('|') || 'empty'}
-          cards={lastPlayBySeat[relativeSeats[2]]}
-          isTopOfTrick={lastPlayedBy === relativeSeats[2]}
-          combo={currentTrick}
-        />
-      </div>
-
-      {/* Middle: left info + play, center info, right play + info */}
-      <div className="flex-1 flex items-center">
-        {/* Left opponent */}
-        <div className="w-32 flex flex-col items-center p-2 shrink-0">
-          <OpponentInfo
-            player={players[relativeSeats[3]]}
-            isCurrentTurn={turnIndex === relativeSeats[3]}
+      {/* Table: partner (top), left/right opponents (middle), me (bottom) —
+          each panel shows the player's info and their last play together so the
+          whole table fits on one screen. */}
+      <div className="flex-1 flex flex-col justify-center gap-2 py-2 px-2">
+        {/* Top: partner */}
+        <div className="flex justify-center">
+          <PlayerPanel
+            key={`p2-${lastPlayBySeat[relativeSeats[2]].map(cardId).join('|') || 'empty'}`}
+            player={players[relativeSeats[2]]}
+            isCurrentTurn={turnIndex === relativeSeats[2]}
+            label="Partner"
             showPoints={gameState.settings.countPoints}
-            vertical
-          />
-        </div>
-        <div className="flex items-center justify-end pr-3">
-          <SeatPlay
-            key={lastPlayBySeat[relativeSeats[3]].map(cardId).join('|') || 'empty'}
-            cards={lastPlayBySeat[relativeSeats[3]]}
-            isTopOfTrick={lastPlayedBy === relativeSeats[3]}
+            play={lastPlayBySeat[relativeSeats[2]]}
+            isTopOfTrick={lastPlayedBy === relativeSeats[2]}
             combo={currentTrick}
           />
         </div>
 
-        {/* Center: wish, top-combo label, turn indicator */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-4 min-w-[200px]">
-          <WishDisplay wish={gameState.mahJongWish} />
-          {currentTrick && lastPlayedBy !== null && (
-            <div className="text-sm text-gray-300 text-center">
-              <div className="text-xs uppercase tracking-wide text-gray-500">To beat</div>
-              <div className="text-yellow-300 font-semibold">{comboLabel(currentTrick)}</div>
-            </div>
-          )}
-          {!currentTrick && (
-            <div className="text-sm text-gray-500 italic">Waiting for lead</div>
-          )}
-          {isMyTurn && (
-            <div className="text-yellow-400 font-bold animate-pulse">
-              Your turn!
-            </div>
-          )}
-        </div>
+        {/* Middle: left opponent, center status, right opponent */}
+        <div className="flex items-center justify-between gap-3">
+          <PlayerPanel
+            key={`p3-${lastPlayBySeat[relativeSeats[3]].map(cardId).join('|') || 'empty'}`}
+            player={players[relativeSeats[3]]}
+            isCurrentTurn={turnIndex === relativeSeats[3]}
+            showPoints={gameState.settings.countPoints}
+            play={lastPlayBySeat[relativeSeats[3]]}
+            isTopOfTrick={lastPlayedBy === relativeSeats[3]}
+            combo={currentTrick}
+          />
 
-        <div className="flex items-center justify-start pl-3">
-          <SeatPlay
-            key={lastPlayBySeat[relativeSeats[1]].map(cardId).join('|') || 'empty'}
-            cards={lastPlayBySeat[relativeSeats[1]]}
+          {/* Center: wish + what's on the table */}
+          <div className="flex flex-col items-center justify-center gap-2 px-2 min-w-[140px]">
+            <WishDisplay wish={gameState.mahJongWish} />
+            {currentTrick && lastPlayedBy !== null ? (
+              <div className="text-center">
+                <div className="text-xs uppercase tracking-wide text-gray-500">To beat</div>
+                <div className="text-yellow-300 font-semibold text-sm">{comboLabel(currentTrick)}</div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">Waiting for lead</div>
+            )}
+            {isMyTurn && (
+              <div className="text-yellow-400 font-bold animate-pulse text-sm">Your turn!</div>
+            )}
+          </div>
+
+          <PlayerPanel
+            key={`p1-${lastPlayBySeat[relativeSeats[1]].map(cardId).join('|') || 'empty'}`}
+            player={players[relativeSeats[1]]}
+            isCurrentTurn={turnIndex === relativeSeats[1]}
+            showPoints={gameState.settings.countPoints}
+            play={lastPlayBySeat[relativeSeats[1]]}
             isTopOfTrick={lastPlayedBy === relativeSeats[1]}
             combo={currentTrick}
           />
         </div>
-        {/* Right opponent */}
-        <div className="w-32 flex flex-col items-center p-2 shrink-0">
-          <OpponentInfo
-            player={players[relativeSeats[1]]}
-            isCurrentTurn={turnIndex === relativeSeats[1]}
-            showPoints={gameState.settings.countPoints}
-            vertical
-          />
-        </div>
-      </div>
 
-      {/* My last play, just above my hand */}
-      {lastPlayBySeat[mySeat].length > 0 && (
-        <div className="flex justify-center pb-1">
-          <SeatPlay
-            key={lastPlayBySeat[mySeat].map(cardId).join('|')}
-            cards={lastPlayBySeat[mySeat]}
+        {/* Bottom: me */}
+        <div className="flex justify-center">
+          <PlayerPanel
+            key={`me-${lastPlayBySeat[mySeat].map(cardId).join('|') || 'empty'}`}
+            player={myPlayer}
+            isCurrentTurn={isMyTurn}
+            isMe
+            showPoints={gameState.settings.countPoints}
+            play={lastPlayBySeat[mySeat]}
             isTopOfTrick={lastPlayedBy === mySeat}
             combo={currentTrick}
           />
         </div>
-      )}
+      </div>
 
       {/* Toast notification */}
       {(toast || autoSkippedSeat !== null) && (
@@ -514,10 +497,10 @@ export default function Game({ socket, auth }: Props) {
       )}
 
       {/* Bottom area: player's hand and controls */}
-      <div className={`p-4 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
+      <div className={`p-2 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
-          <div className="mb-2 max-w-lg mx-auto">
+          <div className="mb-1 max-w-lg mx-auto">
             <CardsSeen myHand={myHand} playedCards={gameState.playedCards} />
           </div>
         )}
@@ -570,13 +553,6 @@ export default function Game({ socket, auth }: Props) {
           onToggleCard={toggleCard}
           disabled={phase !== 'playing'}
         />
-        <div className="text-center text-base text-gray-400 mt-1">
-          {myPlayer.name}
-          <TichuBadge call={myPlayer.tichuCall} />
-          {gameState.settings.countPoints && myPlayer.trickCount > 0 && (
-            <span className="ml-1 text-green-400">({myPlayer.capturedPoints}pts)</span>
-          )}
-        </div>
 
         {/* Bomb mode banner */}
         {gameState.bombWindow && !bombMode && (
@@ -587,7 +563,7 @@ export default function Game({ socket, auth }: Props) {
 
         {/* Trick countdown */}
         {phase === 'playing' && !bombMode && gameState.trickCountdown && countdownRemaining !== null && (
-          <div className="flex justify-center items-center gap-3 mt-3">
+          <div className="flex justify-center items-center gap-3 mt-2">
             <div className="text-sm text-yellow-400">
               {playerNames[gameState.trickCountdown.winner]} wins trick in{' '}
               <span className="font-bold text-lg tabular-nums">{(countdownRemaining / 1000).toFixed(1)}s</span>
@@ -606,7 +582,7 @@ export default function Game({ socket, auth }: Props) {
         {/* Action buttons */}
         {phase === 'playing' && !bombMode && !gameState.trickCountdown && (
           <div
-            className={`flex justify-center gap-3 mt-3 ${urgencyFlashing ? 'urgency-flash' : ''}`}
+            className={`flex justify-center gap-3 mt-2 ${urgencyFlashing ? 'urgency-flash' : ''}`}
             style={urgencyGlowStyle}
           >
             {isMyTurn && !gameState.bombWindow && (
@@ -673,7 +649,7 @@ export default function Game({ socket, auth }: Props) {
 
         {/* Bomb selection mode */}
         {bombMode && (
-          <div className="flex justify-center gap-3 mt-3">
+          <div className="flex justify-center gap-3 mt-2">
             <div className="text-base text-red-400 flex items-center">Select your bomb cards</div>
             <button
               onClick={confirmBomb}
@@ -724,7 +700,7 @@ export default function Game({ socket, auth }: Props) {
 
         {/* Passed & received cards display — side by side below hand */}
         {phase === 'playing' && (gameState.settings.showPassedCards && passRecord || (!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0)) && (
-          <div className="mt-3 flex justify-center gap-8">
+          <div className="mt-2 flex justify-center gap-8">
             {gameState.settings.showPassedCards && passRecord && (
               <div className="text-center">
                 <div className="text-sm text-gray-400 mb-1">Cards passed</div>
