@@ -8,6 +8,7 @@ type Props = {
   isMe?: boolean;
   label?: string;
   showPoints?: boolean;
+  disconnected?: boolean;
   play: CardType[];
   isTopOfTrick: boolean;
   combo: Combo | null;
@@ -19,7 +20,7 @@ type Props = {
  * on one screen without scrolling.
  */
 export default function PlayerPanel({
-  player, isCurrentTurn, isMe, label, showPoints, play, isTopOfTrick, combo,
+  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo,
 }: Props) {
   return (
     <div
@@ -38,6 +39,12 @@ export default function PlayerPanel({
           </span>
           <TichuBadge call={player.tichuCall} />
         </div>
+        {disconnected && (
+          <div className="mt-0.5 inline-flex items-center gap-1 text-sm font-semibold text-amber-300" title="Disconnected — waiting to reconnect">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            Disconnected
+          </div>
+        )}
         <div className="flex items-center gap-3 text-xl mt-1 font-semibold">
           {player.isOut ? (
             <span className="text-gray-200 italic">Out</span>
