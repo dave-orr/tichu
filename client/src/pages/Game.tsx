@@ -442,18 +442,18 @@ export default function Game({ socket, auth }: Props) {
           />
 
           {/* Center: wish + what's on the table */}
-          <div className="flex flex-col items-center justify-center gap-2 px-2 min-w-[140px]">
+          <div className="flex flex-col items-center justify-center gap-2 px-2 min-w-[180px] max-w-[260px] [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]">
             <WishDisplay wish={gameState.mahJongWish} />
             {currentTrick && lastPlayedBy !== null ? (
               <div className="text-center">
-                <div className="text-xs uppercase tracking-wide text-gray-500">To beat</div>
-                <div className="text-yellow-300 font-semibold text-sm">{comboLabel(currentTrick)}</div>
+                <div className="text-base uppercase tracking-wide text-gray-200 font-semibold">To beat</div>
+                <div className="text-yellow-200 font-bold text-2xl">{comboLabel(currentTrick)}</div>
               </div>
             ) : (
-              <div className="text-sm text-gray-500 italic">Waiting for lead</div>
+              <div className="text-xl text-gray-200 italic">Waiting for lead</div>
             )}
             {isMyTurn && (
-              <div className="text-yellow-400 font-bold animate-pulse text-sm">Your turn!</div>
+              <div className="text-yellow-300 font-bold animate-pulse text-2xl">Your turn!</div>
             )}
           </div>
 
