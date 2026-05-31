@@ -6,10 +6,11 @@ type Props = {
   selectedCards: Set<string>;
   onToggleCard: (card: CardType) => void;
   disabled?: boolean;
+  draggable?: boolean;
+  onDragStart?: (card: CardType) => void;
 };
 
-export default function Hand({ cards, selectedCards, onToggleCard, disabled }: Props) {
-  // Overlap cards so they fit on one line (larger cards need more overlap)
+export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, onDragStart }: Props) {
   const overlap = cards.length > 10 ? -30 : cards.length > 7 ? -18 : cards.length > 4 ? -6 : 0;
   return (
     <div className="flex justify-center">
@@ -21,6 +22,12 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled }: P
               card={card}
               selected={selectedCards.has(id)}
               onClick={disabled ? undefined : () => onToggleCard(card)}
+              draggable={draggable && !disabled}
+              onDragStart={draggable && !disabled && onDragStart ? (e) => {
+                e.dataTransfer.setData('application/json', JSON.stringify(card));
+                e.dataTransfer.effectAllowed = 'move';
+                onDragStart(card);
+              } : undefined}
             />
           </div>
         );

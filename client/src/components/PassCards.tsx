@@ -19,6 +19,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
     right: null,
   });
   const [currentTarget, setCurrentTarget] = useState<PassTarget>('left');
+  const [dragOverTarget, setDragOverTarget] = useState<PassTarget | null>(null);
 
   const leftSeat = getLeftSeat(mySeat);
   const partnerSeat = getPartnerSeat(mySeat);
@@ -31,7 +32,6 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
   const handleCardClick = (card: CardType) => {
     const id = cardId(card);
 
-    // If already selected for a target, remove it
     for (const target of ['left', 'partner', 'right'] as PassTarget[]) {
       if (selections[target] && cardId(selections[target]!) === id) {
         setSelections(s => ({ ...s, [target]: null }));
@@ -40,10 +40,8 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
       }
     }
 
-    // Assign to current target
     setSelections(s => ({ ...s, [currentTarget]: card }));
 
-    // Move to next empty target
     const targets: PassTarget[] = ['left', 'partner', 'right'];
     const nextTargetIdx = targets.indexOf(currentTarget);
     for (let i = 1; i <= 3; i++) {
@@ -56,13 +54,60 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
     }
   };
 
+  const handleDrop = (target: PassTarget, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverTarget(null);
+    try {
+      const card: CardType = JSON.parse(e.dataTransfer.getData('application/json'));
+      const id = cardId(card);
+
+      // If this card is already assigned to another slot, remove it from there
+      const newSelections = { ...selections };
+      for (const t of ['left', 'partner', 'right'] as PassTarget[]) {
+        if (newSelections[t] && cardId(newSelections[t]!) === id) {
+          newSelections[t] = null;
+        }
+      }
+
+      newSelections[target] = card;
+      setSelections(newSelections);
+
+      // Advance currentTarget to next empty slot
+      const targets: PassTarget[] = ['left', 'partner', 'right'];
+      for (const t of targets) {
+        if (!newSelections[t]) {
+          setCurrentTarget(t);
+          return;
+        }
+      }
+    } catch {
+      // ignore invalid drag data
+    }
+  };
+
+  const handleDragOver = (target: PassTarget, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverTarget(target);
+  };
+
+  const handleSlotDragStart = (target: PassTarget, e: React.DragEvent) => {
+    const card = selections[target];
+    if (!card) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify(card));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   const allSelected = selections.left && selections.partner && selections.right;
 
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-bold text-center text-yellow-400">Pass Cards</h3>
       <p className="text-base text-gray-300 text-center">
-        Select one card to pass to each player
+        Select or drag one card to pass to each player
       </p>
 
       <div className="flex justify-center gap-8 mb-4">
@@ -73,14 +118,22 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
         ]).map(({ target, label }) => (
           <div
             key={target}
-            className={`text-center cursor-pointer p-2 rounded ${
+            className={`text-center cursor-pointer p-2 rounded transition-colors ${
               currentTarget === target ? 'bg-yellow-600/30 ring-2 ring-yellow-500' : ''
-            }`}
+            } ${dragOverTarget === target ? 'bg-green-600/30 ring-2 ring-green-400' : ''}`}
             onClick={() => setCurrentTarget(target)}
+            onDrop={(e) => handleDrop(target, e)}
+            onDragOver={(e) => handleDragOver(target, e)}
+            onDragLeave={() => setDragOverTarget(null)}
           >
             <div className="text-sm text-gray-400 mb-1">{label}</div>
             {selections[target] ? (
-              <CardComponent card={selections[target]!} small />
+              <div
+                draggable
+                onDragStart={(e) => handleSlotDragStart(target, e)}
+              >
+                <CardComponent card={selections[target]!} small />
+              </div>
             ) : (
               <div className="w-16 h-24 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-sm">
                 ?
@@ -94,6 +147,8 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
         cards={hand}
         selectedCards={selectedIds}
         onToggleCard={handleCardClick}
+        draggable
+        onDragStart={() => {}}
       />
 
       {allSelected && (
