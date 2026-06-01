@@ -153,6 +153,13 @@ export function useAuth() {
     setProfile(prev => prev ? { ...prev, preferences: { ...prev.preferences, lastSettings: settings } } : prev);
   }, []);
 
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    if (!user) return null;
+    const token = await user.getIdToken(true);
+    setIdToken(token);
+    return token;
+  }, [user]);
+
   return {
     user,
     profile,
@@ -162,5 +169,6 @@ export function useAuth() {
     signOut,
     updateProfile,
     updateLastSettings,
+    refreshToken,
   };
 }
