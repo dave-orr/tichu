@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate } from '@tichu/shared';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -29,6 +29,7 @@ export function useSocket(idToken: string | null) {
   const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
   const [roomLost, setRoomLost] = useState(false);
   const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
+  const [eloUpdate, setEloUpdate] = useState<EloUpdate | null>(null);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -67,10 +68,15 @@ export function useSocket(idToken: string | null) {
       gameStateRef.current = state;
       setError(null);
       if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
-      // Clear round result when the phase moves past roundEnd
+      // Clear round result / elo update when the phase moves past roundEnd
       if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
         setRoundResult(null);
+        setEloUpdate(null);
       }
+    });
+
+    socket.on('elo-update', (update: EloUpdate) => {
+      setEloUpdate(update);
     });
 
     socket.on('error', ({ message }: { message: string }) => {
@@ -216,6 +222,12 @@ export function useSocket(idToken: string | null) {
     });
   }, []);
 
+  const fetchRoomElos = useCallback((): Promise<RoomElos> => {
+    return new Promise(resolve => {
+      socketRef.current?.emit('fetch-room-elos', resolve);
+    });
+  }, []);
+
   const sendInvite = useCallback((targetUid: string) => {
     socketRef.current?.emit('send-invite', { targetUid });
   }, []);
@@ -254,6 +266,7 @@ export function useSocket(idToken: string | null) {
     roomCodeRef.current = null;
     setRoomLost(false);
     setRoundResult(null);
+    setEloUpdate(null);
     setIsOrganizer(false);
     setError(null);
   }, []);
@@ -289,6 +302,8 @@ export function useSocket(idToken: string | null) {
     expiredInviteUids,
     fetchPlayers,
     fetchPartnerStats,
+    fetchRoomElos,
+    eloUpdate,
     sendInvite,
     respondInvite,
     roomLost,

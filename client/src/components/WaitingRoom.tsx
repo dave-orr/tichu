@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { Seat, ClientGameState, InvitablePlayer } from '@tichu/shared';
+import { useState, useEffect } from 'react';
+import type { Seat, ClientGameState, InvitablePlayer, RoomElos } from '@tichu/shared';
 import InvitePanel from './InvitePanel.js';
 
 const SEAT_NAMES = ['North', 'East', 'South', 'West'];
@@ -18,6 +18,7 @@ type Props = {
   onMarkSeatAi: (seat: Seat) => void;
   onUnmarkSeatAi: (seat: Seat) => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
+  fetchRoomElos: () => Promise<RoomElos>;
   sendInvite: (targetUid: string) => void;
   expiredInviteUids: Set<string>;
 };
@@ -26,13 +27,22 @@ export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
   aiOpenSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
   onMarkSeatAi, onUnmarkSeatAi,
-  fetchPlayers, sendInvite, expiredInviteUids,
+  fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
 }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
+  const [roomElos, setRoomElos] = useState<RoomElos | null>(null);
 
   const playerCount = gameState.players.filter(p => p.name).length;
   const canSwapSeats = isOrganizer && !randomPartners && playerCount >= 2;
+
+  // Refetch Elo ratings whenever the seated players change (joins, swaps, etc.).
+  const seatSignature = gameState.players.map(p => p.id || '').join('|');
+  useEffect(() => {
+    let cancelled = false;
+    fetchRoomElos().then(elos => { if (!cancelled) setRoomElos(elos); });
+    return () => { cancelled = true; };
+  }, [fetchRoomElos, seatSignature]);
 
   const handleSeatClick = (seat: Seat) => {
     if (!canSwapSeats) return;
@@ -101,6 +111,11 @@ export default function WaitingRoom({
                   </span>
                   <br />
                   {p.name || (isAiOpen ? 'Waiting for bot...' : 'Waiting...')}
+                  {p.name && roomElos?.seatElos[i] != null && (
+                    <span className="block text-xs text-yellow-300/90 font-semibold">
+                      {roomElos.seatElos[i]} Elo
+                    </span>
+                  )}
                   {!p.name && isOrganizer && (
                     <button
                       onClick={(e) => {
@@ -123,6 +138,18 @@ export default function WaitingRoom({
           <p className="text-sm text-gray-400 mt-2">
             Teams: North & South vs East & West
           </p>
+          {roomElos && (roomElos.teamElos[0] != null || roomElos.teamElos[1] != null) && (
+            <p className="text-xs text-gray-500 mt-1">
+              Pairing Elo:{' '}
+              <span className="text-yellow-300/90 font-semibold">
+                N&S {roomElos.teamElos[0] != null ? roomElos.teamElos[0] : '—'}
+              </span>
+              {' · '}
+              <span className="text-yellow-300/90 font-semibold">
+                E&W {roomElos.teamElos[1] != null ? roomElos.teamElos[1] : '—'}
+              </span>
+            </p>
+          )}
           {canSwapSeats && (
             <p className="text-xs text-gray-500 mt-1">
               {swapFrom !== null

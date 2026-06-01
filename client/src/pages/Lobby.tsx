@@ -57,6 +57,7 @@ export default function Lobby({ socket, auth }: Props) {
         onMarkSeatAi={socket.markSeatAi}
         onUnmarkSeatAi={socket.unmarkSeatAi}
         fetchPlayers={socket.fetchPlayers}
+        fetchRoomElos={socket.fetchRoomElos}
         sendInvite={socket.sendInvite}
         expiredInviteUids={socket.expiredInviteUids}
       />

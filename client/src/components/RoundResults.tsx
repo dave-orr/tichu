@@ -1,4 +1,4 @@
-import { RoundResult, RoundHistoryEntry, ClientPlayer, Seat } from '@tichu/shared';
+import { RoundResult, RoundHistoryEntry, ClientPlayer, Seat, EloUpdate } from '@tichu/shared';
 
 type Props = {
   result: RoundResult;
@@ -8,6 +8,7 @@ type Props = {
   mySeat: Seat;
   roundEndReady: Seat[];
   roundHistory: RoundHistoryEntry[];
+  eloUpdate?: EloUpdate | null;
 };
 
 function tichuLabel(call: 'small' | 'grand', made: boolean) {
@@ -35,7 +36,15 @@ function TeamHeader({ p1, p2, compact }: { p1: ClientPlayer; p2: ClientPlayer; c
   return <span>{p1.name} & {p2.name}</span>;
 }
 
-export default function RoundResults({ result, players, onNextRound, isGameOver, mySeat, roundEndReady, roundHistory }: Props) {
+function formatDelta(delta: number): string {
+  return delta > 0 ? `+${delta}` : `${delta}`;
+}
+
+function deltaColor(delta: number): string {
+  return delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400';
+}
+
+export default function RoundResults({ result, players, onNextRound, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
   const readyCount = roundEndReady.length;
@@ -194,6 +203,44 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
                 : `${players[1].name} & ${players[3].name} Win!`
               }
             </div>
+
+            {eloUpdate && (eloUpdate.seatElos.some(e => e != null) || eloUpdate.teamElos.some(e => e != null)) && (
+              <div className="bg-gray-900/60 rounded-lg p-3 mb-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Elo Ratings</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {([0, 1] as const).map(team => {
+                    const seats: [Seat, Seat] = team === 0 ? [0, 2] : [1, 3];
+                    const teamElo = eloUpdate.teamElos[team];
+                    const teamDelta = eloUpdate.teamDeltas[team];
+                    return (
+                      <div key={team} className="text-sm">
+                        <div className="text-gray-400 text-xs mb-1">
+                          <TeamHeader p1={players[seats[0]]} p2={players[seats[1]]} compact />
+                        </div>
+                        {teamElo != null && teamDelta != null && (
+                          <div className="text-gray-200">
+                            Pair: <span className="font-bold">{teamElo}</span>{' '}
+                            <span className={deltaColor(teamDelta)}>({formatDelta(teamDelta)})</span>
+                          </div>
+                        )}
+                        {seats.map(seat => {
+                          const elo = eloUpdate.seatElos[seat];
+                          const delta = eloUpdate.seatDeltas[seat];
+                          if (elo == null || delta == null) return null;
+                          return (
+                            <div key={seat} className="text-gray-300 text-xs">
+                              {players[seat].name}: <span className="font-semibold">{elo}</span>{' '}
+                              <span className={deltaColor(delta)}>({formatDelta(delta)})</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={() => window.location.reload()}
               className="mt-2 py-3 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"

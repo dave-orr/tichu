@@ -1,6 +1,9 @@
-import { GameState, Seat, getTeamForSeat, RoundResult, RoundLog, RoundLogPlayerEntry, PartnerStats } from '@tichu/shared';
+import {
+  GameState, Seat, getTeamForSeat, RoundResult, RoundLog, RoundLogPlayerEntry, PartnerStats,
+  RoomElos, EloUpdate, ELO_INITIAL, eloExpected, eloKFactor,
+} from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
-import { Room, RoundAccumulator, getSocketUid } from './rooms.js';
+import { Room, getSocketUid } from './rooms.js';
 
 const inc = (n: number) => firebaseAdmin!.firestore.FieldValue.increment(n);
 const arrayUnion = (...elements: string[]) => firebaseAdmin!.firestore.FieldValue.arrayUnion(...elements);
@@ -306,6 +309,145 @@ export async function saveRoundLog(
     .set(log);
 }
 
+// ===== Elo ratings =====
+
+/** Map of seat -> authenticated uid (humans only; AI / anonymous seats excluded). */
+function buildSeatUidMap(room: Room): Map<Seat, string> {
+  const map = new Map<Seat, string>();
+  for (const [socketId, seat] of room.playerSockets) {
+    const uid = getSocketUid(socketId);
+    if (uid) map.set(seat, uid);
+  }
+  return map;
+}
+
+/** Sorted "_"-joined doc key for a team's pairing, or null unless both seats are authenticated. */
+function teamKeyForSeats(seatUids: Map<Seat, string>, seats: readonly [Seat, Seat]): string | null {
+  const uids = seats.map(s => seatUids.get(s)).filter((u): u is string => !!u);
+  if (uids.length !== 2) return null;
+  return [...uids].sort().join('_');
+}
+
+/** Read current individual + pairing Elo for everyone seated in a room (for team selection). */
+export async function fetchRoomElos(room: Room): Promise<RoomElos> {
+  const seatElos: (number | null)[] = [null, null, null, null];
+  const teamElos: [number | null, number | null] = [null, null];
+  if (!firebaseAdmin) return { seatElos, teamElos };
+  const db = firebaseAdmin.firestore();
+
+  const seatUids = buildSeatUidMap(room);
+
+  await Promise.all([...seatUids].map(async ([seat, uid]) => {
+    const snap = await db.collection('users').doc(uid).get();
+    const elo = snap.data()?.stats?.elo;
+    seatElos[seat] = typeof elo === 'number' ? elo : ELO_INITIAL;
+  }));
+
+  await Promise.all(([0, 1] as const).map(async teamIdx => {
+    const key = teamKeyForSeats(seatUids, room.state.teams[teamIdx].players);
+    if (!key) return;
+    const snap = await db.collection('teams').doc(key).get();
+    const elo = snap.data()?.stats?.elo;
+    teamElos[teamIdx] = typeof elo === 'number' ? elo : ELO_INITIAL;
+  }));
+
+  return { seatElos, teamElos };
+}
+
+/**
+ * Apply Elo updates for both individuals and pairings when a game ends.
+ * Individuals are rated 2v2 (team-average expected score); pairings are rated head-to-head.
+ * Runs in a transaction so concurrent games can't clobber each other's ratings.
+ */
+export async function updateEloForGameEnd(room: Room): Promise<EloUpdate | null> {
+  if (!firebaseAdmin) return null;
+  const db = firebaseAdmin.firestore();
+  const state = room.state;
+
+  const seatUids = buildSeatUidMap(room);
+  if (seatUids.size === 0) return null;
+  const winningTeam = state.teams[0].score > state.teams[1].score ? 0 : 1;
+
+  const teamKeys: [string | null, string | null] = [
+    teamKeyForSeats(seatUids, state.teams[0].players),
+    teamKeyForSeats(seatUids, state.teams[1].players),
+  ];
+
+  const seatElos: (number | null)[] = [null, null, null, null];
+  const seatDeltas: (number | null)[] = [null, null, null, null];
+  const teamElos: [number | null, number | null] = [null, null];
+  const teamDeltas: [number | null, number | null] = [null, null];
+
+  await db.runTransaction(async tx => {
+    // ---- Reads (must precede all writes in a transaction) ----
+    const userRefs = new Map<Seat, FirebaseFirestore.DocumentReference>();
+    const userSnaps = new Map<Seat, FirebaseFirestore.DocumentSnapshot>();
+    for (const [seat, uid] of seatUids) {
+      const ref = db.collection('users').doc(uid);
+      userRefs.set(seat, ref);
+      userSnaps.set(seat, await tx.get(ref));
+    }
+    const teamRefs: (FirebaseFirestore.DocumentReference | null)[] = [null, null];
+    const teamSnaps: (FirebaseFirestore.DocumentSnapshot | null)[] = [null, null];
+    for (const t of [0, 1] as const) {
+      if (!teamKeys[t]) continue;
+      const ref = db.collection('teams').doc(teamKeys[t]!);
+      teamRefs[t] = ref;
+      teamSnaps[t] = await tx.get(ref);
+    }
+
+    // ---- Individual ratings ----
+    const curSeatElo = (seat: Seat): number => {
+      const elo = userSnaps.get(seat)?.data()?.stats?.elo;
+      return typeof elo === 'number' ? elo : ELO_INITIAL;
+    };
+    const teamAvg: [number, number] = ([0, 1] as const).map(t => {
+      const [a, b] = state.teams[t].players;
+      return (curSeatElo(a) + curSeatElo(b)) / 2;
+    }) as [number, number];
+
+    for (const [seat] of seatUids) {
+      const team = getTeamForSeat(seat);
+      const data = userSnaps.get(seat)?.data() ?? {};
+      const cur = typeof data.stats?.elo === 'number' ? data.stats.elo : ELO_INITIAL;
+      const games = data.stats?.eloGames ?? 0;
+      const peak = typeof data.stats?.eloPeak === 'number' ? data.stats.eloPeak : ELO_INITIAL;
+      const exp = eloExpected(teamAvg[team], teamAvg[(1 - team) as 0 | 1]);
+      const actual = team === winningTeam ? 1 : 0;
+      const next = Math.round(cur + eloKFactor(games) * (actual - exp));
+      tx.set(userRefs.get(seat)!, {
+        stats: { elo: next, eloGames: games + 1, eloPeak: Math.max(peak, next) },
+      }, { merge: true });
+      seatElos[seat] = next;
+      seatDeltas[seat] = next - cur;
+    }
+
+    // ---- Pairing ratings (only teams where both players are authenticated) ----
+    const curTeamElo = (t: 0 | 1): number => {
+      const elo = teamSnaps[t]?.data()?.stats?.elo;
+      return typeof elo === 'number' ? elo : ELO_INITIAL;
+    };
+    for (const t of [0, 1] as const) {
+      if (!teamKeys[t]) continue;
+      const data = teamSnaps[t]?.data() ?? {};
+      const cur = typeof data.stats?.elo === 'number' ? data.stats.elo : ELO_INITIAL;
+      const games = data.stats?.eloGames ?? 0;
+      const peak = typeof data.stats?.eloPeak === 'number' ? data.stats.eloPeak : ELO_INITIAL;
+      const exp = eloExpected(cur, curTeamElo((1 - t) as 0 | 1));
+      const actual = t === winningTeam ? 1 : 0;
+      const next = Math.round(cur + eloKFactor(games) * (actual - exp));
+      tx.set(teamRefs[t]!, {
+        playerUids: teamKeys[t]!.split('_'),
+        stats: { elo: next, eloGames: games + 1, eloPeak: Math.max(peak, next) },
+      }, { merge: true });
+      teamElos[t] = next;
+      teamDeltas[t] = next - cur;
+    }
+  });
+
+  return { seatElos, seatDeltas, teamElos, teamDeltas };
+}
+
 const MAX_INVITABLE_USERS = 50;
 
 export async function fetchInvitableUsers(
@@ -375,7 +517,7 @@ export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
     .where('playerUids', 'array-contains', uid)
     .get();
 
-  const rows: Array<{ partnerUid: string; gamesPlayed: number; gamesWon: number; roundsPlayed: number }> = [];
+  const rows: Array<{ partnerUid: string; gamesPlayed: number; gamesWon: number; roundsPlayed: number; teamElo: number | null }> = [];
   for (const doc of teamsSnap.docs) {
     const data = doc.data();
     const playerUids: string[] = data.playerUids || [];
@@ -386,6 +528,7 @@ export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
       gamesPlayed: data.stats?.gamesPlayed || 0,
       gamesWon: data.stats?.gamesWon || 0,
       roundsPlayed: data.stats?.roundsPlayed || 0,
+      teamElo: typeof data.stats?.elo === 'number' ? data.stats.elo : null,
     });
   }
 
@@ -416,6 +559,7 @@ export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
       gamesPlayed: r.gamesPlayed,
       gamesWon: r.gamesWon,
       roundsPlayed: r.roundsPlayed,
+      teamElo: r.teamElo,
     }))
     .sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.roundsPlayed - a.roundsPlayed);
 }

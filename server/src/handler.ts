@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, PlayResult } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult } from '@tichu/shared';
 import {
   createRoom, joinRoom, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -13,7 +13,7 @@ import {
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers, fetchPartnerStats } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards,
@@ -423,6 +423,21 @@ export function setupHandlers(io: Server): void {
       }
     });
 
+    socket.on('fetch-room-elos', async (callback: (data: RoomElos) => void) => {
+      const empty: RoomElos = { seatElos: [null, null, null, null], teamElos: [null, null] };
+      const found = getRoomBySocket(socket.id);
+      if (!found) {
+        callback(empty);
+        return;
+      }
+      try {
+        callback(await fetchRoomElos(found.room));
+      } catch (err) {
+        console.error('Failed to fetch room elos:', err);
+        callback(empty);
+      }
+    });
+
     socket.on('send-invite', ({ targetUid }: { targetUid: string }) => {
       const fromUid = getSocketUid(socket.id);
       if (!fromUid) return;
@@ -644,7 +659,7 @@ export function processPlayResult(io: Server, room: Room, seat: Seat, result: Pl
   if (result.roundResult) {
     io.to(room.code).emit('round-result', { result: result.roundResult });
     sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
-    handleRoundResult(room, result.roundResult);
+    handleRoundResult(io, room, result.roundResult);
   }
   if (!result.roundResult) autoSkipHelpless(io, room);
   broadcastState(io, room);
@@ -691,7 +706,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
     if (result.roundResult) {
       io.to(room.code).emit('round-result', { result: result.roundResult });
       sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
-      handleRoundResult(room, result.roundResult);
+      handleRoundResult(io, room, result.roundResult);
     }
 
     iterations++;
@@ -724,7 +739,7 @@ function resolveTrickCountdown(io: Server, room: Room): void {
   broadcastState(io, room);
 }
 
-function handleRoundResult(room: Room, roundResult: RoundResult): void {
+function handleRoundResult(io: Server, room: Room, roundResult: RoundResult): void {
   const state = room.state;
   if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') return;
 
@@ -744,10 +759,21 @@ function handleRoundResult(room: Room, roundResult: RoundResult): void {
     console.error('Failed to update team stats:', err)
   );
 
-  // If game is over, also update game-level stats
+  // If game is over, also update game-level stats and Elo ratings
   if (isGameEnd) {
     updateStatsForGameEnd(room, roundResult).catch(err =>
       console.error('Failed to update game stats:', err)
     );
+
+    // Elo: recompute ratings, then broadcast the changes to the room so the
+    // game-over screen can show new ratings and deltas.
+    updateEloForGameEnd(room)
+      .then(update => {
+        if (update) {
+          io.to(room.code).emit('elo-update', update);
+          sseNotifyCallback?.(room.code, -1 as Seat, 'elo-update', update);
+        }
+      })
+      .catch(err => console.error('Failed to update Elo ratings:', err));
   }
 }
