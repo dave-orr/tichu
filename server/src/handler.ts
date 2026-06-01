@@ -107,12 +107,13 @@ export function setupHandlers(io: Server): void {
     }
 
     // Handle late/refreshed authentication tokens without reconnecting
-    socket.on('authenticate', async ({ token: newToken }: { token: string }) => {
+    socket.on('authenticate', async ({ token: newToken }: { token: string }, ack?: (data: { ok: boolean }) => void) => {
       const decoded = await verifyIdToken(newToken);
       if (decoded) {
         setSocketUid(socket.id, decoded.uid);
         pushPendingInvites(decoded.uid);
       }
+      ack?.({ ok: !!decoded });
     });
 
     socket.on('create-room', ({ playerName, randomPartners, settings, photoURL, sessionId }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null; sessionId?: string }) => {
@@ -431,10 +432,10 @@ export function setupHandlers(io: Server): void {
 
     // ===== Invite System =====
 
-    socket.on('fetch-players', async (callback: (data: { players: InvitablePlayer[] }) => void) => {
+    socket.on('fetch-players', async (callback: (data: { players: InvitablePlayer[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
-        callback({ players: [] });
+        callback({ players: [], needsAuth: true });
         return;
       }
 
@@ -460,10 +461,10 @@ export function setupHandlers(io: Server): void {
       callback({ players });
     });
 
-    socket.on('fetch-partner-stats', async (callback: (data: { partners: PartnerStats[] }) => void) => {
+    socket.on('fetch-partner-stats', async (callback: (data: { partners: PartnerStats[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
-        callback({ partners: [] });
+        callback({ partners: [], needsAuth: true });
         return;
       }
       try {
@@ -540,9 +541,13 @@ export function setupHandlers(io: Server): void {
 
     // ===== User Profile (via Admin SDK) =====
 
-    socket.on('load-profile', async (callback: (data: { profile: unknown } | { error: string }) => void) => {
+    socket.on('load-profile', async (callback: (data: ({ profile: unknown } | { error: string }) & { needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
-      if (!uid || !firebaseAdmin) {
+      if (!uid) {
+        callback({ error: 'Not authenticated', needsAuth: true });
+        return;
+      }
+      if (!firebaseAdmin) {
         callback({ error: 'Not authenticated' });
         return;
       }

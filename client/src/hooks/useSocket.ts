@@ -11,10 +11,12 @@ export type IncomingInvite = {
   fromName: string;
 };
 
-export function useSocket(idToken: string | null) {
+export function useSocket(idToken: string | null, refreshToken?: () => Promise<string | null>) {
   const socketRef = useRef<Socket | null>(null);
   const tokenRef = useRef(idToken);
   tokenRef.current = idToken;
+  const refreshTokenRef = useRef(refreshToken);
+  refreshTokenRef.current = refreshToken;
   const sessionIdRef = useRef<string>(getSessionId());
   // Seed the room code from localStorage so a fresh page load (refresh/crash)
   // can attempt to rejoin the seat we were in.
@@ -229,17 +231,35 @@ export function useSocket(idToken: string | null) {
     socketRef.current?.emit('swap-seats', { seatA, seatB });
   }, []);
 
-  const fetchPlayers = useCallback((): Promise<{ players: InvitablePlayer[] }> => {
-    return new Promise(resolve => {
-      socketRef.current?.emit('fetch-players', resolve);
+  // Emit an event with a callback; if the server signals needsAuth, force-refresh
+  // the token, wait for the server to accept it, and retry once.
+  const emitWithAuthRetry = useCallback(async <T extends { needsAuth?: boolean }>(
+    event: string,
+    payload?: unknown,
+  ): Promise<T> => {
+    const send = (): Promise<T> => new Promise(resolve => {
+      const sock = socketRef.current;
+      if (!sock) return resolve({} as T);
+      if (payload === undefined) sock.emit(event, resolve);
+      else sock.emit(event, payload, resolve);
     });
+    const first = await send();
+    if (!first.needsAuth || !refreshTokenRef.current) return first;
+    const token = await refreshTokenRef.current();
+    if (!token) return first;
+    await new Promise<void>(resolve => {
+      socketRef.current?.emit('authenticate', { token }, () => resolve());
+    });
+    return await send();
   }, []);
 
+  const fetchPlayers = useCallback((): Promise<{ players: InvitablePlayer[] }> => {
+    return emitWithAuthRetry<{ players: InvitablePlayer[]; needsAuth?: boolean }>('fetch-players');
+  }, [emitWithAuthRetry]);
+
   const fetchPartnerStats = useCallback((): Promise<{ partners: PartnerStats[] }> => {
-    return new Promise(resolve => {
-      socketRef.current?.emit('fetch-partner-stats', resolve);
-    });
-  }, []);
+    return emitWithAuthRetry<{ partners: PartnerStats[]; needsAuth?: boolean }>('fetch-partner-stats');
+  }, [emitWithAuthRetry]);
 
   const sendInvite = useCallback((targetUid: string) => {
     socketRef.current?.emit('send-invite', { targetUid });
@@ -251,10 +271,8 @@ export function useSocket(idToken: string | null) {
   }, []);
 
   const loadProfile = useCallback((): Promise<{ profile: unknown } | { error: string }> => {
-    return new Promise(resolve => {
-      socketRef.current?.emit('load-profile', resolve);
-    });
-  }, []);
+    return emitWithAuthRetry<({ profile: unknown } | { error: string }) & { needsAuth?: boolean }>('load-profile');
+  }, [emitWithAuthRetry]);
 
   const saveSettings = useCallback((settings: Partial<GameSettings>, randomPartners?: boolean) => {
     socketRef.current?.emit('save-settings', { settings, randomPartners });
