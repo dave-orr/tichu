@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, PlayResult } from '@tichu/shared';
 import {
-  createRoom, joinRoom, getRoom, getRoomBySocket, removePlayer,
+  createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
@@ -45,10 +45,21 @@ const rateLimiter = createRateLimiter(1000, 20); // 20 events per second per soc
 const MAX_CONNECTIONS_PER_IP = 8;
 const connectionsPerIp = new Map<string, number>();
 
+// Only trust the X-Forwarded-For header when explicitly told we're behind a
+// trusted reverse proxy (TRUST_PROXY=1 in production). Otherwise a client can
+// forge XFF to dodge the per-IP connection limit, so we use the real socket
+// address. When trusted, XFF may be a comma-separated chain ("client, proxy1,
+// proxy2") — the leftmost entry is the originating client.
+const TRUST_PROXY = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+
 function getIp(socket: Socket): string {
-  return socket.handshake.headers['x-forwarded-for'] as string
-    || socket.handshake.address
-    || 'unknown';
+  if (TRUST_PROXY) {
+    const xff = socket.handshake.headers['x-forwarded-for'];
+    const raw = Array.isArray(xff) ? xff[0] : xff;
+    const first = raw?.split(',')[0].trim();
+    if (first) return first;
+  }
+  return socket.handshake.address || 'unknown';
 }
 
 export function setupHandlers(io: Server): void {
@@ -105,24 +116,24 @@ export function setupHandlers(io: Server): void {
       ack?.({ ok: !!decoded });
     });
 
-    socket.on('create-room', ({ playerName, randomPartners, settings, photoURL }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null }) => {
+    socket.on('create-room', ({ playerName, randomPartners, settings, photoURL, sessionId }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null; sessionId?: string }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
       }
-      const room = createRoom(socket.id, playerName, randomPartners ?? false, settings);
+      const room = createRoom(socket.id, playerName, randomPartners ?? false, settings, sessionId);
       room.state.players[0].photoURL = photoURL ?? null;
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
     });
 
-    socket.on('join-room', ({ roomCode, playerName, photoURL }: { roomCode: string; playerName: string; photoURL?: string | null }) => {
+    socket.on('join-room', ({ roomCode, playerName, photoURL, sessionId }: { roomCode: string; playerName: string; photoURL?: string | null; sessionId?: string }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
       }
-      const result = joinRoom(roomCode, socket.id, playerName);
+      const result = joinRoom(roomCode, socket.id, playerName, sessionId);
       if ('error' in result) {
         socket.emit('error', { message: result.error });
         return;
@@ -133,6 +144,47 @@ export function setupHandlers(io: Server): void {
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
       socket.emit('random-partners-updated', { randomPartners: room.randomPartners });
+    });
+
+    // Reconnect a returning player (refresh, crash, dropped connection) back to
+    // their seat using their persistent client session token.
+    socket.on('rejoin-room', ({ roomCode, sessionId, playerName, photoURL }: { roomCode: string; sessionId: string; playerName?: string; photoURL?: string | null }) => {
+      if (!roomCode || !sessionId) {
+        socket.emit('room-lost');
+        return;
+      }
+      const result = reconnectToRoom(roomCode, socket.id, sessionId);
+      if (!('error' in result)) {
+        const { room, seat } = result;
+        if (photoURL !== undefined) room.state.players[seat].photoURL = photoURL;
+        socket.join(room.code);
+        socket.emit('room-rejoined', {
+          roomCode: room.code,
+          randomPartners: room.randomPartners,
+          isOrganizer: room.organizer === socket.id,
+        });
+        broadcastState(io, room);
+        return;
+      }
+      // Couldn't reclaim the seat. If the room is still open for new players,
+      // fall back to a fresh join; otherwise the session is truly lost.
+      const room = getRoom(roomCode);
+      if (room && room.state.phase === 'waiting' && isValidPlayerName(playerName ?? '')) {
+        const joined = joinRoom(roomCode, socket.id, playerName!, sessionId);
+        if (!('error' in joined)) {
+          joined.room.state.players[joined.seat].photoURL = photoURL ?? null;
+          socket.join(joined.room.code);
+          io.to(joined.room.code).emit('player-joined', { playerName, seat: joined.seat });
+          socket.emit('room-rejoined', {
+            roomCode: joined.room.code,
+            randomPartners: joined.room.randomPartners,
+            isOrganizer: joined.room.organizer === socket.id,
+          });
+          broadcastState(io, joined.room);
+          return;
+        }
+      }
+      socket.emit('room-lost');
     });
 
     socket.on('check-room', ({ roomCode }: { roomCode: string }) => {
@@ -580,7 +632,13 @@ export function setupHandlers(io: Server): void {
 
     socket.on('disconnect', () => {
       console.log(`Player disconnected: ${socket.id}`);
+      const found = getRoomBySocket(socket.id);
       removePlayer(socket.id);
+      // Let remaining players see the disconnected indicator right away.
+      if (found) {
+        const room = getRoom(found.room.code);
+        if (room) broadcastState(io, room);
+      }
       rateLimiter.cleanup(socket.id);
       const count = connectionsPerIp.get(ip) ?? 1;
       if (count <= 1) {
@@ -606,10 +664,11 @@ export function setSseNotifyCallback(cb: (roomCode: string, seat: Seat, event: s
 
 export function broadcastState(io: Server, room: Room): void {
   const aiOpenSeats = Array.from(room.aiOpenSeats);
+  const disconnectedSeats = getDisconnectedSeats(room);
   for (const [socketId, seat] of room.playerSockets) {
     if (isApiPlayer(socketId)) continue;
     const clientState = toClientState(room.state, seat);
-    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats });
+    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats });
   }
   sseBroadcastCallback?.(room);
 }

@@ -177,13 +177,11 @@ bugs and design smells. Each item is tagged **[confirmed]** (traced the logic) o
 
 ## Engine / shared correctness
 
-### E1. Mah Jong wish not enforced on a fresh lead — HIGH [confirmed]
-**`shared/src/engine.ts:308`** Wish compliance only runs `if (state.mahJongWish != null && state.currentTrick)`.
-When a player wins a trick and *leads* the next one while a wish is still active,
-`currentTrick` is null so the check is skipped — the leader can lead anything and
-ignore the wish, violating the rule that the wish persists across tricks until
-fulfilled. (`canPlayWishedRankFromHand` already has a `!trick` lead branch that is
-never consulted on a lead.)
+### ~~E1. Mah Jong wish not enforced on a fresh lead — HIGH [confirmed]~~ FIXED 2026-05-31
+**`shared/src/engine.ts`** Dropped the `&& state.currentTrick` guard so wish
+compliance is checked on a lead too (`checkWishCompliance` already handles the
+lead case correctly via `canPlayWishedRankFromHand(..., null)`). Added an engine
+test that a leader holding the wished rank must play it.
 
 ### E2. Pass-count can mis-resolve when the last player went out on their final play — HIGH [suspected]
 **`shared/src/engine.ts:432-449` (passTurn)** `passersNeeded` counts active players

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult } from '@tichu/shared';
+import { getSessionId, saveRoom, loadRoom, clearRoom } from '../utils/session.js';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -16,7 +17,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   tokenRef.current = idToken;
   const refreshTokenRef = useRef(refreshToken);
   refreshTokenRef.current = refreshToken;
-  const roomCodeRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string>(getSessionId());
+  // Seed the room code from localStorage so a fresh page load (refresh/crash)
+  // can attempt to rejoin the seat we were in.
+  const roomCodeRef = useRef<string | null>(loadRoom());
   const gameStateRef = useRef<ClientGameState | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
@@ -31,6 +35,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
   const [roomLost, setRoomLost] = useState(false);
   const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
+  const [disconnectedSeats, setDisconnectedSeats] = useState<number[]>([]);
 
   useEffect(() => {
     const socket = io(window.location.hostname === 'localhost'
@@ -43,9 +48,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
     socket.on('connect', () => {
       setConnectionState('connected');
-      // On reconnect, check if our room still exists on the server
-      if (roomCodeRef.current && gameStateRef.current) {
-        socket.emit('check-room', { roomCode: roomCodeRef.current });
+      // On (re)connect — whether a dropped socket or a full page reload — try to
+      // reclaim our seat using the persistent session token.
+      if (roomCodeRef.current) {
+        socket.emit('rejoin-room', { roomCode: roomCodeRef.current, sessionId: sessionIdRef.current });
       }
     });
 
@@ -54,21 +60,38 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     });
 
     socket.on('room-lost', () => {
-      setRoomLost(true);
+      clearRoom();
+      roomCodeRef.current = null;
+      // Only alarm the user if they were actively in a game; a stale stored
+      // room on a fresh page load should just drop them back to the lobby.
+      if (gameStateRef.current) {
+        setRoomLost(true);
+      }
     });
 
     socket.on('room-created', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
       roomCodeRef.current = roomCode;
+      saveRoom(roomCode);
       setIsOrganizer(true);
       setRandomPartners(randomPartners);
     });
 
-    socket.on('game-state', ({ state, aiOpenSeats }: { state: ClientGameState; aiOpenSeats?: number[] }) => {
+    socket.on('room-rejoined', ({ roomCode, randomPartners, isOrganizer }: { roomCode: string; randomPartners: boolean; isOrganizer: boolean }) => {
+      setRoomCode(roomCode);
+      roomCodeRef.current = roomCode;
+      saveRoom(roomCode);
+      setIsOrganizer(isOrganizer);
+      setRandomPartners(randomPartners);
+      setRoomLost(false);
+    });
+
+    socket.on('game-state', ({ state, aiOpenSeats, disconnectedSeats }: { state: ClientGameState; aiOpenSeats?: number[]; disconnectedSeats?: number[] }) => {
       setGameState(state);
       gameStateRef.current = state;
       setError(null);
       if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
+      setDisconnectedSeats(disconnectedSeats ?? []);
       // Clear round result when the phase moves past roundEnd
       if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
         setRoundResult(null);
@@ -115,6 +138,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socket.on('room-joined-via-invite', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
       roomCodeRef.current = roomCode;
+      saveRoom(roomCode);
       setIsOrganizer(false);
       setRandomPartners(randomPartners);
       setPendingInvites([]);
@@ -135,14 +159,15 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, [idToken]);
 
   const createRoom = useCallback((playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>, photoURL?: string | null) => {
-    socketRef.current?.emit('create-room', { playerName, randomPartners, settings, photoURL: photoURL ?? null });
+    socketRef.current?.emit('create-room', { playerName, randomPartners, settings, photoURL: photoURL ?? null, sessionId: sessionIdRef.current });
   }, []);
 
   const joinRoom = useCallback((roomCode: string, playerName: string, photoURL?: string | null) => {
-    socketRef.current?.emit('join-room', { roomCode, playerName, photoURL: photoURL ?? null });
+    socketRef.current?.emit('join-room', { roomCode, playerName, photoURL: photoURL ?? null, sessionId: sessionIdRef.current });
     const code = roomCode.toUpperCase();
     setRoomCode(code);
     roomCodeRef.current = code;
+    saveRoom(code);
   }, []);
 
   const startGame = useCallback(() => {
@@ -270,9 +295,11 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     gameStateRef.current = null;
     setRoomCode(null);
     roomCodeRef.current = null;
+    clearRoom();
     setRoomLost(false);
     setRoundResult(null);
     setIsOrganizer(false);
+    setDisconnectedSeats([]);
     setError(null);
   }, []);
 
@@ -312,6 +339,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     roomLost,
     resetRoom,
     aiOpenSeats,
+    disconnectedSeats,
     markSeatAi,
     unmarkSeatAi,
     loadProfile,

@@ -22,13 +22,30 @@ export type Room = {
   state: GameState;
   playerSockets: Map<string, Seat>; // socket.id -> seat
   seatPlayers: Map<Seat, string>;   // seat -> socket.id
+  seatSessions: Map<Seat, string>;  // seat -> client session token (reconnect key)
   passes: Map<Seat, PassInfo>;      // pending card passes
   randomPartners: boolean;
   organizer: string;                // socket.id of room creator
+  organizerSession: string;         // session token of room creator (survives reconnect)
   gameId: string;
   accumulator: RoundAccumulator;
   aiOpenSeats: Set<Seat>;           // seats marked as open for AI players
 };
+
+/**
+ * Seats occupied by a human who currently has no live socket connection.
+ * Used to show a "disconnected" indicator and to know the table is waiting.
+ */
+export function getDisconnectedSeats(room: Room): Seat[] {
+  const connectedSeats = new Set(room.playerSockets.values());
+  const result: Seat[] = [];
+  for (const p of room.state.players) {
+    if (p.isAi) continue;
+    if (!p.name) continue; // empty seat
+    if (!connectedSeats.has(p.seat)) result.push(p.seat);
+  }
+  return result;
+}
 
 const rooms = new Map<string, Room>();
 // Reverse map: socket.id -> room code for O(1) room lookups
@@ -187,7 +204,7 @@ function generateRoomCode(): string {
   return code;
 }
 
-export function createRoom(socketId: string, playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>): Room {
+export function createRoom(socketId: string, playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>, sessionId?: string): Room {
   const code = generateRoomCode();
   const gameSettings: GameSettings = { ...DEFAULT_SETTINGS, ...settings };
   const state = createInitialState(gameSettings);
@@ -200,9 +217,11 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     state,
     playerSockets: new Map([[socketId, 0]]),
     seatPlayers: new Map([[0, socketId]]),
+    seatSessions: new Map(sessionId ? [[0 as Seat, sessionId]] : []),
     passes: new Map(),
     randomPartners,
     organizer: socketId,
+    organizerSession: sessionId ?? '',
     gameId,
     accumulator: createAccumulator(gameId, [0, 0]),
     aiOpenSeats: new Set(),
@@ -214,7 +233,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
 }
 
 export function joinRoom(
-  code: string, socketId: string, playerName: string
+  code: string, socketId: string, playerName: string, sessionId?: string
 ): { room: Room; seat: Seat } | { error: string } {
   const room = rooms.get(code.toUpperCase());
   if (!room) return { error: 'Room not found' };
@@ -234,28 +253,29 @@ export function joinRoom(
   room.state.players[seat].name = playerName;
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
+  if (sessionId) room.seatSessions.set(seat, sessionId);
   socketRooms.set(socketId, room.code);
 
   return { room, seat };
 }
 
 export function reconnectToRoom(
-  code: string, socketId: string, playerName: string
+  code: string, socketId: string, sessionId: string
 ): { room: Room; seat: Seat } | { error: string } {
   const room = rooms.get(code.toUpperCase());
   if (!room) return { error: 'Room not found' };
 
-  // Find seat by player name
+  // Find the seat that holds this session token (the stable reconnect key)
   let seat: Seat | null = null;
-  for (const p of room.state.players) {
-    if (p.name === playerName) {
-      seat = p.seat;
+  for (const [s, sess] of room.seatSessions) {
+    if (sess === sessionId) {
+      seat = s;
       break;
     }
   }
-  if (seat === null) return { error: 'Player not found in room' };
+  if (seat === null) return { error: 'Session not found in room' };
 
-  // Update socket mapping
+  // Update socket mapping (old socket, if any, is replaced by the new one)
   const oldSocketId = room.seatPlayers.get(seat);
   if (oldSocketId) {
     room.playerSockets.delete(oldSocketId);
@@ -266,7 +286,13 @@ export function reconnectToRoom(
   room.seatPlayers.set(seat, socketId);
   socketRooms.set(socketId, room.code);
 
-  // Cancel any pending cleanup timer since a player reconnected
+  // Restore organizer status if the room creator reconnected
+  if (room.organizerSession && room.organizerSession === sessionId) {
+    room.organizer = socketId;
+  }
+
+  // Cancel any pending cleanup timers since a player reconnected
+  clearSeatGraceTimer(room.code, seat);
   if (roomCleanupTimers.has(room.code)) {
     clearTimeout(roomCleanupTimers.get(room.code)!);
     roomCleanupTimers.delete(room.code);
@@ -290,7 +316,38 @@ export function getRoomBySocket(socketId: string): { room: Room; seat: Seat } | 
 }
 
 const ABANDONED_ROOM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+// Grace window for a disconnected seat in the waiting room before it is freed,
+// so a quick refresh/crash during setup can reclaim the same seat.
+const WAITING_GRACE_MS = 45 * 1000;
 const roomCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const seatGraceTimers = new Map<string, ReturnType<typeof setTimeout>>(); // `${code}:${seat}`
+
+function seatGraceKey(code: string, seat: Seat): string {
+  return `${code}:${seat}`;
+}
+
+export function clearSeatGraceTimer(code: string, seat: Seat): void {
+  const key = seatGraceKey(code, seat);
+  const timer = seatGraceTimers.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    seatGraceTimers.delete(key);
+  }
+}
+
+/** Vacate a seat entirely (used when a waiting-room grace period expires). */
+function freeSeat(room: Room, seat: Seat): void {
+  const socketId = room.seatPlayers.get(seat);
+  if (socketId) {
+    room.playerSockets.delete(socketId);
+    socketRooms.delete(socketId);
+  }
+  room.seatPlayers.delete(seat);
+  room.seatSessions.delete(seat);
+  room.state.players[seat].id = '';
+  room.state.players[seat].name = '';
+  room.state.players[seat].photoURL = null;
+}
 
 export function removePlayer(socketId: string): void {
   const uid = socketUids.get(socketId);
@@ -309,22 +366,32 @@ export function removePlayer(socketId: string): void {
 
   room.playerSockets.delete(socketId);
 
-  // Don't remove from seatPlayers during a game (allow reconnect)
+  // Keep seatPlayers/seatSessions so the seat stays reserved for reconnect.
+  // In the waiting room, hold the seat for a short grace period, then free it
+  // (and delete the room if it becomes empty) so it doesn't block others.
   if (room.state.phase === 'waiting') {
-    room.seatPlayers.delete(seat);
-    room.state.players[seat].id = '';
-    room.state.players[seat].name = '';
-  }
-
-  // Clean up empty rooms immediately in waiting phase
-  if (room.playerSockets.size === 0 && room.state.phase === 'waiting') {
-    clearInvitesForRoom(code);
-    rooms.delete(code);
+    clearSeatGraceTimer(code, seat);
+    const timer = setTimeout(() => {
+      seatGraceTimers.delete(seatGraceKey(code, seat));
+      const r = rooms.get(code);
+      if (!r) return;
+      // The game started while we were waiting — in-game reconnect rules apply,
+      // so leave the seat reserved rather than freeing it.
+      if (r.state.phase !== 'waiting') return;
+      // Bail if the player already reconnected to this seat.
+      if (new Set(r.playerSockets.values()).has(seat)) return;
+      freeSeat(r, seat);
+      if (r.playerSockets.size === 0) {
+        clearInvitesForRoom(code);
+        rooms.delete(code);
+      }
+    }, WAITING_GRACE_MS);
+    seatGraceTimers.set(seatGraceKey(code, seat), timer);
     return;
   }
 
   // For in-progress games, schedule cleanup if all players disconnected
-  if (room.playerSockets.size === 0 && room.state.phase !== 'waiting') {
+  if (room.playerSockets.size === 0) {
     const timer = setTimeout(() => {
       roomCleanupTimers.delete(code);
       const r = rooms.get(code);
@@ -335,7 +402,7 @@ export function removePlayer(socketId: string): void {
     }, ABANDONED_ROOM_TIMEOUT_MS);
     roomCleanupTimers.set(code, timer);
   } else if (roomCleanupTimers.has(code)) {
-    // Someone reconnected, cancel the cleanup timer
+    // Someone is still connected, cancel any pending cleanup timer
     clearTimeout(roomCleanupTimers.get(code)!);
     roomCleanupTimers.delete(code);
   }
@@ -359,6 +426,7 @@ function shuffleSeats(room: Room): void {
   // Collect all players (everything that identifies the person, not the seat)
   const playerInfos = room.state.players.map(p => ({
     id: p.id, name: p.name, photoURL: p.photoURL, isAi: p.isAi,
+    session: room.seatSessions.get(p.seat),
   }));
   // Fisher-Yates shuffle
   for (let i = playerInfos.length - 1; i > 0; i--) {
@@ -368,15 +436,17 @@ function shuffleSeats(room: Room): void {
   // Reassign
   room.playerSockets.clear();
   room.seatPlayers.clear();
+  room.seatSessions.clear();
   for (let i = 0; i < 4; i++) {
     const seat = i as Seat;
-    const { id: socketId, name, photoURL, isAi } = playerInfos[i];
+    const { id: socketId, name, photoURL, isAi, session } = playerInfos[i];
     room.state.players[seat].id = socketId;
     room.state.players[seat].name = name;
     room.state.players[seat].photoURL = photoURL;
     room.state.players[seat].isAi = isAi;
     room.playerSockets.set(socketId, seat);
     room.seatPlayers.set(seat, socketId);
+    if (session) room.seatSessions.set(seat, session);
   }
 }
 
@@ -401,6 +471,12 @@ export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
   room.playerSockets.set(socketB, seatA);
   room.seatPlayers.set(seatA, socketB);
   room.seatPlayers.set(seatB, socketA);
+
+  // Swap session tokens so reconnection still maps to the right person
+  const sessA = room.seatSessions.get(seatA);
+  const sessB = room.seatSessions.get(seatB);
+  if (sessB !== undefined) room.seatSessions.set(seatA, sessB); else room.seatSessions.delete(seatA);
+  if (sessA !== undefined) room.seatSessions.set(seatB, sessA); else room.seatSessions.delete(seatB);
 
   return true;
 }

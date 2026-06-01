@@ -119,6 +119,30 @@ describe('passTurn — pass-count threshold when leader is out', () => {
     expect(after.state.mahJongWish).toBeNull();
   });
 
+  it('enforces the Mah Jong wish when leading a new trick', () => {
+    // No current trick (seat 0 leads) and a wish for 5s is active. Seat 0 holds
+    // a 5, so a lead that omits it must be rejected, and a lead that includes it
+    // must be accepted (and fulfill the wish).
+    const state = makeState({
+      players: [
+        makePlayer(0, { hand: [c(5, 'jade'), c(9, 'sword')], hasPlayedFirstCard: true }),
+        makePlayer(1), makePlayer(2), makePlayer(3),
+      ],
+      turnIndex: 0,
+      currentTrick: null,
+      mahJongWish: 5,
+    });
+
+    // Leading the 9 (omitting the wished 5) is illegal — state unchanged.
+    const rejected = playCards(state, 0, [c(9, 'sword')]);
+    expect(rejected.state).toBe(state);
+
+    // Leading the 5 is legal and fulfills the wish.
+    const accepted = playCards(state, 0, [c(5, 'jade')]);
+    expect(accepted.state.mahJongWish).toBeNull();
+    expect(accepted.state.lastPlayedBy).toBe(0);
+  });
+
   it('holds the turn on the Mah Jong player until they pick a wish', () => {
     // Seat 0 has the Mah Jong and leads with it. The turn must stay on seat 0
     // (so seat 1 doesn't see "Your turn!" while the wish dialog is open) and
