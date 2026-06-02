@@ -78,8 +78,8 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
     tryPair(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
     tryTriple(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
     tryFullHouse(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
-    tryConsecutivePairs(cards, normalCards, hasPhoenix, mahjong, ranks, phoenixAs) ??
-    tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks, phoenixAs);
+    tryConsecutivePairs(cards, normalCards, hasPhoenix, mahjong, ranks) ??
+    tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks);
 
   return result;
 }
@@ -186,7 +186,7 @@ function tryFullHouse(
 
 function tryConsecutivePairs(
   cards: Card[], normalCards: NormalCard[], hasPhoenix: boolean,
-  mahjong: Card | undefined, ranks: number[], phoenixAs?: NormalRank
+  mahjong: Card | undefined, ranks: number[]
 ): Combo | null {
   if (cards.length < 4 || cards.length % 2 !== 0) return null;
 
@@ -215,7 +215,9 @@ function tryConsecutivePairs(
   const twosCount = freqEntries.filter(([, c]) => c === 2).length;
 
   if (onesCount === 1 && twosCount === numPairs - 1 && freqEntries.length === numPairs) {
-    // Phoenix fills the one with count 1
+    // Phoenix completes the single (count 1) into its pair. This is the only way a
+    // phoenix participates in consecutive pairs — it can't form a standalone new
+    // pair (a pair is two cards), so there's no "extend at an end" case to handle.
     const allRanks = freqEntries.map(([r]) => r);
     if (isConsecutive(allRanks)) {
       return {
@@ -227,37 +229,12 @@ function tryConsecutivePairs(
     }
   }
 
-  // Phoenix could also create a new pair at the beginning or end
-  if (onesCount === 0 && twosCount === numPairs - 1 && freqEntries.length === numPairs - 1) {
-    const allRanks = freqEntries.map(([r]) => r);
-    if (isConsecutive(allRanks)) {
-      // Phoenix could extend at either end
-      const low = allRanks[0] - 1;
-      const high = allRanks[allRanks.length - 1] + 1;
-      if (phoenixAs != null) {
-        if (phoenixAs === low && low >= 1) {
-          return { type: 'consecutivePairs', cards, rank: allRanks[allRanks.length - 1], length: cards.length };
-        }
-        if (phoenixAs === high && high <= 14) {
-          return { type: 'consecutivePairs', cards, rank: high, length: cards.length };
-        }
-      }
-      // Default: extend high
-      if (high <= 14) {
-        return { type: 'consecutivePairs', cards, rank: high, length: cards.length };
-      }
-      if (low >= 1) {
-        return { type: 'consecutivePairs', cards, rank: allRanks[allRanks.length - 1], length: cards.length };
-      }
-    }
-  }
-
   return null;
 }
 
 function tryStraight(
   cards: Card[], normalCards: NormalCard[], hasPhoenix: boolean,
-  mahjong: Card | undefined, ranks: number[], phoenixAs?: NormalRank
+  mahjong: Card | undefined, ranks: number[]
 ): Combo | null {
   if (cards.length < 5) return null;
 
@@ -281,15 +258,11 @@ function tryStraight(
 
   // Check if unique ranks have exactly one gap of 1, or are consecutive (phoenix extends)
   if (isConsecutive(uniqueRanks)) {
-    // Phoenix extends the straight
-    const high = uniqueRanks[uniqueRanks.length - 1] + 1;
-    const low = uniqueRanks[0] - 1;
-    if (phoenixAs != null) {
-      const topRank = phoenixAs > uniqueRanks[uniqueRanks.length - 1] ? phoenixAs : uniqueRanks[uniqueRanks.length - 1];
-      return { type: 'straight', cards, rank: topRank, length: cards.length };
-    }
-    // Default: extend high if possible
-    const topRank = high <= 14 ? high : uniqueRanks[uniqueRanks.length - 1];
+    // Phoenix extends the consecutive run at one end: extend high when possible,
+    // otherwise the phoenix fills the low end (rank stays the natural top).
+    const top = uniqueRanks[uniqueRanks.length - 1];
+    const high = top + 1;
+    const topRank = high <= 14 ? high : top;
     return { type: 'straight', cards, rank: topRank, length: cards.length };
   }
 

@@ -141,6 +141,21 @@ describe('identifyCombo', () => {
       const combo = identifyCombo([c(3), c(4), c(5), c(6)]);
       expect(combo).toBeNull();
     });
+
+    describe('phoenix extends a consecutive run', () => {
+      it('extends the high end when possible', () => {
+        const combo = identifyCombo([c(10), c(11, 'sword'), c(12, 'pagoda'), c(13, 'star'), phoenix]);
+        expect(combo!.type).toBe('straight');
+        expect(combo!.rank).toBe(14); // 10-11-12-13-(phoenix as 14)
+      });
+
+      it('fills the low end when the high end is an Ace (rank stays the natural top)', () => {
+        const combo = identifyCombo([c(10), c(11, 'sword'), c(12, 'pagoda'), c(13, 'star'), c(14), phoenix]);
+        expect(combo!.type).toBe('straight');
+        expect(combo!.rank).toBe(14); // (phoenix as 9)-10-11-12-13-14
+        expect(combo!.length).toBe(6);
+      });
+    });
   });
 
   describe('four-of-a-kind bombs', () => {
