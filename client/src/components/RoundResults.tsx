@@ -73,8 +73,8 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
               Double Victory!
             </span>
             <p className="text-gray-300">
-              {players[result.doubleVictoryTeam === 0 ? 0 : 1].name} &{' '}
-              {players[result.doubleVictoryTeam === 0 ? 2 : 3].name} went out 1st and 2nd!
+              {players[(result.doubleVictoryTeam ?? 0) === 0 ? 0 : 1].name} &{' '}
+              {players[(result.doubleVictoryTeam ?? 0) === 0 ? 2 : 3].name} went out 1st and 2nd!
             </p>
           </div>
         )}

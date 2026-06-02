@@ -187,11 +187,12 @@ Current status:
 | E6 | 🟡 OPEN (latent) | Dragon-trick-at-endRound path still unguarded; currently unreachable via control flow |
 | E7 | 🟡 OPEN (latent) | `getNextActiveSeat` still loops `attempts < 4` with no out-seat assertion |
 | E8 | 🔴 OPEN | All 3 sub-items present: dead `getNormalRank`, Dog-rank 0-vs-(-1), shallow-copy in `passCards`/`applyPasses` |
-| S1 | 🔴 OPEN | `batch.update()` still used in round/game-end stats (inconsistent with `updateTeamStats`'s merge-set) |
-| S2 | 🔴 OPEN | Ties still awarded to team 1 in `stats.ts` and `scoring.ts` `getWinner` |
+| S1 | ✅ FIXED | Switched round/game-end stats to `set(...,{merge:true})` (2026-06-02) — was a genuine live bug |
+| S2 | ✅ FIXED | Hardened `stats.ts` tie handling; was actually unreachable (game never ends on a tie), `getWinner` already tie-safe (2026-06-02) |
 | S3 | 🔴 OPEN | `playedWith` still `arrayUnion`'d with no cap |
 | S4 | 🟡 PARTIAL | Fire-and-forget writes unfixed; `fetchInvitableUsers` got a comment but still no `orderBy` |
-| C1–C6 | 🔴 OPEN | All present (incl. all C3/C6 sub-bullets) — see each item |
+| C1–C3, C5–C6 | 🔴 OPEN | All present (incl. all C3/C6 sub-bullets) — see each item |
+| C4 | ✅ FIXED | Aligned with EventLog `?? 0`; was consistency-only (guarded by `isDoubleVictory`) (2026-06-02) |
 | Cross-cutting | 🔴 OPEN | All four (dup event-detection, dup constants, fragile layout math, prop drilling) |
 
 So aside from E1/E2, the rest of this section is genuinely still open and safe to pick
@@ -280,19 +281,22 @@ can land back on an out seat with no guard. Should be unreachable (round ends at
 
 ## Stats / persistence correctness
 
-### S1. `batch.update()` on a possibly-nonexistent user doc fails the whole batch, silently — HIGH [confirmed]
-**`server/src/stats.ts:98,151`** `updateStatsForRound`/`updateStatsForGameEnd` use
-`batch.update()`, which Firestore rejects with NOT_FOUND if `users/{uid}` doesn't
-exist (it's only created in the `load-profile` handler). A player who plays without
-ever triggering `load-profile` makes the *entire atomic batch* fail, dropping that
-round's stats for **all** players — and the error is swallowed by fire-and-forget
-`.catch(console.error)` in `handler.ts:717-737`. `updateTeamStats` already uses
-`set(..., {merge:true})`; make the others consistent.
+### ~~S1. `batch.update()` on a possibly-nonexistent user doc fails the whole batch~~ FIXED 2026-06-02
+**`server/src/stats.ts`** `updateStatsForRound` and `updateStatsForGameEnd` now use
+`batch.set(docRef, updates, { merge: true })` instead of `batch.update()`, matching
+`updateTeamStats`. A player who never triggered `load-profile` (so `users/{uid}`
+doesn't exist) no longer causes the entire atomic batch to fail with NOT_FOUND and
+silently drop the round's stats for all players. This was a genuine live bug.
 
-### S2. Tie games are credited as a win for team 1 — MED [confirmed]
-**`server/src/stats.ts:119,244`** (and **`shared/src/scoring.ts:111-118` getWinner**)
-`team0Score > team1Score ? 0 : 1` awards ties to team 1. Tichu can legitimately tie
-(both cross target same round). Affects `gamesWon`, `closeGameWins`, `comebackWins`.
+### ~~S2. Tie games are credited as a win for team 1~~ FIXED 2026-06-02 (was defensive-only)
+**`server/src/stats.ts`** Re-triaged: this was **not actually reachable**. The game
+only reaches `gameEnd` when `isGameOver` is true (`engine.ts:776`), and `isGameOver`
+requires `scores[0] !== scores[1]` — so a tie never reaches the stats game-end path.
+`scoring.ts` `getWinner` was already tie-safe for the same reason (returns `null` when
+`isGameOver` is false), so no change was needed there. Still hardened `stats.ts`:
+`winningTeam` is now `0 | 1 | null` and is `null` on an exact tie, so neither team is
+credited a win if the game-over gate ever changes. Affects `gamesWon`,
+`closeGameWins`, `comebackWins`.
 
 ### S3. `playedWith` array grows unbounded — MED [confirmed]
 **`server/src/stats.ts:95`** Every round `arrayUnion`s all co-player uids with no
@@ -328,10 +332,13 @@ session is lost.
 - `GameAnnouncement.tsx:101-105` — per-event removal `setTimeout`s not tracked/cleared on unmount.
 - `Game.tsx:218` (toast) and `useSocket.ts:106` (autoSkip) — 2s `setTimeout`s not cleared.
 
-### C4. RoundResults mislabels double-victory team when `doubleVictoryTeam` is undefined — MED [confirmed]
-**`client/src/components/RoundResults.tsx:67-68`** Indexes `result.doubleVictoryTeam === 0 ? ... : ...`,
-so `undefined` silently falls into the team-1 branch. EventLog uses `?? 0` for the
-same field — RoundResults should match.
+### ~~C4. RoundResults mislabels double-victory team when `doubleVictoryTeam` is undefined~~ FIXED 2026-06-02 (was consistency-only)
+**`client/src/components/RoundResults.tsx`** Re-triaged: not actually a live bug — the
+indexing sits inside `{result.isDoubleVictory && (...)}`, and `doubleVictoryTeam` is
+only `undefined` when `isDoubleVictory` is false (`scoring.ts`:
+`isDoubleVictory ? firstTeam : undefined`), so `undefined` never reaches the index.
+Still aligned it with EventLog's `?? 0` pattern (`(result.doubleVictoryTeam ?? 0) === 0`)
+for consistency and robustness against a future refactor.
 
 ### C5. Effects re-run on every broadcast via unstable refs — LOW/MED [confirmed]
 - `Game.tsx:145-191` — title + tab-flash effects depend on `gameState?.players`, a fresh array each broadcast; they tear down/rebuild listeners and fight over `document.title` every update.
