@@ -181,7 +181,7 @@ Current status:
 |------|--------|-------|
 | E1 | ✅ FIXED | Wish enforced on lead (2026-05-31) |
 | E2 | ✅ FIXED | `passersNeeded` logic + test (commit `2a779be`) |
-| E3 | 🔴 OPEN | Phoenix single dual handling in `canBeat` + `playCards` still redundant/inconsistent |
+| E3 | ⚪ NOT A BUG | Phoenix `canBeat` special case + `playCards` rank mutation are complementary, both correct (re-triaged 2026-06-02) |
 | E4 | 🔴 OPEN | `phoenixAs` adjacency unchecked; consec-pairs low guard still `>= 1` |
 | E5 | 🔴 OPEN | Full-house phoenix still defaults higher pair to triple |
 | E6 | 🟡 OPEN (latent) | Dragon-trick-at-endRound path still unguarded; currently unreachable via control flow |
@@ -229,12 +229,24 @@ players to act after the leader goes out on their last play" — the exact
 "2 players left" case), plus `engine.test.ts:201` for the leader-still-in path. All
 engine tests pass.
 
-### E3. Phoenix single comparison in `canBeat` bypasses rank — HIGH/MED [confirmed]
-**`shared/src/combinations.ts:374-377`** A Phoenix single returns `canBeat = true`
-against any non-Dragon single regardless of rank, while `playCards` *also* mutates
-`combo.rank = currentTrick.rank + 0.5` (`engine.ts:293-295`). The dual handling is
-redundant and inconsistent and can authorize an illegal "beat" (e.g. Phoenix over a
-previously-played Phoenix-as-Ace). Consolidate to one mechanism.
+### ~~E3. Phoenix single comparison in `canBeat` bypasses rank~~ NOT A BUG (re-triaged 2026-06-02)
+**`shared/src/combinations.ts:375-377`** Re-examined: this is **not** a correctness
+issue. The two mechanisms are complementary, not redundant:
+- The `canBeat` special case ("Phoenix single beats any non-Dragon single") is the
+  source of truth for *legality*, and it must live in `canBeat` because `canBeat` is
+  called in ~15 places (`findPlayableCombos`, client play-validation) where the lone
+  Phoenix combo still carries the default lead rank `1.5` from `singleCardRank`
+  (the `lastPlayedRank` arg isn't passed in `identifyCombo`). Without it, a Phoenix
+  would be wrongly *rejected* against any single above a 1.
+- The `playCards` mutation `combo.rank = currentTrick.rank + 0.5` serves a *different*
+  purpose: recording the Phoenix's effective rank so the **next** player's comparison
+  is correct (must beat e.g. 13.5 after a Phoenix lands on a King). Removing it would
+  be the actual bug.
+
+The posited "illegal beat" (Phoenix over a previously-played Phoenix-as-Ace) is
+impossible — there is only one Phoenix, so when you play it `currentTrick` is never a
+Phoenix, `currentTrick.rank` is always an integer, and the special case can only ever
+authorize genuinely legal plays. No change made.
 
 ### E4. Combo identification trusts `phoenixAs` hint without adjacency/range checks — MED [confirmed]
 **`shared/src/combinations.ts:287-289` (straight), `:238,249` (consec pairs)** The
