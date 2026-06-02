@@ -167,10 +167,35 @@ would be cleaner and avoid threading the large object through component trees.
 # Review 2026-05-31 (multi-agent pass; first review in a while)
 
 Findings from a careful read of shared/engine, server, stats, client core, and all
-components. **Nothing below has been fixed** — these are recorded for triage.
-Security-specific items live in `SECURITY_TODO.md`; this file holds correctness
-bugs and design smells. Each item is tagged **[confirmed]** (traced the logic) or
-**[suspected]** (needs a repro/test).
+components. Security-specific items live in `SECURITY_TODO.md`; this file holds
+correctness bugs and design smells. Each item is tagged **[confirmed]** (traced the
+logic) or **[suspected]** (needs a repro/test).
+
+### Triage re-verified 2026-06-02
+
+Re-audited every item below against the current code (the original "Nothing below has
+been fixed" note had drifted — E1 and E2 were in fact fixed and never crossed off).
+Current status:
+
+| Item | Status | Notes |
+|------|--------|-------|
+| E1 | ✅ FIXED | Wish enforced on lead (2026-05-31) |
+| E2 | ✅ FIXED | `passersNeeded` logic + test (commit `2a779be`) |
+| E3 | 🔴 OPEN | Phoenix single dual handling in `canBeat` + `playCards` still redundant/inconsistent |
+| E4 | 🔴 OPEN | `phoenixAs` adjacency unchecked; consec-pairs low guard still `>= 1` |
+| E5 | 🔴 OPEN | Full-house phoenix still defaults higher pair to triple |
+| E6 | 🟡 OPEN (latent) | Dragon-trick-at-endRound path still unguarded; currently unreachable via control flow |
+| E7 | 🟡 OPEN (latent) | `getNextActiveSeat` still loops `attempts < 4` with no out-seat assertion |
+| E8 | 🔴 OPEN | All 3 sub-items present: dead `getNormalRank`, Dog-rank 0-vs-(-1), shallow-copy in `passCards`/`applyPasses` |
+| S1 | 🔴 OPEN | `batch.update()` still used in round/game-end stats (inconsistent with `updateTeamStats`'s merge-set) |
+| S2 | 🔴 OPEN | Ties still awarded to team 1 in `stats.ts` and `scoring.ts` `getWinner` |
+| S3 | 🔴 OPEN | `playedWith` still `arrayUnion`'d with no cap |
+| S4 | 🟡 PARTIAL | Fire-and-forget writes unfixed; `fetchInvitableUsers` got a comment but still no `orderBy` |
+| C1–C6 | 🔴 OPEN | All present (incl. all C3/C6 sub-bullets) — see each item |
+| Cross-cutting | 🔴 OPEN | All four (dup event-detection, dup constants, fragile layout math, prop drilling) |
+
+So aside from E1/E2, the rest of this section is genuinely still open and safe to pick
+up from. The per-item descriptions below remain accurate.
 
 ## Engine / shared correctness
 
