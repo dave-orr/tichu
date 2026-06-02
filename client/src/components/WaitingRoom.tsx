@@ -36,6 +36,8 @@ export default function WaitingRoom({
 
   const playerCount = gameState.players.filter(p => p.name).length;
   const canSwapSeats = isOrganizer && !randomPartners && playerCount >= 2;
+  // Games with any AI player are unrated — nobody gains or loses Elo.
+  const hasAi = gameState.players.some(p => p.isAi) || aiOpenSeats.length > 0;
 
   // Refetch Elo ratings whenever the seated players change (joins, swaps, etc.).
   const seatSignature = gameState.players.map(p => p.id || '').join('|');
@@ -153,6 +155,11 @@ export default function WaitingRoom({
               <span className="text-yellow-300/90 font-semibold">
                 E&W {roomElos.teamElos[1] != null ? roomElos.teamElos[1] : '—'}
               </span>
+            </p>
+          )}
+          {hasAi && (
+            <p className="text-xs text-amber-300/80 mt-1">
+              Games with a bot are unrated — no Elo is won or lost.
             </p>
           )}
           {canSwapSeats && (

@@ -370,11 +370,18 @@ export async function fetchRoomElos(room: Room): Promise<RoomElos> {
  * Apply Elo updates for both individuals and pairings when a game ends.
  * Individuals are rated 2v2 (team-average expected score); pairings are rated head-to-head.
  * Runs in a transaction so concurrent games can't clobber each other's ratings.
+ *
+ * Elo is only awarded in games between four human players: if any seat is an AI,
+ * nobody gains or loses rating (AI strength is fixed/unrated, so it would distort
+ * the ladder).
  */
 export async function updateEloForGameEnd(room: Room): Promise<EloUpdate | null> {
   if (!firebaseAdmin) return null;
   const db = firebaseAdmin.firestore();
   const state = room.state;
+
+  // Don't rate games that include any AI player.
+  if (state.players.some(p => p.isAi)) return null;
 
   const seatUids = buildSeatUidMap(room);
   if (seatUids.size === 0) return null;
