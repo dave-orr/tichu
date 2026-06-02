@@ -60,6 +60,13 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
         </p>
       ) : (
         <>
+          <div className="flex items-baseline justify-center gap-2 mb-3 pb-3 border-b border-gray-700">
+            <span className="text-3xl font-bold text-yellow-400">{stats.elo}</span>
+            <span className="text-sm text-gray-400">Elo</span>
+            {stats.eloPeak > stats.elo && (
+              <span className="text-xs text-gray-500">(peak {stats.eloPeak})</span>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <StatRow label="Games Played" value={stats.gamesPlayed} />
             <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
@@ -154,10 +161,15 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
                         )}
                         <span className="truncate">{p.partnerName}</span>
                       </div>
-                      <span className="font-semibold flex-shrink-0">
-                        {p.gamesPlayed > 0
-                          ? `${p.gamesWon}/${p.gamesPlayed} (${rate}%)`
-                          : `${p.roundsPlayed} rd`}
+                      <span className="font-semibold flex-shrink-0 flex items-center gap-2">
+                        {p.teamElo != null && (
+                          <span className="text-yellow-300/90">{p.teamElo}</span>
+                        )}
+                        <span>
+                          {p.gamesPlayed > 0
+                            ? `${p.gamesWon}/${p.gamesPlayed} (${rate}%)`
+                            : `${p.roundsPlayed} rd`}
+                        </span>
                       </span>
                     </div>
                   );

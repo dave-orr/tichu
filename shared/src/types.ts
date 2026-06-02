@@ -57,6 +57,44 @@ export type PartnerStats = {
   gamesPlayed: number;
   gamesWon: number;
   roundsPlayed: number;
+  teamElo: number | null; // pairing Elo rating (null if the pair has no rated games yet)
+};
+
+// ===== Elo =====
+
+/** Default rating for a player/pair with no rated games yet. */
+export const ELO_INITIAL = 1500;
+/** Logistic divisor: a 400-point gap ≈ 91% expected score. */
+export const ELO_DIVISOR = 400;
+/** Higher K while a player is still "provisional" (few games), so ratings settle quickly. */
+export const ELO_K_PROVISIONAL = 40;
+/** Number of rated games before switching to the steady-state K. */
+export const ELO_PROVISIONAL_GAMES = 10;
+/** Steady-state K-factor once a player is established. */
+export const ELO_K_STANDARD = 24;
+
+/** Expected score (0..1) for a rating `self` against a rating `opp`. */
+export function eloExpected(self: number, opp: number): number {
+  return 1 / (1 + Math.pow(10, (opp - self) / ELO_DIVISOR));
+}
+
+/** K-factor based on how many rated games have been played. */
+export function eloKFactor(gamesPlayed: number): number {
+  return gamesPlayed < ELO_PROVISIONAL_GAMES ? ELO_K_PROVISIONAL : ELO_K_STANDARD;
+}
+
+/** Per-seat and per-team Elo snapshot for the waiting room / team selection. */
+export type RoomElos = {
+  seatElos: (number | null)[];   // index = seat; null for empty/unauthenticated seats
+  teamElos: [number | null, number | null]; // pairing Elo, null unless both seats are authenticated
+};
+
+/** Elo changes emitted to clients at the end of a game. */
+export type EloUpdate = {
+  seatElos: (number | null)[];     // new individual ratings, index = seat
+  seatDeltas: (number | null)[];   // change applied this game, index = seat
+  teamElos: [number | null, number | null];   // new pairing ratings
+  teamDeltas: [number | null, number | null]; // pairing changes this game
 };
 
 // ===== Game Settings =====

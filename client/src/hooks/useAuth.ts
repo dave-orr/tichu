@@ -6,7 +6,7 @@ import {
   User,
 } from 'firebase/auth';
 import { auth, googleProvider, firebaseConfigured } from '../firebase.js';
-import type { GameSettings } from '@tichu/shared';
+import { ELO_INITIAL, type GameSettings } from '@tichu/shared';
 
 export type UserProfile = {
   uid: string;
@@ -40,6 +40,9 @@ export type UserStats = {
   tichuCallsWhenBehind200: number;
   grandCallsWhenAhead200: number;
   grandCallsWhenBehind200: number;
+  elo: number;
+  eloGames: number;
+  eloPeak: number;
 };
 
 export type UserPreferences = {
@@ -71,6 +74,9 @@ const DEFAULT_STATS: UserStats = {
   tichuCallsWhenBehind200: 0,
   grandCallsWhenAhead200: 0,
   grandCallsWhenBehind200: 0,
+  elo: ELO_INITIAL,
+  eloGames: 0,
+  eloPeak: ELO_INITIAL,
 };
 
 export function useAuth() {

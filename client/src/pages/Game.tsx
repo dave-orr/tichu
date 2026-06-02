@@ -408,6 +408,7 @@ export default function Game({ socket, auth }: Props) {
           mySeat={mySeat}
           roundEndReady={gameState.roundEndReady}
           roundHistory={gameState.roundHistory}
+          eloUpdate={socket.eloUpdate}
         />
       )}
 
