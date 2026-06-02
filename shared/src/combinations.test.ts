@@ -141,6 +141,33 @@ describe('identifyCombo', () => {
       const combo = identifyCombo([c(3), c(4), c(5), c(6)]);
       expect(combo).toBeNull();
     });
+
+    describe('phoenix extends a consecutive run (phoenixAs hint)', () => {
+      const consec = [c(10), c(11, 'sword'), c(12, 'pagoda'), c(13, 'star'), phoenix];
+
+      it('extends the high end when hinted just above the top', () => {
+        const combo = identifyCombo(consec, 14);
+        expect(combo!.type).toBe('straight');
+        expect(combo!.rank).toBe(14); // 10-11-12-13-(phoenix as 14)
+      });
+
+      it('extends the low end when hinted just below the bottom (rank stays the natural top)', () => {
+        const combo = identifyCombo(consec, 9);
+        expect(combo!.type).toBe('straight');
+        expect(combo!.rank).toBe(13); // (phoenix as 9)-10-11-12-13
+      });
+
+      it('rejects a non-adjacent hint instead of minting a bogus straight', () => {
+        expect(identifyCombo(consec, 7)).toBeNull();
+        expect(identifyCombo(consec, 2)).toBeNull();
+      });
+
+      it('defaults to extending high when no hint is given', () => {
+        const combo = identifyCombo(consec);
+        expect(combo!.type).toBe('straight');
+        expect(combo!.rank).toBe(14);
+      });
+    });
   });
 
   describe('four-of-a-kind bombs', () => {

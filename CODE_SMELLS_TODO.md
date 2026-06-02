@@ -8,19 +8,6 @@ Open correctness bugs and design smells. Security-specific items live in
 
 ## Engine / shared correctness
 
-### E4. Combo identification trusts `phoenixAs` hint without adjacency/range checks — MED [confirmed]
-**`shared/src/combinations.ts`** (straight + consec-pairs phoenix-extend branches) The
-phoenix-extend branch sets `topRank = phoenixAs > top ? phoenixAs : top` with no check
-that `phoenixAs` is contiguous (top+1), so a bad hint mints a non-contiguous straight
-with an inflated rank. The low-extend branches also allow rank 1 (`>= 1`) for pairs,
-which is impossible (no normal rank-1 card) — guard should be `>= 2`.
-
-### E5. Full-house phoenix default silently picks the higher rank as the triple — MED [suspected]
-**`shared/src/combinations.ts` `tryFullHouse`** With two natural pairs + Phoenix and no
-`phoenixAs` hint (the validation path in `playCards` never passes one), the engine
-always interprets the higher pair as the triple, so a player who wants the lower
-triple to legally duck/match can't express it.
-
 ### E6. `endRound` may mis-award a pending Dragon trick — LOW [suspected]
 **`shared/src/engine.ts` `endRound`** If a round ends while an un-awarded Dragon trick
 sits on the table, `endRound` pushes those cards (incl. the 25-pt Dragon) to

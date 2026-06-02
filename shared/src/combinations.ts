@@ -235,7 +235,7 @@ function tryConsecutivePairs(
       const low = allRanks[0] - 1;
       const high = allRanks[allRanks.length - 1] + 1;
       if (phoenixAs != null) {
-        if (phoenixAs === low && low >= 1) {
+        if (phoenixAs === low && low >= 2) {
           return { type: 'consecutivePairs', cards, rank: allRanks[allRanks.length - 1], length: cards.length };
         }
         if (phoenixAs === high && high <= 14) {
@@ -281,15 +281,23 @@ function tryStraight(
 
   // Check if unique ranks have exactly one gap of 1, or are consecutive (phoenix extends)
   if (isConsecutive(uniqueRanks)) {
-    // Phoenix extends the straight
-    const high = uniqueRanks[uniqueRanks.length - 1] + 1;
-    const low = uniqueRanks[0] - 1;
+    // Phoenix extends the consecutive run at one end.
+    const top = uniqueRanks[uniqueRanks.length - 1];
+    const high = top + 1;        // phoenix above the top card
+    const low = uniqueRanks[0] - 1; // phoenix below the bottom card (min normal rank is 2)
     if (phoenixAs != null) {
-      const topRank = phoenixAs > uniqueRanks[uniqueRanks.length - 1] ? phoenixAs : uniqueRanks[uniqueRanks.length - 1];
-      return { type: 'straight', cards, rank: topRank, length: cards.length };
+      // A hint is only valid if the phoenix sits adjacent to one end; a
+      // non-adjacent rank can't form a straight, so reject it.
+      if (phoenixAs === high && high <= 14) {
+        return { type: 'straight', cards, rank: high, length: cards.length };
+      }
+      if (phoenixAs === low && low >= 2) {
+        return { type: 'straight', cards, rank: top, length: cards.length };
+      }
+      return null;
     }
-    // Default: extend high if possible
-    const topRank = high <= 14 ? high : uniqueRanks[uniqueRanks.length - 1];
+    // Default: extend high if possible, otherwise the phoenix fills the low end.
+    const topRank = high <= 14 ? high : top;
     return { type: 'straight', cards, rank: topRank, length: cards.length };
   }
 
