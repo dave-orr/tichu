@@ -17,10 +17,11 @@ Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Nod
 ## TODO Trackers
 
 `CODE_SMELLS_TODO.md` (bugs / code smells grouped by severity) and
-`SECURITY_TODO.md` (security findings) track known outstanding issues. When
-fixing a bug, check whether either file already references it; if so, update
-that entry to reflect the fix (mark it done — these files use `[x]` checkboxes
-and `~~strikethrough~~ ✅ DONE` conventions) in the same change.
+`SECURITY_TODO.md` (security findings) track known outstanding issues. These
+files list **only live, unresolved issues** — when fixing a bug, check whether
+either file references it and, if so, delete that entry in the same change
+rather than marking it done. Completed work lives in the commit history, not in
+these files.
 
 ### Key Files
 
