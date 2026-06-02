@@ -6,33 +6,30 @@ Identified during a full codebase review. Items are grouped by severity.
 
 ## BUGS (Likely Incorrect Behavior)
 
-### 1. `scoreRound` outOrder sort is wrong — scoring/double victory broken
-**File:** `shared/src/scoring.ts:30-36`
+### ~~1. `scoreRound` outOrder sort is wrong — scoring/double victory broken~~ ALREADY FIXED
+**File:** `shared/src/scoring.ts:30-37`
 
-The player who never went out has `outOrder === 0`. Sorting ascending puts them
-first in the array, but the code treats index 0 as "first out":
+This was a real bug, but it had already been fixed in commit `0d1088e`
+("Fix 1-2 finish: end round immediately, fix scoring") before this review item was
+triaged — the report was just never crossed off. The sort now explicitly pushes
+players with `outOrder === 0` (never went out) to the end:
 
 ```ts
 const outOrder = [...players]
-  .sort((a, b) => a.outOrder - b.outOrder)  // outOrder=0 sorts first!
-  .map(p => p.seat);
-
-const firstOut = outOrder[0];    // BUG: this is the player who NEVER went out
-const secondOut = outOrder[1];   // BUG: this is actually the first-out player
-const lastPlayer = outOrder[3];  // BUG: this is the third-out player
+  .sort((a, b) => {
+    if (a.outOrder === 0 && b.outOrder === 0) return 0;
+    if (a.outOrder === 0) return 1;   // never-out player → last
+    if (b.outOrder === 0) return -1;
+    return a.outOrder - b.outOrder;   // earlier-out → first
+  })
+  .map(p => p.seat) as [Seat, Seat, Seat, Seat];
 ```
 
-**Consequences:**
-- Double victory is **never detected** (checks wrong pair of players)
-- Last player's hand cards are **not** given to the opposing team
-- Last player's tricks are **not** given to the first-out player
-- The `RoundResult.outOrder` array shown in the UI is in the wrong order
-
-**Fix:** Sort players with `outOrder > 0` ascending first, then `outOrder === 0`
-last. Something like:
-```ts
-.sort((a, b) => (a.outOrder || 999) - (b.outOrder || 999))
-```
+This is functionally equivalent to the suggested fix
+(`(a.outOrder || 999) - (b.outOrder || 999)`), so `firstOut`/`secondOut`/`lastPlayer`
+are all correct: double victory is detected properly, last player's hand cards go to
+the opposing team, and their tricks go to the first-out player. (Confirmed by live
+play — double victories score correctly.)
 
 ### ~~2. Mah Jong wish enforcement is incomplete~~ FIXED
 
