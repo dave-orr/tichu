@@ -10,6 +10,7 @@ import {
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom,
   setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
+  setBombWindowTimer, clearBombWindowTimer,
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
@@ -40,6 +41,41 @@ function createRateLimiter(windowMs: number, limit: number) {
 }
 
 const rateLimiter = createRateLimiter(1000, 20); // 20 events per second per socket
+
+// Bomb-window guards.
+// A bomb window auto-closes after this long so it can never defer trick
+// resolution (or linger on others' screens) indefinitely.
+const BOMB_WINDOW_MAX_MS = 8000;
+// Anti-spam: the first few announces within a rolling window are free (so a
+// player can freely change their mind), after which each announce arms an
+// escalating cooldown before the next one is allowed.
+const BOMB_ANNOUNCE_FREE = 3;
+const BOMB_ANNOUNCE_WINDOW_MS = 10000;
+const BOMB_ANNOUNCE_BASE_DELAY_MS = 1000;
+const BOMB_ANNOUNCE_MAX_DELAY_MS = 15000;
+
+// Returns 0 if the seat may announce a bomb now, otherwise the ms it must wait.
+// On success, records the announce and arms an escalating cooldown once the
+// seat exceeds its free quota within the rolling window.
+function bombAnnounceRetryMs(room: Room, seat: Seat): number {
+  const now = Date.now();
+  let t = room.bombAnnounceThrottle.get(seat);
+  if (!t || now - t.windowStart > BOMB_ANNOUNCE_WINDOW_MS) {
+    t = { count: 0, windowStart: now, blockedUntil: 0 };
+    room.bombAnnounceThrottle.set(seat, t);
+  }
+  if (now < t.blockedUntil) return t.blockedUntil - now;
+  t.count++;
+  if (t.count > BOMB_ANNOUNCE_FREE) {
+    const over = t.count - BOMB_ANNOUNCE_FREE; // 1, 2, 3, ...
+    const delay = Math.min(
+      BOMB_ANNOUNCE_BASE_DELAY_MS * 2 ** (over - 1),
+      BOMB_ANNOUNCE_MAX_DELAY_MS,
+    );
+    t.blockedUntil = now + delay;
+  }
+  return 0;
+}
 
 // Per-IP connection limiter: max concurrent connections from one IP
 const MAX_CONNECTIONS_PER_IP = 8;
@@ -264,14 +300,38 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       if (room.state.phase !== 'playing') return;
+      if (room.state.bombWindow) return; // already open — nothing to broadcast
+
+      const retryMs = bombAnnounceRetryMs(room, seat);
+      if (retryMs > 0) {
+        socket.emit('error', {
+          message: `Slow down — wait ${Math.ceil(retryMs / 1000)}s before announcing another bomb`,
+        });
+        return;
+      }
+
       room.state = { ...room.state, bombWindow: true };
       broadcastState(io, room);
+
+      // Auto-close the window so a held-open bomb window can't defer trick
+      // resolution forever or linger on everyone's screens.
+      clearBombWindowTimer(room.code);
+      const timer = setTimeout(() => {
+        clearBombWindowTimer(room.code);
+        if (!room.state.bombWindow || room.state.phase !== 'playing') return;
+        room.state = { ...room.state, bombWindow: false };
+        broadcastState(io, room);
+      }, BOMB_WINDOW_MAX_MS);
+      setBombWindowTimer(room.code, timer);
     });
 
     socket.on('bomb-cancel', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
+      if (room.state.phase !== 'playing') return;
+      if (!room.state.bombWindow) return; // nothing to cancel — skip the broadcast
+      clearBombWindowTimer(room.code);
       room.state = { ...room.state, bombWindow: false };
       broadcastState(io, room);
     });
@@ -285,6 +345,7 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       clearTrickCountdownTimer(room.code);
+      clearBombWindowTimer(room.code);
       const result = handleBomb(room, seat, cards);
       // Clear bomb window in the result state before processing
       const modifiedResult = { ...result, state: { ...result.state, bombWindow: false } };

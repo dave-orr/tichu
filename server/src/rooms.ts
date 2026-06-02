@@ -17,6 +17,10 @@ export type RoundAccumulator = {
   wasDown300: [boolean, boolean]; // per team, tracked across the whole game
 };
 
+// Per-seat bomb-announce throttle state (anti-spam). Lives on the Room so it is
+// garbage-collected with the room.
+export type BombThrottle = { count: number; windowStart: number; blockedUntil: number };
+
 export type Room = {
   code: string;
   state: GameState;
@@ -30,6 +34,7 @@ export type Room = {
   gameId: string;
   accumulator: RoundAccumulator;
   aiOpenSeats: Set<Seat>;           // seats marked as open for AI players
+  bombAnnounceThrottle: Map<Seat, BombThrottle>; // per-seat bomb-announce rate state
 };
 
 /**
@@ -52,6 +57,9 @@ const rooms = new Map<string, Room>();
 const socketRooms = new Map<string, string>();
 // Trick countdown timers per room
 const trickCountdownTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Bomb-window auto-close timers per room (bounds how long a bomb window may
+// defer trick resolution / linger after being opened).
+const bombWindowTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function setTrickCountdownTimer(roomCode: string, timer: ReturnType<typeof setTimeout>): void {
   trickCountdownTimers.set(roomCode, timer);
@@ -62,6 +70,18 @@ export function clearTrickCountdownTimer(roomCode: string): void {
   if (timer) {
     clearTimeout(timer);
     trickCountdownTimers.delete(roomCode);
+  }
+}
+
+export function setBombWindowTimer(roomCode: string, timer: ReturnType<typeof setTimeout>): void {
+  bombWindowTimers.set(roomCode, timer);
+}
+
+export function clearBombWindowTimer(roomCode: string): void {
+  const timer = bombWindowTimers.get(roomCode);
+  if (timer) {
+    clearTimeout(timer);
+    bombWindowTimers.delete(roomCode);
   }
 }
 
@@ -225,6 +245,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     gameId,
     accumulator: createAccumulator(gameId, [0, 0]),
     aiOpenSeats: new Set(),
+    bombAnnounceThrottle: new Map(),
   };
 
   rooms.set(code, room);
@@ -396,6 +417,8 @@ export function removePlayer(socketId: string): void {
       roomCleanupTimers.delete(code);
       const r = rooms.get(code);
       if (r && r.playerSockets.size === 0) {
+        clearTrickCountdownTimer(code);
+        clearBombWindowTimer(code);
         rooms.delete(code);
         console.log(`Cleaned up abandoned room: ${code}`);
       }
