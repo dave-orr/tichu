@@ -5,3 +5,6 @@ dist/
 !client/.env
 .env.local
 .env.*.local
+
+# Local Elo seeding file (may contain player emails); keep the example only
+server/elo-import.json

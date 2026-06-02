@@ -1,0 +1,10 @@
+{
+  "offset": 1500,
+  "defaultGames": 10,
+  "players": [
+    { "email": "alice@example.com", "bga": 180 },
+    { "email": "bob@example.com", "bga": 95 },
+    { "name": "Carol", "bga": 240 },
+    { "uid": "someFirebaseUid", "elo": 1720, "games": 50 }
+  ]
+}
