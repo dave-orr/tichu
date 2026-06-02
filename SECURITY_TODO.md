@@ -2,20 +2,6 @@
 
 Findings from a security review of the Tichu codebase.
 
-## Critical
-
-### ~~No rate limiting on Socket.IO events~~ ✅ DONE
-- **Location:** `server/src/handler.ts`, `server/src/index.ts`
-- **Fixed:** Added per-socket rate limiting (20 events/sec) via `socket.use` middleware, with automatic cleanup on disconnect. Added per-IP connection limiting (max 8 concurrent connections per IP) that rejects new connections with disconnect when exceeded.
-
-### ~~No server-side input validation on game payloads~~ ✅ DONE
-- **Location:** `server/src/handler.ts`, `server/src/validation.ts`, `server/src/rooms.ts`
-- **Fixed:** Added `server/src/validation.ts` with schema validators for Card, Card[], Seat, NormalRank, and player names. All socket event handlers now validate untrusted payloads before processing. `handlePassCards` verifies passed cards are distinct and present in the player's hand.
-
-### ~~Card pass validation gap~~ ✅ DONE
-- **Location:** `server/src/rooms.ts` handlePassCards
-- **Fixed:** `handlePassCards` now verifies that all three passed cards are distinct and present in the player's hand before accepting the pass.
-
 ## High
 
 ### Authentication is optional — all game actions work without it
@@ -82,10 +68,6 @@ Tagged [confirmed] (traced) or [suspected] (needs repro).
 #### `reconnectToRoom` trusts client-supplied player name as the only identity proof [suspected — verify reachability]
 - **Location:** `server/src/rooms.ts:242-276`
 - Reconnection matches a seat purely by `playerName` string equality, then rebinds that seat's socket to the caller — no token/uid check. Anyone who knows the room code and a display name can hijack that seat and see its hand via per-seat broadcast. No socket handler in `handler.ts` appears to call `reconnectToRoom`, so it may be dead/partially-wired — confirm before relying on it, but as written it's a hand-takeover primitive.
-
-#### ~~Per-IP connection limit is bypassed via forged `x-forwarded-for`~~ FIXED 2026-05-31
-- **Location:** `server/src/handler.ts` (`getIp`)
-- `getIp` now only consults `x-forwarded-for` when `TRUST_PROXY=1`/`true` (set in production behind the reverse proxy); otherwise it uses the real `socket.handshake.address`. When trusted, it parses the leftmost (originating client) hop from the comma-separated chain instead of using the header verbatim. Documented `TRUST_PROXY` in `server/.env.example`.
 
 #### Stat farming via human + AI games [confirmed]
 - **Location:** `server/src/stats.ts` (all writers) + `handler.ts:712`
