@@ -7,6 +7,13 @@ Production site: https://tichu.squidbox.com
 
 Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Node+Socket.IO) → `client/` (React+Vite+Tailwind).
 
+## Game Rules
+
+`RULES.md` (repo root) is the authoritative, complete rules reference.
+**Always read it before editing gameplay-affecting code** — especially
+`shared/src/engine.ts`, `combinations.ts`, `scoring.ts`, `deck.ts`, and
+`types.ts` card helpers. Verify changes against it rather than from memory.
+
 ### Key Files
 
 - `shared/src/types.ts` — All types, GameSettings, card helpers, RANK_NAMES, seat helpers
