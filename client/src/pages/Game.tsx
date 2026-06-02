@@ -46,7 +46,7 @@ type Props = {
 };
 
 export default function Game({ socket, auth }: Props) {
-  const { gameState, needMahJongWish, roundResult, autoSkippedSeat } = socket;
+  const { gameState, needMahJongWish, roundResult, autoSkippedSeat, disconnectedSeats } = socket;
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
@@ -424,6 +424,7 @@ export default function Game({ socket, auth }: Props) {
             isCurrentTurn={turnIndex === relativeSeats[2]}
             label="Partner"
             showPoints={gameState.settings.countPoints}
+            disconnected={disconnectedSeats.includes(relativeSeats[2])}
             play={lastPlayBySeat[relativeSeats[2]]}
             isTopOfTrick={lastPlayedBy === relativeSeats[2]}
             combo={currentTrick}
@@ -437,6 +438,7 @@ export default function Game({ socket, auth }: Props) {
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
             showPoints={gameState.settings.countPoints}
+            disconnected={disconnectedSeats.includes(relativeSeats[3])}
             play={lastPlayBySeat[relativeSeats[3]]}
             isTopOfTrick={lastPlayedBy === relativeSeats[3]}
             combo={currentTrick}
@@ -463,6 +465,7 @@ export default function Game({ socket, auth }: Props) {
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
             showPoints={gameState.settings.countPoints}
+            disconnected={disconnectedSeats.includes(relativeSeats[1])}
             play={lastPlayBySeat[relativeSeats[1]]}
             isTopOfTrick={lastPlayedBy === relativeSeats[1]}
             combo={currentTrick}

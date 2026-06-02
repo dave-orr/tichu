@@ -7,18 +7,23 @@ import Game from './pages/Game.js';
 
 export default function App() {
   const authState = useAuth();
-  const socket = useSocket(authState.idToken);
+  const socket = useSocket(authState.idToken, authState.refreshToken);
   const profileLoadedRef = useRef(false);
 
-  // Load full profile (stats + lastSettings) from server once connected + authenticated
+  // Load full profile (stats + lastSettings) from server once connected + authenticated.
+  // Reset the latch on failure so the effect retries on the next state change.
   useEffect(() => {
     if (socket.connectionState !== 'connected' || !authState.idToken || profileLoadedRef.current) return;
     profileLoadedRef.current = true;
     socket.loadProfile().then(result => {
       if ('profile' in result) {
         authState.updateProfile(result.profile as UserProfile);
+      } else {
+        profileLoadedRef.current = false;
       }
-    }).catch(() => { /* keep minimal profile */ });
+    }).catch(() => {
+      profileLoadedRef.current = false;
+    });
   }, [socket.connectionState, authState.idToken]);
 
   // Reset when user signs out so profile reloads on next sign-in

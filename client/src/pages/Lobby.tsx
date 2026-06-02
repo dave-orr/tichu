@@ -50,6 +50,7 @@ export default function Lobby({ socket, auth }: Props) {
         randomPartners={socket.randomPartners}
         hasProfile={!!profile}
         aiOpenSeats={socket.aiOpenSeats}
+        disconnectedSeats={socket.disconnectedSeats}
         onSwapSeats={socket.swapSeats}
         onUpdateSettings={socket.updateSettings}
         onUpdateRandomPartners={socket.updateRandomPartners}

@@ -11,6 +11,7 @@ type Props = {
   randomPartners: boolean;
   hasProfile: boolean;
   aiOpenSeats: number[];
+  disconnectedSeats: number[];
   onSwapSeats: (from: Seat, to: Seat) => void;
   onUpdateSettings: (settings: Record<string, boolean | number>) => void;
   onUpdateRandomPartners: (randomPartners: boolean) => void;
@@ -25,7 +26,7 @@ type Props = {
 
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
-  aiOpenSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
+  aiOpenSeats, disconnectedSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
   onMarkSeatAi, onUnmarkSeatAi,
   fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
 }: Props) {
@@ -95,6 +96,7 @@ export default function WaitingRoom({
               const isSwappable = canSwapSeats && p.name;
               const isAiOpen = aiOpenSeats.includes(i);
               const isAiPlayer = p.isAi;
+              const isDisconnected = disconnectedSeats.includes(i);
               return (
                 <div
                   key={i}
@@ -115,6 +117,9 @@ export default function WaitingRoom({
                     <span className="block text-xs text-yellow-300/90 font-semibold">
                       {roomElos.seatElos[i]} Elo
                     </span>
+                  )}
+                  {isDisconnected && (
+                    <span className="block text-xs text-amber-300 italic">reconnecting…</span>
                   )}
                   {!p.name && isOrganizer && (
                     <button
