@@ -12,10 +12,6 @@ Findings from a security review of the Tichu codebase.
 - **Location:** `server/src/handler.ts:17-25`
 - The Firebase token is checked once at connection time. If it expires mid-session, the socket remains authenticated. Long-lived connections could outlive revoked credentials.
 
-### Bomb window can be toggled without limit
-- **Location:** `server/src/handler.ts:128-143`
-- Any player can spam `bomb-announce` / `bomb-cancel` events, toggling `bombWindow` on the game state and broadcasting to all clients each time. This is a low-cost way to degrade the experience.
-
 ## Medium
 
 ### CORS defaults may be too broad
@@ -68,10 +64,6 @@ Tagged [confirmed] (traced) or [suspected] (needs repro).
 #### Stat farming via human + AI games [confirmed]
 - **Location:** `server/src/stats.ts` (all writers) + `handler.ts:712`
 - Stats are persisted for any game reaching `gameEnd`, with no minimum-real-players check or completed-game rate limit. A single authenticated human paired with unauthenticated AI players (`api.ts`) can repeatedly start and win games to inflate `gamesWon`/`tichuSuccesses`/etc. (Does NOT require forging a UID — UIDs come only from verified tokens, which is correct — the gameable surface is the outcomes themselves.)
-
-#### Bomb window can stall trick resolution indefinitely (extends existing "Bomb window" High item)
-- **Location:** `server/src/handler.ts:209-224` + `resolveTrickCountdown` `handler.ts:693-699`
-- Beyond the griefing already noted, holding `bombWindow` true re-arms the 500ms countdown re-check, so a malicious client can defer trick award forever. `bomb-cancel` also doesn't check `phase`. (Builds on the already-listed bomb-window finding.)
 
 ### Low
 
