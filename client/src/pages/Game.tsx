@@ -190,34 +190,26 @@ export default function Game({ socket, auth }: Props) {
     };
   }, [isMyTurnNow, pendingWish, gameState?.mySeat, gameState?.players]);
 
-  if (!gameState) return null;
-
-  const {
-    phase: _, players, mySeat, myHand, currentTrick, currentTrickPlays,
-    turnIndex, lastPlayedBy, teams,
-  } = gameState;
-
-  // Most recent play per seat for this trick (later plays overwrite earlier ones).
-  const lastPlayBySeat: Record<Seat, CardType[]> = { 0: [], 1: [], 2: [], 3: [] };
-  for (const play of currentTrickPlays) {
-    lastPlayBySeat[play.seat] = play.cards;
-  }
-
-  const isMyTurn = turnIndex === mySeat && phase === 'playing';
-  const myPlayer = players[mySeat];
-  const playerNames = players.map(p => p.name);
-  const mustPlayWish = canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick);
+  // Derived game values, computed null-safely so the hooks that follow run
+  // unconditionally (Rules of Hooks). The early return comes after them.
+  const currentTrick = gameState?.currentTrick ?? null;
+  const myHand = gameState?.myHand ?? [];
+  const isMyTurn = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
+  const selectedCardList = myHand.filter(c => selectedCards.has(cardId(c)));
+  const mustPlayWish = gameState
+    ? canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick)
+    : false;
 
   // Auto-pass when "pass next play" is queued
   useEffect(() => {
-    if (passNextPlay && isMyTurn && currentTrick !== null && !mustPlayWish && !gameState.bombWindow) {
+    if (passNextPlay && isMyTurn && currentTrick !== null && !mustPlayWish && !gameState?.bombWindow) {
       setPassNextPlay(false);
       socket.passTurn();
       setSelectedCards(new Set());
       setToast('Auto-passed (queued)');
       setTimeout(() => setToast(null), 2000);
     }
-  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState.bombWindow, socket]);
+  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState?.bombWindow, socket]);
 
   // Cancel auto-pass when the trick ends (new lead)
   useEffect(() => {
@@ -225,29 +217,6 @@ export default function Game({ socket, auth }: Props) {
       setPassNextPlay(false);
     }
   }, [currentTrick]);
-
-  // Arrange seats relative to current player: me (bottom), right, top (partner), left
-  const relativeSeats = [
-    mySeat,
-    ((mySeat + 1) % 4) as Seat, // right
-    ((mySeat + 2) % 4) as Seat, // top (partner)
-    ((mySeat + 3) % 4) as Seat, // left
-  ];
-
-  const toggleCard = (card: CardType) => {
-    const id = cardId(card);
-    setSelectedCards(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const selectedCardList = myHand.filter(c => selectedCards.has(cardId(c)));
 
   const canPlay = useMemo(() => {
     if (!isMyTurn || selectedCardList.length === 0) return false;
@@ -295,6 +264,43 @@ export default function Game({ socket, auth }: Props) {
     }
     return false;
   }, [phase, myHand]);
+
+  if (!gameState) return null;
+
+  const {
+    phase: _, players, mySeat, currentTrickPlays,
+    turnIndex, lastPlayedBy, teams,
+  } = gameState;
+
+  // Most recent play per seat for this trick (later plays overwrite earlier ones).
+  const lastPlayBySeat: Record<Seat, CardType[]> = { 0: [], 1: [], 2: [], 3: [] };
+  for (const play of currentTrickPlays) {
+    lastPlayBySeat[play.seat] = play.cards;
+  }
+
+  const myPlayer = players[mySeat];
+  const playerNames = players.map(p => p.name);
+
+  // Arrange seats relative to current player: me (bottom), right, top (partner), left
+  const relativeSeats = [
+    mySeat,
+    ((mySeat + 1) % 4) as Seat, // right
+    ((mySeat + 2) % 4) as Seat, // top (partner)
+    ((mySeat + 3) % 4) as Seat, // left
+  ];
+
+  const toggleCard = (card: CardType) => {
+    const id = cardId(card);
+    setSelectedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const partnerIsOut = phase === 'playing' && !myPlayer.isOut &&
     players[getPartnerSeat(mySeat)].isOut && !gameState.dragonGiveaway;
