@@ -180,11 +180,29 @@ compliance is checked on a lead too (`checkWishCompliance` already handles the
 lead case correctly via `canPlayWishedRankFromHand(..., null)`). Added an engine
 test that a leader holding the wished rank must play it.
 
-### E2. Pass-count can mis-resolve when the last player went out on their final play — HIGH [suspected]
-**`shared/src/engine.ts:432-449` (passTurn)** `passersNeeded` counts active players
-excluding `lastPlayedBy`, but `lastPlayedBy` is never cleared when that player goes
-out, so the required-pass count depends on whether the out player is still counted.
-Needs targeted tests for "win the trick on your last card with only 2 players left."
+### ~~E2. Pass-count can mis-resolve when the last player went out on their final play~~ ALREADY FIXED
+**`shared/src/engine.ts:431-440` (passTurn)** Already fixed in commit `2a779be`
+("Fix trick-award after leader goes out"). The original buggy form was
+`newPassCount >= activePlayers - 1`, which awarded the trick one pass too early when
+the leader had gone out (they were no longer in `activePlayers`, so subtracting 1
+double-counted). The current code computes the pass threshold directly:
+
+```ts
+const passersNeeded = state.players.filter(
+  p => !p.isOut && p.seat !== state.lastPlayedBy
+).length;
+if (newPassCount >= passersNeeded) { ... }
+```
+
+This is robust regardless of whether `lastPlayedBy` is still in:
+- **Leader still in** → excluded by `seat !== lastPlayedBy` → `passersNeeded = active - 1`.
+- **Leader out on final play** → already excluded by `!p.isOut` (the extra clause is
+  redundant) → `passersNeeded = active` (all remaining players must pass).
+
+Covered by the targeted test `engine.test.ts:64` ("still requires remaining active
+players to act after the leader goes out on their last play" — the exact
+"2 players left" case), plus `engine.test.ts:201` for the leader-still-in path. All
+engine tests pass.
 
 ### E3. Phoenix single comparison in `canBeat` bypasses rank — HIGH/MED [confirmed]
 **`shared/src/combinations.ts:374-377`** A Phoenix single returns `canBeat = true`
