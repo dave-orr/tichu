@@ -97,7 +97,10 @@ export async function updateStatsForRound(
       updates['playedWith'] = arrayUnion(...otherUids);
     }
 
-    batch.update(docRef, updates);
+    // set+merge (not update) so the doc is created if the player never triggered
+    // load-profile — otherwise update() throws NOT_FOUND and fails the whole batch,
+    // silently dropping this round's stats for every player.
+    batch.set(docRef, updates, { merge: true });
   }
 
   await batch.commit();
@@ -118,7 +121,10 @@ export async function updateStatsForGameEnd(
 
   const team0Score = state.teams[0].score;
   const team1Score = state.teams[1].score;
-  const winningTeam = team0Score > team1Score ? 0 : 1;
+  // null on a tie so neither team is credited a win (the game-over gate currently
+  // prevents ties from reaching here, but don't bake that invariant in).
+  const winningTeam: 0 | 1 | null =
+    team0Score === team1Score ? null : team0Score > team1Score ? 0 : 1;
   const scoreDiff = Math.abs(team0Score - team1Score);
   const isCloseGame = scoreDiff <= 100;
 
@@ -150,7 +156,9 @@ export async function updateStatsForGameEnd(
       }
     }
 
-    batch.update(docRef, updates);
+    // set+merge (not update) so a never-loaded user doc is created instead of
+    // throwing NOT_FOUND and failing the whole batch.
+    batch.set(docRef, updates, { merge: true });
   }
 
   await batch.commit();
@@ -243,7 +251,11 @@ export async function updateTeamStats(
 
     // Game-end stats
     if (isGameEnd) {
-      const winningTeam = state.teams[0].score > state.teams[1].score ? 0 : 1;
+      // null on a tie so neither team is credited a win.
+      const winningTeam: 0 | 1 | null =
+        state.teams[0].score === state.teams[1].score
+          ? null
+          : state.teams[0].score > state.teams[1].score ? 0 : 1;
       updates['stats.gamesPlayed'] = inc(1);
       if (teamIdx === winningTeam) {
         updates['stats.gamesWon'] = inc(1);
