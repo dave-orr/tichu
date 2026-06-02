@@ -44,19 +44,6 @@ aggregates, with no metric/retry/alert. Also `fetchInvitableUsers` comments
 
 ## Client correctness / React
 
-### C1. Hooks declared after an early return — Rules-of-Hooks violation (latent) — MED [confirmed, currently masked]
-**`client/src/pages/Game.tsx`** `if (!gameState) return null;` precedes several
-`useEffect`/`useMemo` hooks. This *would* crash on a null→non-null transition, BUT it's
-currently masked: `App.tsx` only mounts `<Game>` when `gameState` is truthy, and when it
-goes null the parent swaps to `<Lobby>` so `Game` never renders with null. Still fragile
-— move all hooks above the early return so a future refactor can't reintroduce the crash.
-
-### C2. `resetRoom` leaves stale cross-room state — MED [confirmed]
-**`client/src/hooks/useSocket.ts` `resetRoom`** Clears `gameState`/`roomCode`/`roundResult`
-but not `aiOpenSeats`, `pendingInvites`, `expiredInviteUids`, `randomPartners`,
-`autoSkippedSeat`, `needMahJongWish` — these can leak into the next room's UI after a
-session is lost.
-
 ### C3. Uncleared timers fire setState after unmount — MED/LOW [confirmed]
 - `WishDisplay.tsx` — 800ms `setTimeout` never cleared; also leaks if `wish` toggles again mid-animation.
 - `GameAnnouncement.tsx` — per-event removal `setTimeout`s not tracked/cleared on unmount.

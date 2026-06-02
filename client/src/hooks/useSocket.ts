@@ -314,6 +314,13 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     setIsOrganizer(false);
     setDisconnectedSeats([]);
     setError(null);
+    // Also clear the rest of the per-room state so nothing leaks into the next room.
+    setNeedMahJongWish(false);
+    setRandomPartners(false);
+    setPendingInvites([]);
+    setExpiredInviteUids(new Set());
+    setAutoSkippedSeat(null);
+    setAiOpenSeats([]);
   }, []);
 
   return {
