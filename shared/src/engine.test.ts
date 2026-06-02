@@ -173,10 +173,14 @@ describe('passTurn — pass-count threshold when leader is out', () => {
 
     // Once seat 0 sets the wish, the turn advances (clockwise default → seat 1)
     // and the pending flag clears.
-    const afterWish = setMahJongWish(afterMahjong.state, 5);
+    const afterWish = setMahJongWish(afterMahjong.state, 0, 5);
     expect(afterWish.mahJongWishPending).toBe(false);
     expect(afterWish.mahJongWish).toBe(5);
     expect(afterWish.turnIndex).toBe(1);
+
+    // A different seat cannot set or override a pending wish.
+    const intruder = setMahJongWish(afterMahjong.state, 1, 9);
+    expect(intruder).toBe(afterMahjong.state);
   });
 
   it('declining the wish (null) also releases the turn', () => {
@@ -192,7 +196,7 @@ describe('passTurn — pass-count threshold when leader is out', () => {
     const afterMahjong = playCards(state, 0, [mahjong]);
     expect(afterMahjong.state.turnIndex).toBe(0);
 
-    const afterWish = setMahJongWish(afterMahjong.state, null);
+    const afterWish = setMahJongWish(afterMahjong.state, 0, null);
     expect(afterWish.mahJongWish).toBeNull();
     expect(afterWish.mahJongWishPending).toBe(false);
     expect(afterWish.turnIndex).toBe(1);

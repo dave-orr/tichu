@@ -552,10 +552,14 @@ export function handleDragonGiveaway(room: Room, seat: Seat, to: Seat): PlayResu
 }
 
 export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank | null): void {
-  if (rank != null) {
+  // setMahJongWish enforces that only the pending wisher (held on turnIndex)
+  // may act; mirror that check here so the accumulator only records authorized
+  // wishes against the correct seat.
+  const authorized = room.state.mahJongWishPending && room.state.turnIndex === seat;
+  if (authorized && rank != null) {
     room.accumulator.mahJongWishes.push({ seat, rank });
   }
-  room.state = setMahJongWish(room.state, rank);
+  room.state = setMahJongWish(room.state, seat, rank);
 }
 
 export function handleConcede(room: Room, seat: Seat): PlayResult {

@@ -562,13 +562,18 @@ export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat):
 
 // ===== Mah Jong Wish =====
 
-export function setMahJongWish(state: GameState, rank: NormalRank | null): GameState {
+export function setMahJongWish(state: GameState, seat: Seat, rank: NormalRank | null): GameState {
+  // Only the player who played the Mah Jong may set or decline the wish. While
+  // a wish is pending the turn is held on that player (see playCards), so the
+  // pending wisher is identified by turnIndex. This mirrors the turn/seat guard
+  // enforced by playCards/passTurn/concede/giveDragonTrick.
+  if (!state.mahJongWishPending) return state;
+  if (state.turnIndex !== seat) return state;
+
   const newState: GameState = { ...state, mahJongWish: rank, mahJongWishPending: false };
   // While the wish was pending we held turnIndex on the wishing player; now
   // release it to the next active seat.
-  if (state.mahJongWishPending) {
-    newState.turnIndex = getNextActiveSeat(newState, state.turnIndex, newState.players);
-  }
+  newState.turnIndex = getNextActiveSeat(newState, state.turnIndex, newState.players);
   return newState;
 }
 

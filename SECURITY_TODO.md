@@ -55,10 +55,6 @@ Tagged [confirmed] (traced) or [suspected] (needs repro).
 
 ### High
 
-#### `mah-jong-wish` has no authorization check — anyone can set/clear the wish [confirmed]
-- **Location:** `server/src/handler.ts:253-263` → `handleMahJongWish` (`rooms.ts:478`) → `setMahJongWish` (`shared/src/engine.ts:563`)
-- `setMahJongWish` ignores its `seat` argument entirely and never verifies the caller actually played the Mah Jong (the `mahJongWishPending` owner). Any player in the room can call `mah-jong-wish` while a wish is pending to set, override, or clear (`rank: null`) the wished rank, and the event is recorded against the wrong seat. This is the one engine mutation that forgot the turn/seat guard that `playCards`/`passTurn`/`concede`/`giveDragonTrick` all enforce.
-
 #### AI HTTP API endpoints are entirely unauthenticated — hand leak + game interference [confirmed]
 - **Location:** `server/src/api.ts:60-299`
 - Anyone who can reach `/api/...` can join AI-open seats, open the SSE stream for any API seat (which sends that seat's hand via `toClientState`, `api.ts:160`), and submit actions for any API seat in any room (`/rooms/:code/action`). The only gate is "seat must be an API player." No auth, no rate limiting (the socket rate limiter does not cover HTTP). Combined with room-code brute force and `findRoomWithOpenAiSeat` matchmaking, an external actor can read hands and disrupt live games.
