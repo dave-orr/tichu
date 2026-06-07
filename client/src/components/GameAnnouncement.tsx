@@ -173,13 +173,13 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
     case 'grand-tichu':
       return (
         <div className="announce-grand text-center relative">
-          <div className="text-6xl font-black text-red-500 announce-text-shadow-red tracking-wider">
+          <div className="text-6xl font-black text-blue-500 announce-text-shadow-blue tracking-wider">
             GRAND TICHU!
           </div>
-          <div className="text-4xl text-red-300 font-semibold mt-1">
+          <div className="text-4xl text-blue-300 font-semibold mt-1">
             {event.playerName}
           </div>
-          <Sparkles count={16} spread={150} colors={['#ef4444', '#f97316', '#fbbf24']} />
+          <Sparkles count={16} spread={150} colors={['#3b82f6', '#60a5fa', '#93c5fd']} />
         </div>
       );
 

@@ -13,7 +13,7 @@ export default function TichuBadge({ call, status = 'pending' }: { call: TichuCa
         title={isGrand ? 'Grand Tichu' : 'Tichu'}
         className={`inline-flex items-center text-lg font-bold rounded px-1.5 py-0.5 leading-none tracking-wide shadow-sm ${
           isGrand
-            ? 'bg-red-600 text-white border border-red-400'
+            ? 'bg-blue-600 text-white border border-blue-400'
             : 'bg-green-600 text-white border border-green-400'
         }`}
       >

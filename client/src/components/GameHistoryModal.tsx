@@ -17,7 +17,7 @@ function teamNames(game: GameSummary, team: 0 | 1): string {
 
 function CallChip({ call }: { call: GameHistoryCall }) {
   const letter = call.tichuCall === 'grand' ? 'GT' : 'T';
-  const idColor = call.tichuCall === 'grand' ? 'text-red-400' : 'text-green-400';
+  const idColor = call.tichuCall === 'grand' ? 'text-blue-400' : 'text-green-400';
   return (
     <span className="inline-flex items-center gap-0.5 mr-2 whitespace-nowrap">
       <span className="text-gray-200">{call.name}</span>
