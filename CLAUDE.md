@@ -11,7 +11,10 @@ Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Nod
 
 Rooms live in-memory in `server/src/rooms.ts`. Players reconnect via a
 persistent client session token (`client/src/utils/session.ts` →
-`rejoin-room` handler → `reconnectToRoom`). To survive a server
+`rejoin-room` handler → `reconnectToRoom`). If a player drops for good, a
+substitute can fill in mid-game: `joinRoom` takes over any currently
+*disconnected* seat (keeping its hand/tricks) when the game is past `waiting`,
+reachable by sharing the room code (shown in-game, top-right) or via invite. To survive a server
 restart/redeploy, each room is snapshotted to Firestore (`liveRooms/{code}`,
 JSON blob, debounced) by `server/src/persistence.ts`; snapshots are reloaded
 on startup and deleted on room teardown, with an `expireAt` TTL backstop.

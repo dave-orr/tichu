@@ -610,10 +610,6 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      if (room.organizer !== socket.id) {
-        socket.emit('error', { message: 'Only the room creator can send invites' });
-        return;
-      }
 
       const fromName = room.state.players[seat].name;
       const invite = createInvite(room.code, fromUid, fromName, targetUid);
@@ -629,7 +625,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null }) => {
+    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL, sessionId }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null; sessionId?: string }) => {
       const invite = getInvite(inviteId);
       if (!invite) {
         socket.emit('error', { message: 'Invite expired or not found' });
@@ -648,7 +644,7 @@ export function setupHandlers(io: Server): void {
         return;
       }
 
-      const result = joinRoom(invite.roomCode, socket.id, playerName);
+      const result = joinRoom(invite.roomCode, socket.id, playerName, sessionId);
       if ('error' in result) {
         socket.emit('error', { message: result.error });
         return;

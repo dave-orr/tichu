@@ -289,7 +289,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, []);
 
   const respondInvite = useCallback((inviteId: string, accept: boolean, playerName?: string, photoURL?: string | null) => {
-    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName, photoURL: photoURL ?? null });
+    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName, photoURL: photoURL ?? null, sessionId: sessionIdRef.current });
     setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
   }, []);
 

@@ -12,6 +12,7 @@ import RoundResults from '../components/RoundResults.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
+import InvitePanel from '../components/InvitePanel.js';
 import type { TichuStatus } from '../components/TichuBadge.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import type { Combo, NormalRank } from '@tichu/shared';
@@ -52,6 +53,8 @@ export default function Game({ socket, auth }: Props) {
   const [passRecord, setPassRecord] = useState<PassRecord | null>(null);
   const [bombMode, setBombMode] = useState(false);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [showInvitePanel, setShowInvitePanel] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -337,6 +340,14 @@ export default function Game({ socket, auth }: Props) {
     setShowConcedeConfirm(false);
   };
 
+  const handleCopyCode = () => {
+    if (!socket.roomCode) return;
+    navigator.clipboard?.writeText(socket.roomCode).then(() => {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1500);
+    }).catch(() => { /* clipboard unavailable — ignore */ });
+  };
+
   const handlePlay = () => {
     if (!canPlay) return;
     socket.playCards(selectedCardList);
@@ -437,6 +448,40 @@ export default function Game({ socket, auth }: Props) {
       <div className="absolute top-2 left-2 z-10">
         <ScoreBoard gameState={gameState} />
       </div>
+
+      {/* Room code + invite — top right, so a dropped player can be replaced
+          mid-game by sharing the code or inviting someone. Visible to everyone
+          so the table isn't stuck if the organizer is the one who left. */}
+      {socket.roomCode && (
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-black/40 rounded-lg px-3 py-1.5">
+          <span className="text-base text-gray-300">Room</span>
+          <span className="font-mono font-bold tracking-widest text-yellow-400 text-xl">{socket.roomCode}</span>
+          <button
+            onClick={handleCopyCode}
+            title={copiedCode ? 'Copied!' : 'Copy room code'}
+            aria-label="Copy room code"
+            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors text-base"
+          >
+            {copiedCode ? '✓' : '⧉'}
+          </button>
+          {auth.profile && (
+            <button
+              onClick={() => setShowInvitePanel(true)}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition-colors text-base"
+            >
+              Invite
+            </button>
+          )}
+        </div>
+      )}
+      {showInvitePanel && (
+        <InvitePanel
+          onClose={() => setShowInvitePanel(false)}
+          fetchPlayers={socket.fetchPlayers}
+          sendInvite={socket.sendInvite}
+          expiredInviteUids={socket.expiredInviteUids}
+        />
+      )}
 
       {/* Announcements overlay */}
       <GameAnnouncements events={gameEvents} />
