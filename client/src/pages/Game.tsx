@@ -281,6 +281,21 @@ export default function Game({ socket, auth }: Props) {
   const myPlayer = players[mySeat];
   const playerNames = players.map(p => p.name);
 
+  // Mark cards passed to us (before we play our first card) in-hand: a "p" badge
+  // with an arrow pointing at the player who passed it, relative to my seat
+  // (right = +1, partner = +2, left = +3).
+  const receivedMarkers = useMemo(() => {
+    const m = new Map<string, string>();
+    if (phase === 'playing' && !myPlayer.hasPlayedFirstCard) {
+      for (const rc of gameState.myReceivedCards) {
+        const rel = (rc.fromSeat - mySeat + 4) % 4;
+        const arrow = ['', '→', '↑', '←'][rel] || '';
+        m.set(cardId(rc.card), arrow);
+      }
+    }
+    return m;
+  }, [phase, myPlayer.hasPlayedFirstCard, gameState.myReceivedCards, mySeat]);
+
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
     mySeat,
@@ -562,6 +577,7 @@ export default function Game({ socket, auth }: Props) {
           selectedCards={selectedCards}
           onToggleCard={toggleCard}
           disabled={phase !== 'playing'}
+          receivedMarkers={receivedMarkers}
         />
 
         {/* Bomb mode banner */}
@@ -708,53 +724,30 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
-        {/* Passed & received cards display — side by side below hand */}
-        {phase === 'playing' && (gameState.settings.showPassedCards && passRecord || (!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0)) && (
-          <div className="mt-2 flex justify-center gap-8">
-            {gameState.settings.showPassedCards && passRecord && (
-              <div className="text-center">
-                <div className="text-sm text-gray-400 mb-1">Cards passed</div>
-                <div className="flex justify-center gap-3">
-                  {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
-                    const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
-                    return (
-                      <div key={p.playerName} className="text-center">
-                        <div className="relative inline-block">
-                          <CardComponent card={p.card} small />
-                          {played && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5">to {p.playerName}</div>
+        {/* Cards you passed — shown below hand (received cards are marked in-hand) */}
+        {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
+          <div className="mt-2 flex justify-center">
+            <div className="text-center">
+              <div className="text-sm text-gray-400 mb-1">Cards passed</div>
+              <div className="flex justify-center gap-3">
+                {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
+                  const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+                  return (
+                    <div key={p.playerName} className="text-center">
+                      <div className="relative inline-block">
+                        <CardComponent card={p.card} small />
+                        {played && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {!myPlayer.hasPlayedFirstCard && gameState.myReceivedCards.length > 0 && (
-              <div className="text-center">
-                <div className="text-sm text-gray-400 mb-1">Cards received</div>
-                <div className="flex justify-center gap-3">
-                  {[...gameState.myReceivedCards]
-                    .sort((a, b) => {
-                      // Order: left (+3), partner (+2), right (+1) relative to mySeat
-                      const relA = (a.fromSeat - mySeat + 4) % 4;
-                      const relB = (b.fromSeat - mySeat + 4) % 4;
-                      const order = [3, 2, 1]; // left, partner, right
-                      return order.indexOf(relA) - order.indexOf(relB);
-                    })
-                    .map((rc) => (
-                    <div key={`${rc.fromSeat}`} className="text-center">
-                      <CardComponent card={rc.card} small />
-                      <div className="text-xs text-gray-500 mt-0.5">from {playerNames[rc.fromSeat]}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">to {p.playerName}</div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>

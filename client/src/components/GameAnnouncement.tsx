@@ -6,6 +6,8 @@ export type GameEvent = {
   type: 'tichu' | 'grand-tichu' | 'dog' | 'out' | 'tichu-made' | 'grand-made' | 'dragon-given';
   playerName: string;
   receiverName?: string;
+  // Arrow pointing at the dragon-trick receiver, relative to the viewer's seat.
+  receiverArrow?: '←' | '→' | '↑' | '↓';
 };
 
 const DURATIONS: Record<GameEvent['type'], number> = {
@@ -69,10 +71,15 @@ export function useGameEvents(
           }
         }
         if (receiverIdx >= 0) {
+          // Point the arrow at the receiver relative to *this* viewer's seat:
+          // table layout is me (bottom), right (+1), partner (+2), left (+3).
+          const rel = (receiverIdx - gameState.mySeat + 4) % 4;
+          const receiverArrow = (['↓', '→', '↑', '←'] as const)[rel];
           detected.push({
             type: 'dragon-given',
             playerName: gameState.players[prev.dragonGiveawayBy].name,
             receiverName: gameState.players[receiverIdx].name,
+            receiverArrow,
           });
         }
       }
@@ -227,7 +234,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
         <div className="announce-dragon text-center relative">
           <div className="text-5xl flex items-center justify-center gap-3">
             <span className="dragon-fly">🐉</span>
-            <span className="text-purple-300 text-3xl">→</span>
+            <span className="text-purple-300 text-3xl">{event.receiverArrow ?? '→'}</span>
           </div>
           <div className="text-3xl font-black text-purple-300 announce-text-shadow-purple mt-2 tracking-wide">
             {event.receiverName}

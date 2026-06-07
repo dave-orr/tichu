@@ -215,6 +215,12 @@ export default function Lobby({ socket, auth }: Props) {
               placeholder="Room code"
               value={joinCode}
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && joinCode.length === 4) {
+                  socket.joinRoom(joinCode, playerName.trim(), profile?.photoURL);
+                }
+              }}
+              autoFocus
               className="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500 text-center text-2xl tracking-widest font-mono"
               maxLength={4}
             />
