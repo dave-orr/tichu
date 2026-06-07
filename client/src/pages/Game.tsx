@@ -54,6 +54,7 @@ export default function Game({ socket, auth }: Props) {
   const [bombMode, setBombMode] = useState(false);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
+  const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
@@ -449,28 +450,46 @@ export default function Game({ socket, auth }: Props) {
         <ScoreBoard gameState={gameState} />
       </div>
 
-      {/* Room code + invite — top right, so a dropped player can be replaced
-          mid-game by sharing the code or inviting someone. Visible to everyone
-          so the table isn't stuck if the organizer is the one who left. */}
+      {/* Room code + invite, tucked behind a gear so it stays unobtrusive.
+          Shown to everyone so a dropped player can be replaced mid-game (by
+          sharing the code or inviting) even if the organizer is the one who
+          left. */}
       {socket.roomCode && (
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-black/40 rounded-lg px-3 py-1.5">
-          <span className="text-base text-gray-300">Room</span>
-          <span className="font-mono font-bold tracking-widest text-yellow-400 text-xl">{socket.roomCode}</span>
+        <div className="absolute top-2 right-2 z-20">
           <button
-            onClick={handleCopyCode}
-            title={copiedCode ? 'Copied!' : 'Copy room code'}
-            aria-label="Copy room code"
-            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors text-base"
+            onClick={() => setShowRoomMenu(v => !v)}
+            title="Room & invite"
+            aria-label="Room and invite options"
+            className="p-2 bg-black/25 hover:bg-black/50 text-gray-400 hover:text-white rounded-lg transition-colors"
           >
-            {copiedCode ? '✓' : '⧉'}
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
-          {auth.profile && (
-            <button
-              onClick={() => setShowInvitePanel(true)}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition-colors text-base"
-            >
-              Invite
-            </button>
+          {showRoomMenu && (
+            <div className="absolute right-0 mt-2 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 min-w-[200px]">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Room</span>
+                <span className="font-mono font-bold tracking-widest text-yellow-400 text-lg">{socket.roomCode}</span>
+                <button
+                  onClick={handleCopyCode}
+                  title={copiedCode ? 'Copied!' : 'Copy room code'}
+                  aria-label="Copy room code"
+                  className="ml-auto px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors text-sm"
+                >
+                  {copiedCode ? '✓' : '⧉'}
+                </button>
+              </div>
+              {auth.profile && (
+                <button
+                  onClick={() => { setShowInvitePanel(true); setShowRoomMenu(false); }}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition-colors text-sm"
+                >
+                  Invite players
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
