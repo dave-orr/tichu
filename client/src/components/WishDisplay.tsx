@@ -32,7 +32,7 @@ export default function WishDisplay({ wish }: Props) {
 
   return (
     <div className={`flex flex-col items-center gap-1 ${evaporating ? 'wish-evaporate' : 'wish-appear'}`}>
-      <div className="text-sm text-yellow-400/80 font-medium tracking-wide uppercase">Wish</div>
+      <div className="text-2xl text-yellow-400/80 font-medium tracking-wide uppercase">Wish</div>
       <div className="w-16 h-24 rounded-lg border-2 border-yellow-400 bg-yellow-50 shadow-lg shadow-yellow-400/20 flex items-center justify-center">
         <span className="text-3xl font-black text-yellow-700">
           {RANK_NAMES[displayWish]}

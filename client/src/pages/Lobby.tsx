@@ -73,7 +73,7 @@ export default function Lobby({ socket, auth }: Props) {
         {/* Auth section */}
         <div className="mb-6">
           {authLoading ? (
-            <div className="text-center text-gray-400 text-sm">Loading...</div>
+            <div className="text-center text-gray-400 text-2xl">Loading...</div>
           ) : profile ? (
             <div className="flex items-center justify-between bg-gray-800 rounded-lg p-3">
               <div className="flex items-center gap-3">
@@ -86,8 +86,8 @@ export default function Lobby({ socket, auth }: Props) {
                   />
                 )}
                 <div>
-                  <div className="text-sm font-semibold">{profile.displayName}</div>
-                  <div className="text-xs text-gray-400">{profile.email}</div>
+                  <div className="text-2xl font-semibold">{profile.displayName}</div>
+                  <div className="text-2xl text-gray-400">{profile.email}</div>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -140,7 +140,7 @@ export default function Lobby({ socket, auth }: Props) {
           <div className="space-y-2 mb-4">
             {socket.pendingInvites.map(inv => (
               <div key={inv.inviteId} className="bg-blue-900/50 border border-blue-500 p-3 rounded-lg flex items-center justify-between gap-3">
-                <span className="text-sm">
+                <span className="text-2xl">
                   <strong>{inv.fromName}</strong> invited you to room <strong>{inv.roomCode}</strong>
                 </span>
                 <div className="flex gap-2 flex-shrink-0">
@@ -215,7 +215,13 @@ export default function Lobby({ socket, auth }: Props) {
               placeholder="Room code"
               value={joinCode}
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
-              className="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500 text-center text-2xl tracking-widest font-mono"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && joinCode.length === 4) {
+                  socket.joinRoom(joinCode, playerName.trim(), profile?.photoURL);
+                }
+              }}
+              autoFocus
+              className="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-500 text-center text-4xl tracking-widest font-mono"
               maxLength={4}
             />
             <button
@@ -238,7 +244,7 @@ export default function Lobby({ socket, auth }: Props) {
         )}
 
         {!profile && !authLoading && (
-          <p className="text-center text-xs text-gray-500 mt-6">
+          <p className="text-center text-2xl text-gray-500 mt-6">
             Sign in to track your stats across games
           </p>
         )}

@@ -55,19 +55,19 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
       </div>
 
       {stats.gamesPlayed === 0 ? (
-        <p className="text-gray-400 text-sm text-center py-2">
+        <p className="text-gray-400 text-2xl text-center py-2">
           No games played yet. Stats will appear here after your first game.
         </p>
       ) : (
         <>
           <div className="flex items-baseline justify-center gap-2 mb-3 pb-3 border-b border-gray-700">
-            <span className="text-3xl font-bold text-yellow-400">{stats.elo}</span>
-            <span className="text-sm text-gray-400">Elo</span>
+            <span className="text-5xl font-bold text-yellow-400">{stats.elo}</span>
+            <span className="text-2xl text-gray-400">Elo</span>
             {stats.eloPeak > stats.elo && (
-              <span className="text-xs text-gray-500">(peak {stats.eloPeak})</span>
+              <span className="text-2xl text-gray-500">(peak {stats.eloPeak})</span>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-2xl">
             <StatRow label="Games Played" value={stats.gamesPlayed} />
             <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
             <StatRow label="Rounds Played" value={stats.roundsPlayed} />
@@ -92,8 +92,8 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
           </div>
 
           <div className="border-t border-gray-700 mt-3 pt-3">
-            <h4 className="text-xs text-gray-500 uppercase tracking-wide mb-2">Advanced</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">Advanced</h4>
+            <div className="grid grid-cols-2 gap-3 text-2xl">
               <StatRow
                 label="Avg Point Diff / Round"
                 value={avgPointDiff > 0 ? `+${avgPointDiff}` : String(avgPointDiff)}
@@ -143,19 +143,19 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
 
           {partners && partners.length > 0 && (
             <div className="border-t border-gray-700 mt-3 pt-3">
-              <h4 className="text-xs text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
+              <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
               <div className="space-y-1">
                 {partners.map(p => {
                   const rate = p.gamesPlayed > 0
                     ? Math.round((p.gamesWon / p.gamesPlayed) * 100)
                     : null;
                   return (
-                    <div key={p.partnerUid} className="flex items-center justify-between gap-2 text-sm">
+                    <div key={p.partnerUid} className="flex items-center justify-between gap-2 text-2xl">
                       <div className="flex items-center gap-2 min-w-0">
                         {p.partnerPhoto ? (
-                          <img src={p.partnerPhoto} alt="" className="w-6 h-6 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+                          <img src={p.partnerPhoto} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
                             {p.partnerName[0]}
                           </div>
                         )}
@@ -186,7 +186,7 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <div className="text-gray-400 text-xs">{label}</div>
+      <div className="text-gray-400 text-2xl">{label}</div>
       <div className="font-semibold">{value}</div>
     </div>
   );

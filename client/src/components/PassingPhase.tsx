@@ -1,6 +1,7 @@
 import type { Card as CardType, Seat, ClientGameState } from '@tichu/shared';
 import { cardId } from '@tichu/shared';
 import ScoreBoard from './ScoreBoard.js';
+import SeatingDiagram from './SeatingDiagram.js';
 import PassCards from './PassCards.js';
 import CardComponent from './Card.js';
 import Hand from './Hand.js';
@@ -34,7 +35,10 @@ export default function PassingPhase({
         <GameAnnouncements events={gameEvents} />
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="max-w-5xl w-full">
-            <ScoreBoard gameState={gameState} />
+            <div className="flex items-start justify-center gap-4">
+              <ScoreBoard gameState={gameState} />
+              <SeatingDiagram gameState={gameState} />
+            </div>
             <div className="mt-6">
               <PassCards
                 hand={myHand}
@@ -54,8 +58,11 @@ export default function PassingPhase({
       <GameAnnouncements events={gameEvents} />
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-5xl w-full text-center">
-          <ScoreBoard gameState={gameState} />
-          <p className="mt-6 mb-4 text-gray-300 text-lg">
+          <div className="flex items-start justify-center gap-4">
+            <ScoreBoard gameState={gameState} />
+            <SeatingDiagram gameState={gameState} />
+          </div>
+          <p className="mt-6 mb-4 text-gray-300 text-3xl">
             {(() => {
               const waiting = gameState.players
                 .filter(p => p.seat !== gameState.mySeat && !p.passedCards)
@@ -69,7 +76,7 @@ export default function PassingPhase({
             <div className="flex justify-center gap-6 mb-4">
               {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
                 <div key={p.playerName} className="text-center">
-                  <div className="text-sm text-gray-400 mb-1">To {p.playerName}</div>
+                  <div className="text-2xl text-gray-400 mb-1">To {p.playerName}</div>
                   <CardComponent card={p.card} small />
                 </div>
               ))}
@@ -88,7 +95,7 @@ export default function PassingPhase({
             onToggleCard={() => {}}
             disabled
           />
-          <div className="text-center text-base text-gray-400 mt-1">{playerName}</div>
+          <div className="text-center text-3xl text-gray-400 mt-1">{playerName}</div>
         </div>
       </div>
     </>

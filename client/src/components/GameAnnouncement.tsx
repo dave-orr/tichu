@@ -6,6 +6,8 @@ export type GameEvent = {
   type: 'tichu' | 'grand-tichu' | 'dog' | 'out' | 'tichu-made' | 'grand-made' | 'dragon-given';
   playerName: string;
   receiverName?: string;
+  // Arrow pointing at the dragon-trick receiver, relative to the viewer's seat.
+  receiverArrow?: '←' | '→' | '↑' | '↓';
 };
 
 const DURATIONS: Record<GameEvent['type'], number> = {
@@ -69,10 +71,15 @@ export function useGameEvents(
           }
         }
         if (receiverIdx >= 0) {
+          // Point the arrow at the receiver relative to *this* viewer's seat:
+          // table layout is me (bottom), right (+1), partner (+2), left (+3).
+          const rel = (receiverIdx - gameState.mySeat + 4) % 4;
+          const receiverArrow = (['↓', '→', '↑', '←'] as const)[rel];
           detected.push({
             type: 'dragon-given',
             playerName: gameState.players[prev.dragonGiveawayBy].name,
             receiverName: gameState.players[receiverIdx].name,
+            receiverArrow,
           });
         }
       }
@@ -157,7 +164,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
           <div className="text-5xl font-black text-orange-400 announce-text-shadow-orange tracking-wide">
             TICHU!
           </div>
-          <div className="text-lg text-orange-300 font-semibold mt-1">
+          <div className="text-3xl text-orange-300 font-semibold mt-1">
             {event.playerName}
           </div>
         </div>
@@ -169,7 +176,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
           <div className="text-6xl font-black text-red-500 announce-text-shadow-red tracking-wider">
             GRAND TICHU!
           </div>
-          <div className="text-xl text-red-300 font-semibold mt-1">
+          <div className="text-4xl text-red-300 font-semibold mt-1">
             {event.playerName}
           </div>
           <Sparkles count={16} spread={150} colors={['#ef4444', '#f97316', '#fbbf24']} />
@@ -180,7 +187,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
       return (
         <div className="announce-dog text-center">
           <div className="text-6xl">🐕</div>
-          <div className="text-xl font-bold text-gray-200 mt-1">
+          <div className="text-4xl font-bold text-gray-200 mt-1">
             {event.playerName} plays the Dog!
           </div>
         </div>
@@ -202,7 +209,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
           <div className="text-5xl font-black announce-gold-text tracking-wide">
             TICHU MADE!
           </div>
-          <div className="text-xl text-yellow-300 font-semibold mt-1">
+          <div className="text-4xl text-yellow-300 font-semibold mt-1">
             {event.playerName}
           </div>
           <Sparkles count={24} spread={160} colors={CELEBRATION_COLORS} />
@@ -215,7 +222,7 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
           <div className="text-7xl font-black announce-gold-text tracking-wider">
             GRAND TICHU!
           </div>
-          <div className="text-2xl text-yellow-300 font-semibold mt-1">
+          <div className="text-4xl text-yellow-300 font-semibold mt-1">
             {event.playerName} made it!
           </div>
           <Sparkles count={32} spread={200} colors={CELEBRATION_COLORS} />
@@ -227,12 +234,12 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
         <div className="announce-dragon text-center relative">
           <div className="text-5xl flex items-center justify-center gap-3">
             <span className="dragon-fly">🐉</span>
-            <span className="text-purple-300 text-3xl">→</span>
+            <span className="text-purple-300 text-3xl">{event.receiverArrow ?? '→'}</span>
           </div>
-          <div className="text-3xl font-black text-purple-300 announce-text-shadow-purple mt-2 tracking-wide">
+          <div className="text-5xl font-black text-purple-300 announce-text-shadow-purple mt-2 tracking-wide">
             {event.receiverName}
           </div>
-          <div className="text-base text-purple-200 mt-1">
+          <div className="text-3xl text-purple-200 mt-1">
             gets the Dragon trick from {event.playerName}
           </div>
           <Sparkles count={18} spread={140} colors={['#a78bfa', '#c084fc', '#f0abfc', '#ef4444']} />

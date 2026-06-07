@@ -57,13 +57,13 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
             p.isAvailable ? 'bg-green-400' : p.isOnline ? 'bg-yellow-400' : 'bg-gray-500'
           }`} />
           {p.photoURL ? (
-            <img src={p.photoURL} alt="" className="w-6 h-6 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+            <img src={p.photoURL} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
               {p.displayName[0]}
             </div>
           )}
-          <span className="text-sm truncate">{p.displayName}</span>
+          <span className="text-2xl truncate">{p.displayName}</span>
         </div>
         <button
           onClick={() => handleInvite(p.uid)}
@@ -80,7 +80,7 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-xl p-5 max-w-sm w-full max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">Invite Players</h3>
+          <h3 className="text-3xl font-bold">Invite Players</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
@@ -97,7 +97,7 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
           <div className="overflow-y-auto space-y-1">
             {playedWith.length > 0 && (
               <>
-                <div className="text-xs text-gray-400 font-semibold uppercase tracking-wide px-1 pt-1">
+                <div className="text-2xl text-gray-400 font-semibold uppercase tracking-wide px-1 pt-1">
                   Played before
                 </div>
                 {playedWith.map(renderPlayer)}
@@ -105,7 +105,7 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
             )}
             {others.length > 0 && (
               <>
-                <div className="text-xs text-gray-400 font-semibold uppercase tracking-wide px-1 pt-2">
+                <div className="text-2xl text-gray-400 font-semibold uppercase tracking-wide px-1 pt-2">
                   {playedWith.length > 0 ? 'Others' : 'All Players'}
                 </div>
                 {others.map(renderPlayer)}
