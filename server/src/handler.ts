@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -14,7 +14,7 @@ import {
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
 } from './rooms.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, updateEloForGameEnd } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards,
@@ -537,6 +537,35 @@ export function setupHandlers(io: Server): void {
       }
     });
 
+    socket.on('fetch-recent-games', async (callback: (data: { games: GameSummary[]; needsAuth?: boolean }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ games: [], needsAuth: true });
+        return;
+      }
+      try {
+        callback({ games: await fetchRecentGames(uid) });
+      } catch (err) {
+        console.error('Failed to fetch recent games:', err);
+        callback({ games: [] });
+      }
+    });
+
+    socket.on('fetch-game-history', async ({ gameId }: { gameId: string }, callback: (data: { rounds: GameHistoryRound[]; needsAuth?: boolean }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ rounds: [], needsAuth: true });
+        return;
+      }
+      try {
+        const rounds = await fetchGameHistory(uid, gameId);
+        callback({ rounds: rounds ?? [] });
+      } catch (err) {
+        console.error('Failed to fetch game history:', err);
+        callback({ rounds: [] });
+      }
+    });
+
     socket.on('fetch-room-elos', async (callback: (data: RoomElos) => void) => {
       const empty: RoomElos = { seatElos: [null, null, null, null], teamElos: [null, null] };
       const found = getRoomBySocket(socket.id);
@@ -888,6 +917,11 @@ function handleRoundResult(io: Server, room: Room, roundResult: RoundResult): vo
   if (isGameEnd) {
     updateStatsForGameEnd(room, roundResult).catch(err =>
       console.error('Failed to update game stats:', err)
+    );
+
+    // Top-level game summary so players can browse their recent games.
+    saveGameSummary(room).catch(err =>
+      console.error('Failed to save game summary:', err)
     );
 
     // Elo: recompute ratings, then broadcast the changes to the room so the

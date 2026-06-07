@@ -1,6 +1,7 @@
 import {
   GameState, Seat, getTeamForSeat, RoundResult, RoundLog, RoundLogPlayerEntry, PartnerStats,
   RoomElos, EloUpdate, ELO_INITIAL, eloExpected, eloKFactor,
+  GameSummary, GameSummaryPlayer, GameHistoryRound,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room, getSocketUid } from './rooms.js';
@@ -319,6 +320,92 @@ export async function saveRoundLog(
     .collection('rounds')
     .doc(String(state.roundNumber))
     .set(log);
+}
+
+/**
+ * Write the top-level summary doc for a finished game (players, final scores,
+ * winner). `playerUids` lets us list a user's recent games via array-contains.
+ * Call once, when the game ends.
+ */
+export async function saveGameSummary(room: Room): Promise<void> {
+  if (!firebaseAdmin) return;
+  const db = firebaseAdmin.firestore();
+  const state = room.state;
+  const acc = room.accumulator;
+
+  const players: GameSummaryPlayer[] = state.players.map(p => {
+    const socketId = room.seatPlayers.get(p.seat);
+    const uid = socketId ? getSocketUid(socketId) : null;
+    return { seat: p.seat, uid, name: p.name, team: getTeamForSeat(p.seat) };
+  });
+  const playerUids = players.map(p => p.uid).filter((u): u is string => !!u);
+  if (playerUids.length === 0) return; // nothing to surface to any user
+
+  const finalScores: [number, number] = [state.teams[0].score, state.teams[1].score];
+  const winningTeam: 0 | 1 | null =
+    finalScores[0] === finalScores[1] ? null : finalScores[0] > finalScores[1] ? 0 : 1;
+
+  const summary: GameSummary = {
+    gameId: acc.gameId,
+    finishedAt: Date.now(),
+    players,
+    finalScores,
+    winningTeam,
+    rounds: state.roundNumber,
+  };
+
+  // playerUids is stored alongside the summary purely for querying.
+  await db.collection('games').doc(acc.gameId).set({ ...summary, playerUids }, { merge: true });
+}
+
+/** The most recent finished games this user took part in (newest first, max 10). */
+export async function fetchRecentGames(uid: string): Promise<GameSummary[]> {
+  if (!firebaseAdmin) return [];
+  const db = firebaseAdmin.firestore();
+  // array-contains alone needs no composite index; sort/slice in memory.
+  const snap = await db.collection('games').where('playerUids', 'array-contains', uid).get();
+  const games = snap.docs
+    .map(d => d.data() as GameSummary & { finishedAt: number })
+    .sort((a, b) => b.finishedAt - a.finishedAt)
+    .slice(0, 10);
+  return games.map(g => ({
+    gameId: g.gameId,
+    finishedAt: g.finishedAt,
+    players: g.players,
+    finalScores: g.finalScores,
+    winningTeam: g.winningTeam ?? null,
+    rounds: g.rounds ?? 0,
+  }));
+}
+
+/**
+ * Round-by-round history for a single game, but only if the requesting user
+ * actually played in it (privacy gate). Returns null when not permitted/found.
+ */
+export async function fetchGameHistory(uid: string, gameId: string): Promise<GameHistoryRound[] | null> {
+  if (!firebaseAdmin) return null;
+  const db = firebaseAdmin.firestore();
+
+  const gameDoc = await db.collection('games').doc(gameId).get();
+  const data = gameDoc.data();
+  const playerUids: string[] = data?.playerUids ?? [];
+  if (!data || !playerUids.includes(uid)) return null;
+
+  const roundsSnap = await db.collection('games').doc(gameId).collection('rounds').get();
+  const rounds = roundsSnap.docs
+    .map(d => d.data() as RoundLog)
+    .sort((a, b) => a.roundNumber - b.roundNumber);
+
+  return rounds.map(r => ({
+    roundNumber: r.roundNumber,
+    scoresAfterRound: r.scoresAfterRound,
+    roundCardPoints: r.roundCardPoints,
+    tichuBonuses: r.tichuBonuses,
+    isDoubleVictory: r.isDoubleVictory,
+    calls: r.players
+      .filter(p => p.tichuCall !== 'none')
+      .map(p => ({ seat: p.seat, name: p.name, team: p.team, tichuCall: p.tichuCall, made: p.outOrder === 1 })),
+  }));
 }
 
 // ===== Elo ratings =====
