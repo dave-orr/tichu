@@ -32,11 +32,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
   }
 
   const handleCallClick = () => {
-    if (otherCallers.length > 0) {
-      setShowConfirm(true);
-    } else {
-      onDecide(true);
-    }
+    setShowConfirm(true);
   };
 
   return (
@@ -53,7 +49,9 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
       {showConfirm ? (
         <div className="space-y-2">
           <div className="text-3xl text-yellow-400">
-            {otherCallers.join(', ')} already called Grand Tichu. Still call?
+            {otherCallers.length > 0
+              ? `${otherCallers.join(', ')} already called Grand Tichu. Still call?`
+              : 'Call Grand Tichu? This is for +200/-200 points.'}
           </div>
           <div className="flex justify-center gap-4">
             <button
