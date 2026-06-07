@@ -410,6 +410,27 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
+  // One card in the "passed" diamond beside the hand: smaller than a hand
+  // card, with an ✕ once it's been played, labelled with its recipient.
+  const renderPassedCard = (p: { card: CardType; playerName: string }) => {
+    const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+    return (
+      <div className="text-center">
+        <div className="relative inline-block">
+          <CardComponent card={p.card} small />
+          {played && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-red-400/70 text-3xl font-bold leading-none">✕</span>
+            </div>
+          )}
+        </div>
+        <div className="text-base text-gray-400 mt-0.5 max-w-[64px] truncate mx-auto" title={p.playerName}>
+          {p.playerName}
+        </div>
+      </div>
+    );
+  };
+
   // Main playing phase
   return (
     <div className="min-h-screen flex flex-col relative">
@@ -588,13 +609,28 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
-        <Hand
-          cards={myHand}
-          selectedCards={selectedCards}
-          onToggleCard={toggleCard}
-          disabled={phase !== 'playing'}
-          receivedMarkers={receivedMarkers}
-        />
+        <div className="flex items-center justify-center gap-6">
+          <Hand
+            cards={myHand}
+            selectedCards={selectedCards}
+            onToggleCard={toggleCard}
+            disabled={phase !== 'playing'}
+            receivedMarkers={receivedMarkers}
+          />
+
+          {/* Cards you passed — a small diamond beside the hand, laid out by
+              who you passed each card to (partner top, left/right below). */}
+          {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
+            <div className="shrink-0 text-center">
+              <div className="text-xl text-gray-400 mb-1">Passed</div>
+              <div className="grid grid-cols-3 gap-x-1 items-start justify-items-center">
+                <div className="col-start-2 row-start-1">{renderPassedCard(passRecord.partner)}</div>
+                <div className="col-start-1 row-start-2">{renderPassedCard(passRecord.left)}</div>
+                <div className="col-start-3 row-start-2">{renderPassedCard(passRecord.right)}</div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Bomb mode banner */}
         {gameState.bombWindow && !bombMode && (
@@ -740,32 +776,6 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
-        {/* Cards you passed — shown below hand (received cards are marked in-hand) */}
-        {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
-          <div className="mt-2 flex justify-center">
-            <div className="text-center">
-              <div className="text-2xl text-gray-400 mb-1">Cards passed</div>
-              <div className="flex justify-center gap-3">
-                {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
-                  const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
-                  return (
-                    <div key={p.playerName} className="text-center">
-                      <div className="relative inline-block">
-                        <CardComponent card={p.card} small />
-                        {played && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-red-400/60 text-3xl font-bold leading-none">✕</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-2xl text-gray-500 mt-0.5">to {p.playerName}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Event log */}
