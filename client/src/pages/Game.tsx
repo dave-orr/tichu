@@ -406,8 +406,8 @@ export default function Game({ socket, auth }: Props) {
   // One small card in a passed/received diamond beside the hand, with a full-card
   // ✕ (drawn corner-to-corner) once it's been played. The other player is
   // conveyed by position (and a hover title).
-  const renderMiniCard = (card: CardType, title: string) => {
-    const played = gameState.playedCards.some(c => cardId(c) === cardId(card));
+  const renderMiniCard = (card: CardType, title: string, crossWhenPlayed = true) => {
+    const played = crossWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
     return (
       <div className="relative w-[39px] h-[58px]" title={title}>
         <div className="origin-top-left scale-[0.6]">
@@ -608,13 +608,13 @@ export default function Game({ socket, auth }: Props) {
           {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
             <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center">
               <div className="col-start-2 row-start-1">
-                {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`)}
+                {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
               </div>
               <div className="col-start-1 row-start-2">
-                {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`)}
+                {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`, false)}
               </div>
               <div className="col-start-3 row-start-2">
-                {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`)}
+                {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`, false)}
               </div>
             </div>
           )}
