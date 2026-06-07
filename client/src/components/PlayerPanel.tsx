@@ -1,6 +1,6 @@
 import type { Card as CardType, Combo, TichuCall } from '@tichu/shared';
 import SeatPlay from './SeatPlay.js';
-import TichuBadge from './TichuBadge.js';
+import TichuBadge, { type TichuStatus } from './TichuBadge.js';
 
 type Props = {
   player: { name: string; cardCount: number; isOut: boolean; tichuCall: TichuCall; trickCount: number; capturedPoints: number };
@@ -12,6 +12,7 @@ type Props = {
   play: CardType[];
   isTopOfTrick: boolean;
   combo: Combo | null;
+  tichuStatus?: TichuStatus;
 };
 
 /**
@@ -20,7 +21,7 @@ type Props = {
  * on one screen without scrolling.
  */
 export default function PlayerPanel({
-  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo,
+  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus,
 }: Props) {
   return (
     <div
@@ -37,7 +38,7 @@ export default function PlayerPanel({
           <span className={`font-bold text-4xl leading-tight truncate ${isCurrentTurn ? 'text-yellow-200' : 'text-white'}`}>
             {player.name}
           </span>
-          <TichuBadge call={player.tichuCall} />
+          <TichuBadge call={player.tichuCall} status={tichuStatus} />
         </div>
         {disconnected && (
           <div className="mt-0.5 inline-flex items-center gap-1 text-2xl font-semibold text-amber-300" title="Disconnected — waiting to reconnect">

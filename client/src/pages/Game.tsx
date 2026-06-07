@@ -12,6 +12,7 @@ import RoundResults from '../components/RoundResults.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
+import type { TichuStatus } from '../components/TichuBadge.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import type { Combo, NormalRank } from '@tichu/shared';
 
@@ -281,6 +282,17 @@ export default function Game({ socket, auth }: Props) {
   const myPlayer = players[mySeat];
   const playerNames = players.map(p => p.name);
 
+  // Tichu/Grand Tichu call outcome, resolved as players go out: the caller
+  // "made" it by going out first (outOrder === 1); once anyone else is out
+  // first, every other caller has "failed". Drives the badge check/✗.
+  const someoneOutFirst = players.some(p => p.outOrder === 1);
+  const tichuStatusFor = (p: typeof players[number]): TichuStatus => {
+    if (p.tichuCall === 'none') return 'pending';
+    if (p.outOrder === 1) return 'made';
+    if (someoneOutFirst) return 'failed';
+    return 'pending';
+  };
+
   // Mark cards passed to us (before we play our first card) in-hand: a "p" badge
   // with an arrow pointing at the player who passed it, relative to my seat
   // (right = +1, partner = +2, left = +3).
@@ -443,6 +455,7 @@ export default function Game({ socket, auth }: Props) {
             key={`p2-${lastPlayBySeat[relativeSeats[2]].map(cardId).join('|') || 'empty'}`}
             player={players[relativeSeats[2]]}
             isCurrentTurn={turnIndex === relativeSeats[2]}
+            tichuStatus={tichuStatusFor(players[relativeSeats[2]])}
             label="Partner"
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[2])}
@@ -458,6 +471,7 @@ export default function Game({ socket, auth }: Props) {
             key={`p3-${lastPlayBySeat[relativeSeats[3]].map(cardId).join('|') || 'empty'}`}
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
+            tichuStatus={tichuStatusFor(players[relativeSeats[3]])}
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[3])}
             play={lastPlayBySeat[relativeSeats[3]]}
@@ -485,6 +499,7 @@ export default function Game({ socket, auth }: Props) {
             key={`p1-${lastPlayBySeat[relativeSeats[1]].map(cardId).join('|') || 'empty'}`}
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
+            tichuStatus={tichuStatusFor(players[relativeSeats[1]])}
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[1])}
             play={lastPlayBySeat[relativeSeats[1]]}
@@ -499,6 +514,7 @@ export default function Game({ socket, auth }: Props) {
             key={`me-${lastPlayBySeat[mySeat].map(cardId).join('|') || 'empty'}`}
             player={myPlayer}
             isCurrentTurn={isMyTurn}
+            tichuStatus={tichuStatusFor(myPlayer)}
             isMe
             showPoints={gameState.settings.countPoints}
             play={lastPlayBySeat[mySeat]}
