@@ -169,6 +169,7 @@ export type GameState = {
   currentTrick: Combo | null;
   currentTrickPlays: TrickPlay[]; // all plays in current trick, in order
   passCount: number;           // consecutive passes
+  passedSeats: Seat[];         // seats whose most recent action this trick was a pass (cleared each trick)
   turnIndex: Seat;             // whose turn it is
   lastPlayedBy: Seat | null;   // who played the current top combo
   mahJongWish: NormalRank | null; // active wish (null = no wish)

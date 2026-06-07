@@ -13,6 +13,7 @@ type Props = {
   isTopOfTrick: boolean;
   combo: Combo | null;
   tichuStatus?: TichuStatus;
+  passed?: boolean;
 };
 
 /**
@@ -21,7 +22,7 @@ type Props = {
  * on one screen without scrolling.
  */
 export default function PlayerPanel({
-  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus,
+  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed,
 }: Props) {
   return (
     <div
@@ -59,11 +60,18 @@ export default function PlayerPanel({
         </div>
       </div>
 
-      {/* Their last play this trick */}
-      <div className="flex-1 flex items-center justify-center min-w-[180px]">
-        {play.length > 0 ? (
+      {/* Their last play this trick (plus a "Passed" tag if they passed — shown
+          alongside any cards, never overwriting them) */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-[180px]">
+        {play.length > 0 && (
           <SeatPlay cards={play} isTopOfTrick={isTopOfTrick} combo={combo} />
-        ) : (
+        )}
+        {passed && (
+          <span className="text-2xl font-semibold text-gray-300 bg-gray-700/70 rounded px-2 py-0.5 uppercase tracking-wide">
+            Passed
+          </span>
+        )}
+        {play.length === 0 && !passed && (
           <span className="text-gray-500 text-4xl leading-none">·</span>
         )}
       </div>

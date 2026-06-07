@@ -63,7 +63,7 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
         />
         <div>
           <span className="font-semibold">Show Passed Cards</span>
-          <p className="text-2xl text-gray-400">Show which cards you passed during play</p>
+          <p className="text-2xl text-gray-400">Show the cards you passed and received, beside your hand</p>
         </div>
       </label>
       <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
