@@ -410,20 +410,18 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
-  // One card in the "passed" diamond beside the hand: a half-size card (the
-  // small variant scaled to 50%), with an ✕ once it's been played. Recipient is
-  // conveyed by position (and a hover title), keeping the cluster compact.
+  // One card in the "passed" diamond beside the hand, with a full-card ✕ (drawn
+  // corner-to-corner) once it's been played. Recipient is conveyed by position
+  // (and a hover title), keeping the cluster compact.
   const renderPassedCard = (p: { card: CardType; playerName: string }) => {
     const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
     return (
-      <div className="relative w-12 h-[72px]" title={`Passed to ${p.playerName}`}>
-        <div className="origin-top-left scale-75">
-          <CardComponent card={p.card} small />
-        </div>
+      <div className="relative w-16 h-24" title={`Passed to ${p.playerName}`}>
+        <CardComponent card={p.card} small />
         {played && (
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
-            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.85)" strokeWidth="3" strokeLinecap="round" />
-            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.85)" strokeWidth="3" strokeLinecap="round" />
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="4" strokeLinecap="round" />
+            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="4" strokeLinecap="round" />
           </svg>
         )}
       </div>
@@ -621,7 +619,7 @@ export default function Game({ socket, auth }: Props) {
               recipient (partner top, left/right below) and vertically centered
               on the hand. */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
-            <div className="relative w-28 h-[104px] shrink-0">
+            <div className="relative w-[140px] h-[130px] shrink-0">
               <div className="absolute top-0 left-1/2 -translate-x-1/2">{renderPassedCard(passRecord.partner)}</div>
               <div className="absolute bottom-0 left-0">{renderPassedCard(passRecord.left)}</div>
               <div className="absolute bottom-0 right-0">{renderPassedCard(passRecord.right)}</div>
