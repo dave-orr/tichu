@@ -1,19 +1,30 @@
 import { useEffect, useState } from 'react';
-import type { PartnerStats } from '@tichu/shared';
+import type { PartnerStats, GameSummary, GameHistoryRound } from '@tichu/shared';
 import type { UserStats as UserStatsType } from '../hooks/useAuth.js';
+import RecentGames from './RecentGames.js';
 
 type Props = {
   stats: UserStatsType;
+  myUid: string;
   fetchPartnerStats: () => Promise<{ partners: PartnerStats[] }>;
+  fetchRecentGames: () => Promise<{ games: GameSummary[] }>;
+  fetchGameHistory: (gameId: string) => Promise<{ rounds: GameHistoryRound[] }>;
   onClose: () => void;
 };
 
-export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) {
+export default function UserStats({
+  stats, myUid, fetchPartnerStats, fetchRecentGames, fetchGameHistory, onClose,
+}: Props) {
   const [partners, setPartners] = useState<PartnerStats[] | null>(null);
+  const [recentGames, setRecentGames] = useState<GameSummary[] | null>(null);
 
   useEffect(() => {
     fetchPartnerStats().then(({ partners }) => setPartners(partners));
   }, [fetchPartnerStats]);
+
+  useEffect(() => {
+    fetchRecentGames().then(({ games }) => setRecentGames(games));
+  }, [fetchRecentGames]);
 
   const winRate = stats.gamesPlayed > 0
     ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
@@ -43,142 +54,158 @@ export default function UserStats({ stats, fetchPartnerStats, onClose }: Props) 
     : 0;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 mb-4">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-bold text-yellow-400">Your Stats</h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white text-sm"
-        >
-          Close
-        </button>
-      </div>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-gray-800 rounded-xl p-4 w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-3xl font-bold text-yellow-400">Your Stats</h3>
+          <button
+            onClick={onClose}
+            title="Close"
+            aria-label="Close"
+            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
-      {stats.gamesPlayed === 0 ? (
-        <p className="text-gray-400 text-2xl text-center py-2">
-          No games played yet. Stats will appear here after your first game.
-        </p>
-      ) : (
-        <>
-          <div className="flex items-baseline justify-center gap-2 mb-3 pb-3 border-b border-gray-700">
-            <span className="text-5xl font-bold text-yellow-400">{stats.elo}</span>
-            <span className="text-2xl text-gray-400">Elo</span>
-            {stats.eloPeak > stats.elo && (
-              <span className="text-2xl text-gray-500">(peak {stats.eloPeak})</span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-2xl">
-            <StatRow label="Games Played" value={stats.gamesPlayed} />
-            <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
-            <StatRow label="Rounds Played" value={stats.roundsPlayed} />
-            <StatRow label="First Out" value={stats.roundsWonFirstOut} />
-            <StatRow
-              label="Tichu Calls"
-              value={stats.tichuCalls > 0 ? `${stats.tichuSuccesses}/${stats.tichuCalls} (${tichuRate}%)` : '0'}
-            />
-            <StatRow
-              label="Grand Tichu"
-              value={stats.grandTichuCalls > 0 ? `${stats.grandTichuSuccesses}/${stats.grandTichuCalls} (${grandRate}%)` : '0'}
-            />
-            <StatRow
-              label="Tichu Call Rate"
-              value={stats.roundsPlayed > 0 ? `${tichuCallFreq}%` : '—'}
-            />
-            <StatRow
-              label="Grand Call Rate"
-              value={stats.roundsPlayed > 0 ? `${grandCallFreq}%` : '—'}
-            />
-            <StatRow label="Double Victories" value={stats.doubleVictories} />
-          </div>
-
-          <div className="border-t border-gray-700 mt-3 pt-3">
-            <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">Advanced</h4>
-            <div className="grid grid-cols-2 gap-3 text-2xl">
-              <StatRow
-                label="Avg Point Diff / Round"
-                value={avgPointDiff > 0 ? `+${avgPointDiff}` : String(avgPointDiff)}
-              />
-              <StatRow
-                label="Bombs Played / Faced"
-                value={`${stats.bombsPlayed} / ${stats.bombsFaced}`}
-              />
-              <StatRow
-                label="Tichu Rate (ahead >200)"
-                value={stats.roundsWhenAhead200 > 0
-                  ? `${tichuFreqAhead200}% (${stats.tichuCallsWhenAhead200}/${stats.roundsWhenAhead200})`
-                  : '—'}
-              />
-              <StatRow
-                label="Tichu Rate (behind >200)"
-                value={stats.roundsWhenBehind200 > 0
-                  ? `${tichuFreqBehind200}% (${stats.tichuCallsWhenBehind200}/${stats.roundsWhenBehind200})`
-                  : '—'}
-              />
-              <StatRow
-                label="Grand Rate (ahead >200)"
-                value={stats.roundsWhenAhead200 > 0
-                  ? `${grandFreqAhead200}% (${stats.grandCallsWhenAhead200}/${stats.roundsWhenAhead200})`
-                  : '—'}
-              />
-              <StatRow
-                label="Grand Rate (behind >200)"
-                value={stats.roundsWhenBehind200 > 0
-                  ? `${grandFreqBehind200}% (${stats.grandCallsWhenBehind200}/${stats.roundsWhenBehind200})`
-                  : '—'}
-              />
-              <StatRow
-                label="Close Games"
-                value={stats.closeGamesPlayed > 0
-                  ? `${stats.closeGameWins}/${stats.closeGamesPlayed} (${closeGameRate}%)`
-                  : '0'}
-              />
-              <StatRow
-                label="Comebacks (down 300+)"
-                value={stats.comebackOpportunities > 0
-                  ? `${stats.comebackWins}/${stats.comebackOpportunities} (${comebackRate}%)`
-                  : '0'}
-              />
-            </div>
-          </div>
-
-          {partners && partners.length > 0 && (
-            <div className="border-t border-gray-700 mt-3 pt-3">
-              <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
-              <div className="space-y-1">
-                {partners.map(p => {
-                  const rate = p.gamesPlayed > 0
-                    ? Math.round((p.gamesWon / p.gamesPlayed) * 100)
-                    : null;
-                  return (
-                    <div key={p.partnerUid} className="flex items-center justify-between gap-2 text-2xl">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {p.partnerPhoto ? (
-                          <img src={p.partnerPhoto} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
-                            {p.partnerName[0]}
-                          </div>
-                        )}
-                        <span className="truncate">{p.partnerName}</span>
-                      </div>
-                      <span className="font-semibold flex-shrink-0 flex items-center gap-2">
-                        {p.teamElo != null && (
-                          <span className="text-yellow-300/90">{p.teamElo}</span>
-                        )}
-                        <span>
-                          {p.gamesPlayed > 0
-                            ? `${p.gamesWon}/${p.gamesPlayed} (${rate}%)`
-                            : `${p.roundsPlayed} rd`}
-                        </span>
-                      </span>
-                    </div>
-                  );
-                })}
+        {stats.gamesPlayed === 0 ? (
+          <p className="text-gray-400 text-2xl text-center py-4">
+            No games played yet. Stats will appear here after your first game.
+          </p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Left column: tracked stats */}
+            <div>
+              <div className="flex items-baseline justify-center gap-2 mb-3 pb-3 border-b border-gray-700">
+                <span className="text-5xl font-bold text-yellow-400">{stats.elo}</span>
+                <span className="text-2xl text-gray-400">Elo</span>
+                {stats.eloPeak > stats.elo && (
+                  <span className="text-2xl text-gray-500">(peak {stats.eloPeak})</span>
+                )}
               </div>
+              <div className="grid grid-cols-2 gap-3 text-2xl">
+                <StatRow label="Games Played" value={stats.gamesPlayed} />
+                <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
+                <StatRow label="Rounds Played" value={stats.roundsPlayed} />
+                <StatRow label="First Out" value={stats.roundsWonFirstOut} />
+                <StatRow
+                  label="Tichu Calls"
+                  value={stats.tichuCalls > 0 ? `${stats.tichuSuccesses}/${stats.tichuCalls} (${tichuRate}%)` : '0'}
+                />
+                <StatRow
+                  label="Grand Tichu"
+                  value={stats.grandTichuCalls > 0 ? `${stats.grandTichuSuccesses}/${stats.grandTichuCalls} (${grandRate}%)` : '0'}
+                />
+                <StatRow
+                  label="Tichu Call Rate"
+                  value={stats.roundsPlayed > 0 ? `${tichuCallFreq}%` : '—'}
+                />
+                <StatRow
+                  label="Grand Call Rate"
+                  value={stats.roundsPlayed > 0 ? `${grandCallFreq}%` : '—'}
+                />
+                <StatRow label="Double Victories" value={stats.doubleVictories} />
+              </div>
+
+              <div className="border-t border-gray-700 mt-3 pt-3">
+                <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">Advanced</h4>
+                <div className="grid grid-cols-2 gap-3 text-2xl">
+                  <StatRow
+                    label="Avg Point Diff / Round"
+                    value={avgPointDiff > 0 ? `+${avgPointDiff}` : String(avgPointDiff)}
+                  />
+                  <StatRow
+                    label="Bombs Played / Faced"
+                    value={`${stats.bombsPlayed} / ${stats.bombsFaced}`}
+                  />
+                  <StatRow
+                    label="Tichu Rate (ahead >200)"
+                    value={stats.roundsWhenAhead200 > 0
+                      ? `${tichuFreqAhead200}% (${stats.tichuCallsWhenAhead200}/${stats.roundsWhenAhead200})`
+                      : '—'}
+                  />
+                  <StatRow
+                    label="Tichu Rate (behind >200)"
+                    value={stats.roundsWhenBehind200 > 0
+                      ? `${tichuFreqBehind200}% (${stats.tichuCallsWhenBehind200}/${stats.roundsWhenBehind200})`
+                      : '—'}
+                  />
+                  <StatRow
+                    label="Grand Rate (ahead >200)"
+                    value={stats.roundsWhenAhead200 > 0
+                      ? `${grandFreqAhead200}% (${stats.grandCallsWhenAhead200}/${stats.roundsWhenAhead200})`
+                      : '—'}
+                  />
+                  <StatRow
+                    label="Grand Rate (behind >200)"
+                    value={stats.roundsWhenBehind200 > 0
+                      ? `${grandFreqBehind200}% (${stats.grandCallsWhenBehind200}/${stats.roundsWhenBehind200})`
+                      : '—'}
+                  />
+                  <StatRow
+                    label="Close Games"
+                    value={stats.closeGamesPlayed > 0
+                      ? `${stats.closeGameWins}/${stats.closeGamesPlayed} (${closeGameRate}%)`
+                      : '0'}
+                  />
+                  <StatRow
+                    label="Comebacks (down 300+)"
+                    value={stats.comebackOpportunities > 0
+                      ? `${stats.comebackWins}/${stats.comebackOpportunities} (${comebackRate}%)`
+                      : '0'}
+                  />
+                </div>
+              </div>
+
+              {partners && partners.length > 0 && (
+                <div className="border-t border-gray-700 mt-3 pt-3">
+                  <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
+                  <div className="space-y-1">
+                    {partners.map(p => {
+                      const rate = p.gamesPlayed > 0
+                        ? Math.round((p.gamesWon / p.gamesPlayed) * 100)
+                        : null;
+                      return (
+                        <div key={p.partnerUid} className="flex items-center justify-between gap-2 text-2xl">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {p.partnerPhoto ? (
+                              <img src={p.partnerPhoto} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
+                                {p.partnerName[0]}
+                              </div>
+                            )}
+                            <span className="truncate">{p.partnerName}</span>
+                          </div>
+                          <span className="font-semibold flex-shrink-0 flex items-center gap-2">
+                            {p.teamElo != null && (
+                              <span className="text-yellow-300/90">{p.teamElo}</span>
+                            )}
+                            <span>
+                              {p.gamesPlayed > 0
+                                ? `${p.gamesWon}/${p.gamesPlayed} (${rate}%)`
+                                : `${p.roundsPlayed} rd`}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </>
-      )}
+
+            {/* Right column: recent games (separate card) */}
+            <RecentGames games={recentGames} myUid={myUid} fetchGameHistory={fetchGameHistory} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

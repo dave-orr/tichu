@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, GameSummary, GameHistoryRound } from '@tichu/shared';
 import { getSessionId, saveRoom, loadRoom, clearRoom } from '../utils/session.js';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
@@ -267,6 +267,14 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     return emitWithAuthRetry<{ partners: PartnerStats[]; needsAuth?: boolean }>('fetch-partner-stats');
   }, [emitWithAuthRetry]);
 
+  const fetchRecentGames = useCallback((): Promise<{ games: GameSummary[] }> => {
+    return emitWithAuthRetry<{ games: GameSummary[]; needsAuth?: boolean }>('fetch-recent-games');
+  }, [emitWithAuthRetry]);
+
+  const fetchGameHistory = useCallback((gameId: string): Promise<{ rounds: GameHistoryRound[] }> => {
+    return emitWithAuthRetry<{ rounds: GameHistoryRound[]; needsAuth?: boolean }>('fetch-game-history', { gameId });
+  }, [emitWithAuthRetry]);
+
   const fetchRoomElos = useCallback((): Promise<RoomElos> => {
     return new Promise(resolve => {
       socketRef.current?.emit('fetch-room-elos', resolve);
@@ -354,6 +362,8 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     expiredInviteUids,
     fetchPlayers,
     fetchPartnerStats,
+    fetchRecentGames,
+    fetchGameHistory,
     fetchRoomElos,
     eloUpdate,
     sendInvite,

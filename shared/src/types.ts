@@ -281,6 +281,43 @@ export type RoundLog = {
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
 };
 
+// ===== Completed-game summaries & history (for the stats page) =====
+
+export type GameSummaryPlayer = {
+  seat: Seat;
+  uid: string | null;
+  name: string;
+  team: 0 | 1;
+};
+
+/** Top-level summary doc written when a game ends; used to list recent games. */
+export type GameSummary = {
+  gameId: string;
+  finishedAt: number;
+  players: GameSummaryPlayer[];
+  finalScores: [number, number];
+  winningTeam: 0 | 1 | null;
+  rounds: number;
+};
+
+export type GameHistoryCall = {
+  seat: Seat;
+  name: string;
+  team: 0 | 1;
+  tichuCall: TichuCall;
+  made: boolean;
+};
+
+/** One round in the per-game history popup (derived from RoundLog). */
+export type GameHistoryRound = {
+  roundNumber: number;
+  scoresAfterRound: [number, number];
+  roundCardPoints: [number, number];
+  tichuBonuses: [number, number];
+  isDoubleVictory: boolean;
+  calls: GameHistoryCall[];
+};
+
 // ===== Type Helpers =====
 
 /** Cast an array to a fixed-length 4-tuple. Avoids `as unknown as [T,T,T,T]` throughout. */

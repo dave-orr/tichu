@@ -13,9 +13,9 @@ type Props = {
 
 function tichuLabel(call: 'small' | 'grand', made: boolean) {
   const letter = call === 'grand' ? 'G' : 'T';
-  // Color the letter by call identity (Tichu = green, Grand = red); show the
+  // Color the letter by call identity (Tichu = green, Grand = blue); show the
   // outcome with a check/✗, consistent with the in-game Tichu badge.
-  const idColor = call === 'grand' ? 'text-red-400' : 'text-green-400';
+  const idColor = call === 'grand' ? 'text-blue-400' : 'text-green-400';
   return (
     <span className={`${idColor} font-bold ml-1`}>
       {letter}

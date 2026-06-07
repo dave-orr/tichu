@@ -175,6 +175,10 @@ body {
   text-shadow: 0 0 20px rgba(74, 222, 128, 0.6), 0 0 40px rgba(74, 222, 128, 0.3);
 }
 
+.announce-text-shadow-blue {
+  text-shadow: 0 0 30px rgba(59, 130, 246, 0.7), 0 0 60px rgba(59, 130, 246, 0.3);
+}
+
 .announce-text-shadow-purple {
   text-shadow: 0 0 25px rgba(167, 139, 250, 0.7), 0 0 50px rgba(167, 139, 250, 0.3);
 }
