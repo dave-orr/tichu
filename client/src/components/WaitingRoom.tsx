@@ -33,6 +33,14 @@ export default function WaitingRoom({
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [roomElos, setRoomElos] = useState<RoomElos | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    navigator.clipboard?.writeText(roomCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => { /* clipboard unavailable — ignore */ });
+  };
 
   const playerCount = gameState.players.filter(p => p.name).length;
   const canSwapSeats = isOrganizer && !randomPartners && playerCount >= 2;
@@ -65,8 +73,27 @@ export default function WaitingRoom({
       <div className="bg-felt p-8 rounded-xl shadow-2xl max-w-md w-full text-center">
         <h1 className="text-5xl font-bold mb-2">Tichu</h1>
         <p className="text-gray-300 mb-6">Room Code</p>
-        <div className="text-5xl font-mono font-bold mb-6 tracking-widest text-yellow-400">
-          {roomCode}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <span className="text-5xl font-mono font-bold tracking-widest text-yellow-400">
+            {roomCode}
+          </span>
+          <button
+            onClick={handleCopyCode}
+            title={copied ? 'Copied!' : 'Copy room code'}
+            aria-label="Copy room code"
+            className="p-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
+          >
+            {copied ? (
+              <svg className="w-7 h-7 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
         </div>
         <p className="text-gray-300 mb-4">Share this code with other players</p>
 
