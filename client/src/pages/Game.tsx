@@ -293,20 +293,13 @@ export default function Game({ socket, auth }: Props) {
     return 'pending';
   };
 
-  // Mark cards passed to us (before we play our first card) in-hand: a "p" badge
-  // with an arrow pointing at the player who passed it, relative to my seat
-  // (right = +1, partner = +2, left = +3).
-  const receivedMarkers = useMemo(() => {
-    const m = new Map<string, string>();
-    if (phase === 'playing' && !myPlayer.hasPlayedFirstCard) {
-      for (const rc of gameState.myReceivedCards) {
-        const rel = (rc.fromSeat - mySeat + 4) % 4;
-        const arrow = ['', '→', '↑', '←'][rel] || '';
-        m.set(cardId(rc.card), arrow);
-      }
-    }
-    return m;
-  }, [phase, myPlayer.hasPlayedFirstCard, gameState.myReceivedCards, mySeat]);
+  // Cards passed to us, grouped by who they came from (relative to my seat:
+  // right = +1, partner = +2, left = +3) for the incoming diamond beside the hand.
+  const receivedByRel = useMemo(() => {
+    const find = (rel: number) =>
+      gameState.myReceivedCards.find(rc => (rc.fromSeat - mySeat + 4) % 4 === rel);
+    return { partner: find(2), left: find(3), right: find(1) };
+  }, [gameState.myReceivedCards, mySeat]);
 
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
@@ -410,15 +403,15 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
-  // One small card in the "passed" diamond beside the hand, with a full-card ✕
-  // (drawn corner-to-corner) once it's been played. Recipient is conveyed by
-  // position (and a hover title).
-  const renderPassedCard = (p: { card: CardType; playerName: string }) => {
-    const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
+  // One small card in a passed/received diamond beside the hand, with a full-card
+  // ✕ (drawn corner-to-corner) once it's been played. The other player is
+  // conveyed by position (and a hover title).
+  const renderMiniCard = (card: CardType, title: string) => {
+    const played = gameState.playedCards.some(c => cardId(c) === cardId(card));
     return (
-      <div className="relative w-[39px] h-[58px]" title={`Passed to ${p.playerName}`}>
+      <div className="relative w-[39px] h-[58px]" title={title}>
         <div className="origin-top-left scale-[0.6]">
-          <CardComponent card={p.card} small />
+          <CardComponent card={card} small />
         </div>
         {played && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" aria-hidden="true">
@@ -609,12 +602,28 @@ export default function Game({ socket, auth }: Props) {
         )}
 
         <div className="flex items-center justify-center gap-3">
+          {/* Cards passed to you — a separated diamond to the LEFT of the hand,
+              positioned by who passed each card (partner top, left/right below),
+              mirroring the outgoing diamond on the right. */}
+          {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
+            <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center">
+              <div className="col-start-2 row-start-1">
+                {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`)}
+              </div>
+              <div className="col-start-1 row-start-2">
+                {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`)}
+              </div>
+              <div className="col-start-3 row-start-2">
+                {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`)}
+              </div>
+            </div>
+          )}
+
           <Hand
             cards={myHand}
             selectedCards={selectedCards}
             onToggleCard={toggleCard}
             disabled={phase !== 'playing'}
-            receivedMarkers={receivedMarkers}
           />
 
           {/* Cards you passed — a separated diamond (partner top, left/right
@@ -622,9 +631,9 @@ export default function Game({ socket, auth }: Props) {
               keeps it vertically centered on the hand row (never below it). */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
             <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center">
-              <div className="col-start-2 row-start-1">{renderPassedCard(passRecord.partner)}</div>
-              <div className="col-start-1 row-start-2">{renderPassedCard(passRecord.left)}</div>
-              <div className="col-start-3 row-start-2">{renderPassedCard(passRecord.right)}</div>
+              <div className="col-start-2 row-start-1">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
+              <div className="col-start-1 row-start-2">{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
+              <div className="col-start-3 row-start-2">{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
             </div>
           )}
         </div>

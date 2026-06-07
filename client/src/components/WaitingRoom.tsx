@@ -219,7 +219,7 @@ export default function WaitingRoom({
           {[
             { key: 'countPoints' as const, label: 'Count Points', desc: 'Show captured point totals by each player\'s name' },
             { key: 'cardsSeen' as const, label: 'Cards Seen', desc: 'Show how many of each card remain unplayed' },
-            { key: 'showPassedCards' as const, label: 'Show Passed Cards', desc: 'Show which cards you passed during play' },
+            { key: 'showPassedCards' as const, label: 'Show Passed Cards', desc: 'Show the cards you passed and received, beside your hand' },
             { key: 'clockwise' as const, label: 'Clockwise Play', desc: 'Play passes clockwise instead of counterclockwise' },
           ].map(opt => (
             <label
