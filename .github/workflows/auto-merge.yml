@@ -1,0 +1,47 @@
+name: PR check & auto-merge
+
+# Runs build + tests on every pull request (this is also the project's CI).
+# When the checks pass on a non-draft PR from a claude/* branch, the PR is
+# squash-merged automatically and its branch deleted — no manual clicking.
+#
+# To hold a PR back from auto-merge, open it as a draft (or use a non-claude
+# branch); CI still runs, but it won't merge until you mark it ready.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# The auto-merge step needs to merge the PR and delete the branch.
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  auto-merge:
+    needs: verify
+    runs-on: ubuntu-latest
+    # Only auto-merge non-draft PRs coming from claude/* branches.
+    if: >-
+      github.event.pull_request.draft == false &&
+      startsWith(github.event.pull_request.head.ref, 'claude/')
+    steps:
+      - name: Squash-merge once green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --squash --delete-branch "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}"
