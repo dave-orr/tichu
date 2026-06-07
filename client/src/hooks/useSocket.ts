@@ -52,6 +52,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       // On (re)connect — whether a dropped socket or a full page reload — try to
       // reclaim our seat using the persistent session token.
       if (roomCodeRef.current) {
+        console.info(`[rejoin] attempting room=${roomCodeRef.current} session=${sessionIdRef.current.slice(0, 8)}`);
         socket.emit('rejoin-room', { roomCode: roomCodeRef.current, sessionId: sessionIdRef.current });
       }
     });
@@ -61,6 +62,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     });
 
     socket.on('room-lost', () => {
+      console.warn(`[rejoin] room-lost (had gameState=${!!gameStateRef.current})`);
       clearRoom();
       roomCodeRef.current = null;
       // Only alarm the user if they were actively in a game; a stale stored
@@ -79,6 +81,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     });
 
     socket.on('room-rejoined', ({ roomCode, randomPartners, isOrganizer }: { roomCode: string; randomPartners: boolean; isOrganizer: boolean }) => {
+      console.info(`[rejoin] success room=${roomCode} organizer=${isOrganizer}`);
       setRoomCode(roomCode);
       roomCodeRef.current = roomCode;
       saveRoom(roomCode);
@@ -286,7 +289,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, []);
 
   const respondInvite = useCallback((inviteId: string, accept: boolean, playerName?: string, photoURL?: string | null) => {
-    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName, photoURL: photoURL ?? null });
+    socketRef.current?.emit('respond-invite', { inviteId, accept, playerName, photoURL: photoURL ?? null, sessionId: sessionIdRef.current });
     setPendingInvites(prev => prev.filter(i => i.inviteId !== inviteId));
   }, []);
 

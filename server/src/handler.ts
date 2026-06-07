@@ -12,7 +12,9 @@ import {
   setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
   setBombWindowTimer, clearBombWindowTimer,
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
+  setRoomGoneCallback, registerRestoredRoom,
 } from './rooms.js';
+import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, updateEloForGameEnd } from './stats.js';
 import {
@@ -99,6 +101,20 @@ function getIp(socket: Socket): string {
 }
 
 export function setupHandlers(io: Server): void {
+  // Delete a room's persisted snapshot whenever it is torn down.
+  setRoomGoneCallback(deletePersistedRoom);
+
+  // Restore any games that were live when the server last stopped, so players
+  // can reconnect after a restart/redeploy. Best-effort, non-blocking.
+  loadPersistedRooms()
+    .then(restored => {
+      for (const room of restored) registerRestoredRoom(room);
+      if (restored.length > 0) {
+        console.log(`Restored ${restored.length} live room(s) from persistence`);
+      }
+    })
+    .catch(err => console.error('Failed to restore persisted rooms:', err));
+
   io.on('connection', async (socket: Socket) => {
     const ip = getIp(socket);
     const currentCount = connectionsPerIp.get(ip) ?? 0;
@@ -185,13 +201,16 @@ export function setupHandlers(io: Server): void {
     // Reconnect a returning player (refresh, crash, dropped connection) back to
     // their seat using their persistent client session token.
     socket.on('rejoin-room', ({ roomCode, sessionId, playerName, photoURL }: { roomCode: string; sessionId: string; playerName?: string; photoURL?: string | null }) => {
+      const sess = sessionId ? sessionId.slice(0, 8) : 'none';
       if (!roomCode || !sessionId) {
+        console.log(`[rejoin] ${socket.id} bad-request room=${roomCode ?? 'none'} session=${sess} -> room-lost`);
         socket.emit('room-lost');
         return;
       }
       const result = reconnectToRoom(roomCode, socket.id, sessionId);
       if (!('error' in result)) {
         const { room, seat } = result;
+        console.log(`[rejoin] ${socket.id} reconnected room=${roomCode} seat=${seat} session=${sess} phase=${room.state.phase}`);
         if (photoURL !== undefined) room.state.players[seat].photoURL = photoURL;
         socket.join(room.code);
         socket.emit('room-rejoined', {
@@ -205,9 +224,11 @@ export function setupHandlers(io: Server): void {
       // Couldn't reclaim the seat. If the room is still open for new players,
       // fall back to a fresh join; otherwise the session is truly lost.
       const room = getRoom(roomCode);
+      const reason = room ? result.error : 'room-not-found';
       if (room && room.state.phase === 'waiting' && isValidPlayerName(playerName ?? '')) {
         const joined = joinRoom(roomCode, socket.id, playerName!, sessionId);
         if (!('error' in joined)) {
+          console.log(`[rejoin] ${socket.id} fresh-join room=${roomCode} seat=${joined.seat} session=${sess} (was: ${reason})`);
           joined.room.state.players[joined.seat].photoURL = photoURL ?? null;
           socket.join(joined.room.code);
           io.to(joined.room.code).emit('player-joined', { playerName, seat: joined.seat });
@@ -220,6 +241,7 @@ export function setupHandlers(io: Server): void {
           return;
         }
       }
+      console.log(`[rejoin] ${socket.id} failed room=${roomCode} session=${sess} reason=${reason} -> room-lost`);
       socket.emit('room-lost');
     });
 
@@ -588,10 +610,6 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      if (room.organizer !== socket.id) {
-        socket.emit('error', { message: 'Only the room creator can send invites' });
-        return;
-      }
 
       const fromName = room.state.players[seat].name;
       const invite = createInvite(room.code, fromUid, fromName, targetUid);
@@ -607,7 +625,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null }) => {
+    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL, sessionId }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null; sessionId?: string }) => {
       const invite = getInvite(inviteId);
       if (!invite) {
         socket.emit('error', { message: 'Invite expired or not found' });
@@ -626,7 +644,7 @@ export function setupHandlers(io: Server): void {
         return;
       }
 
-      const result = joinRoom(invite.roomCode, socket.id, playerName);
+      const result = joinRoom(invite.roomCode, socket.id, playerName, sessionId);
       if ('error' in result) {
         socket.emit('error', { message: result.error });
         return;
@@ -776,6 +794,8 @@ export function broadcastState(io: Server, room: Room): void {
     io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats });
   }
   sseBroadcastCallback?.(room);
+  // Snapshot the room (debounced) so it survives a server restart.
+  persistRoom(room);
 }
 
 /** Notify a specific seat about an event (handles both socket and API players) */
