@@ -81,27 +81,36 @@ export default function Lobby({ socket, auth }: Props) {
                   <img
                     src={profile.photoURL}
                     alt=""
-                    className="w-8 h-8 rounded-full"
+                    className="w-14 h-14 rounded-full"
                     referrerPolicy="no-referrer"
                   />
                 )}
-                <div>
-                  <div className="text-2xl font-semibold">{profile.displayName}</div>
-                  <div className="text-2xl text-gray-400">{profile.email}</div>
-                </div>
+                <div className="text-2xl font-semibold">{profile.displayName}</div>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowStats(!showStats)}
-                  className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                  title="Stats"
+                  aria-label="Stats"
+                  className="p-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
                 >
-                  Stats
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
                 </button>
                 <button
                   onClick={signOut}
-                  className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                  title="Sign out"
+                  aria-label="Sign out"
+                  className="p-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
                 >
-                  Sign out
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
                 </button>
               </div>
             </div>
