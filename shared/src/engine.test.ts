@@ -38,6 +38,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     currentTrick: null,
     currentTrickPlays: [],
     passCount: 0,
+    passedSeats: [],
     turnIndex: 0,
     lastPlayedBy: null,
     mahJongWish: null,

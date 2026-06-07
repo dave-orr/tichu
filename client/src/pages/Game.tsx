@@ -469,6 +469,7 @@ export default function Game({ socket, auth }: Props) {
             player={players[relativeSeats[2]]}
             isCurrentTurn={turnIndex === relativeSeats[2]}
             tichuStatus={tichuStatusFor(players[relativeSeats[2]])}
+            passed={gameState.passedSeats.includes(relativeSeats[2])}
             label="Partner"
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[2])}
@@ -485,6 +486,7 @@ export default function Game({ socket, auth }: Props) {
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
             tichuStatus={tichuStatusFor(players[relativeSeats[3]])}
+            passed={gameState.passedSeats.includes(relativeSeats[3])}
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[3])}
             play={lastPlayBySeat[relativeSeats[3]]}
@@ -513,6 +515,7 @@ export default function Game({ socket, auth }: Props) {
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
             tichuStatus={tichuStatusFor(players[relativeSeats[1]])}
+            passed={gameState.passedSeats.includes(relativeSeats[1])}
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[1])}
             play={lastPlayBySeat[relativeSeats[1]]}
@@ -528,6 +531,7 @@ export default function Game({ socket, auth }: Props) {
             player={myPlayer}
             isCurrentTurn={isMyTurn}
             tichuStatus={tichuStatusFor(myPlayer)}
+            passed={gameState.passedSeats.includes(mySeat)}
             isMe
             showPoints={gameState.settings.countPoints}
             play={lastPlayBySeat[mySeat]}
