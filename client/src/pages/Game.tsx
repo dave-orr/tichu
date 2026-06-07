@@ -421,9 +421,10 @@ export default function Game({ socket, auth }: Props) {
           <CardComponent card={p.card} small />
         </div>
         {played && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-red-500/80 text-xl font-bold leading-none">✕</span>
-          </div>
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.85)" strokeWidth="3" strokeLinecap="round" />
+            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.85)" strokeWidth="3" strokeLinecap="round" />
+          </svg>
         )}
       </div>
     );
