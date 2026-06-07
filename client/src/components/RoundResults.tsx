@@ -28,7 +28,7 @@ function TeamHeader({ p1, p2, compact }: { p1: ClientPlayer; p2: ClientPlayer; c
     return (
       <span className="inline-flex items-center gap-1">
         <img src={p1.photoURL!} alt="" className={`${size} rounded-full`} referrerPolicy="no-referrer" />
-        <span className="text-gray-500 text-xs">&</span>
+        <span className="text-gray-500 text-2xl">&</span>
         <img src={p2.photoURL!} alt="" className={`${size} rounded-full`} referrerPolicy="no-referrer" />
       </span>
     );
@@ -62,14 +62,14 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold text-center mb-6 text-yellow-400">
+      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <h2 className="text-4xl font-bold text-center mb-6 text-yellow-400">
           {isGameOver ? 'Game Over!' : 'Round Complete'}
         </h2>
 
         {result.isDoubleVictory && (
           <div className="text-center mb-4">
-            <span className="text-xl font-bold text-green-400">
+            <span className="text-4xl font-bold text-green-400">
               Double Victory!
             </span>
             <p className="text-gray-300">
@@ -80,7 +80,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
         )}
 
         {/* Scoring table with aligned rows */}
-        <table className="w-full mb-6 text-base">
+        <table className="w-full mb-6 text-3xl">
           <thead>
             <tr>
               {[0, 1].map(team => (
@@ -115,7 +115,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
             <tr>
               {[0, 1].map(team => (
                 <td key={team} className="pt-2 border-t border-gray-600">
-                  <span className="text-lg font-bold text-white">
+                  <span className="text-3xl font-bold text-white">
                     {result.totalScores[team]}
                   </span>
                 </td>
@@ -126,10 +126,10 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
 
         {/* Out order with tichu indicators */}
         <div className="text-center mb-6">
-          <div className="text-base text-gray-400 mb-2">Out order</div>
+          <div className="text-3xl text-gray-400 mb-2">Out order</div>
           <div className="flex flex-col items-center gap-1">
             {result.outOrder.map((seat, i) => (
-              <div key={seat} className={`text-base ${i === 0 ? 'text-yellow-400 font-bold' : 'text-gray-200'}`}>
+              <div key={seat} className={`text-3xl ${i === 0 ? 'text-yellow-400 font-bold' : 'text-gray-200'}`}>
                 {i + 1}. {players[seat].name}{renderTichuIndicator(seat)}
               </div>
             ))}
@@ -139,8 +139,8 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
         {/* Round history table */}
         {showHistory && (
           <div className="mb-6">
-            <div className="text-base text-gray-400 text-center mb-2">Score History</div>
-            <table className="w-full text-sm">
+            <div className="text-3xl text-gray-400 text-center mb-2">Score History</div>
+            <table className="w-full text-2xl">
               <thead>
                 <tr className="text-gray-400 border-b border-gray-600">
                   <th className="py-1 text-left pl-2">Rd</th>
@@ -197,7 +197,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
 
         {isGameOver ? (
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-400 mb-4">
+            <div className="text-4xl font-bold text-yellow-400 mb-4">
               {result.totalScores[0] > result.totalScores[1]
                 ? `${players[0].name} & ${players[2].name} Win!`
                 : `${players[1].name} & ${players[3].name} Win!`
@@ -206,15 +206,15 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
 
             {eloUpdate && (eloUpdate.seatElos.some(e => e != null) || eloUpdate.teamElos.some(e => e != null)) && (
               <div className="bg-gray-900/60 rounded-lg p-3 mb-4">
-                <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">Elo Ratings</div>
+                <div className="text-2xl text-gray-400 uppercase tracking-wide mb-2">Elo Ratings</div>
                 <div className="grid grid-cols-2 gap-3">
                   {([0, 1] as const).map(team => {
                     const seats: [Seat, Seat] = team === 0 ? [0, 2] : [1, 3];
                     const teamElo = eloUpdate.teamElos[team];
                     const teamDelta = eloUpdate.teamDeltas[team];
                     return (
-                      <div key={team} className="text-sm">
-                        <div className="text-gray-400 text-xs mb-1">
+                      <div key={team} className="text-2xl">
+                        <div className="text-gray-400 text-2xl mb-1">
                           <TeamHeader p1={players[seats[0]]} p2={players[seats[1]]} compact />
                         </div>
                         {teamElo != null && teamDelta != null && (
@@ -228,7 +228,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
                           const delta = eloUpdate.seatDeltas[seat];
                           if (elo == null || delta == null) return null;
                           return (
-                            <div key={seat} className="text-gray-300 text-xs">
+                            <div key={seat} className="text-gray-300 text-2xl">
                               {players[seat].name}: <span className="font-semibold">{elo}</span>{' '}
                               <span className={deltaColor(delta)}>({formatDelta(delta)})</span>
                             </div>

@@ -27,7 +27,7 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
         />
         <div>
           <span className="font-semibold">Random Partners</span>
-          <p className="text-sm text-gray-400">Randomly assign teams when the game starts</p>
+          <p className="text-2xl text-gray-400">Randomly assign teams when the game starts</p>
         </div>
       </label>
       <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
@@ -39,7 +39,7 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
         />
         <div>
           <span className="font-semibold">Count Points</span>
-          <p className="text-sm text-gray-400">Show captured point totals by each player's name</p>
+          <p className="text-2xl text-gray-400">Show captured point totals by each player's name</p>
         </div>
       </label>
       <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
@@ -51,7 +51,7 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
         />
         <div>
           <span className="font-semibold">Cards Seen</span>
-          <p className="text-sm text-gray-400">Show how many of each card remain unplayed</p>
+          <p className="text-2xl text-gray-400">Show how many of each card remain unplayed</p>
         </div>
       </label>
       <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
@@ -63,7 +63,7 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
         />
         <div>
           <span className="font-semibold">Show Passed Cards</span>
-          <p className="text-sm text-gray-400">Show which cards you passed during play</p>
+          <p className="text-2xl text-gray-400">Show which cards you passed during play</p>
         </div>
       </label>
       <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
@@ -75,13 +75,13 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
         />
         <div>
           <span className="font-semibold">Clockwise Play</span>
-          <p className="text-sm text-gray-400">Play passes clockwise instead of counterclockwise</p>
+          <p className="text-2xl text-gray-400">Play passes clockwise instead of counterclockwise</p>
         </div>
       </label>
       <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800 border border-gray-600">
         <div className="flex-1">
           <span className="font-semibold">Target Score</span>
-          <p className="text-sm text-gray-400">Points needed to win the game</p>
+          <p className="text-2xl text-gray-400">Points needed to win the game</p>
         </div>
         <input
           type="number"

@@ -197,9 +197,9 @@ export default function EventLog({ entries }: { entries: LogEntry[] }) {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-72 max-h-64 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl flex flex-col">
+    <div className="fixed bottom-4 right-4 z-[60] w-96 max-h-80 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl flex flex-col">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-700">
-        <span className="text-sm font-bold text-gray-300">Game Log</span>
+        <span className="text-2xl font-bold text-gray-300">Game Log</span>
         <button
           onClick={() => setIsOpen(false)}
           className="text-gray-500 hover:text-gray-300 text-sm leading-none"
@@ -209,10 +209,10 @@ export default function EventLog({ entries }: { entries: LogEntry[] }) {
       </div>
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
         {entries.length === 0 && (
-          <div className="text-sm text-gray-500 italic">No events yet</div>
+          <div className="text-2xl text-gray-500 italic">No events yet</div>
         )}
         {entries.map(entry => (
-          <div key={entry.id} className="text-sm text-gray-300 leading-relaxed">
+          <div key={entry.id} className="text-2xl text-gray-300 leading-relaxed">
             {entry.text}
           </div>
         ))}

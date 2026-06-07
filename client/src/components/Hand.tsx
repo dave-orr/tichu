@@ -34,7 +34,7 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled, dra
             />
             {marker && (
               <div
-                className="absolute bottom-0.5 left-0.5 z-10 flex items-center gap-0.5 rounded bg-blue-600/90 px-1 text-[10px] font-bold leading-none text-white shadow pointer-events-none"
+                className="absolute bottom-0.5 left-0.5 z-10 flex items-center gap-0.5 rounded bg-blue-600/90 px-1 text-sm font-bold leading-none text-white shadow pointer-events-none"
                 title="Passed to you"
               >
                 <span>p</span>

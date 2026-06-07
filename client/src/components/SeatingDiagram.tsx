@@ -10,7 +10,7 @@ function DirectionArrow({ clockwise }: { clockwise: boolean }) {
   return (
     <svg
       viewBox="0 0 28 28"
-      className="w-9 h-9 text-yellow-400"
+      className="w-12 h-12 text-yellow-400"
       style={{ transform: clockwise ? undefined : 'scaleX(-1)' }}
       aria-hidden
     >
@@ -36,9 +36,9 @@ function SeatLabel({
     right: 'right-0 top-1/2 -translate-y-1/2',
   }[position];
   return (
-    <div className={`absolute ${posClass} max-w-[64px]`}>
+    <div className={`absolute ${posClass} max-w-[110px]`}>
       <div
-        className={`truncate rounded px-1.5 py-0.5 text-xs font-semibold text-center ${
+        className={`truncate rounded px-1.5 py-0.5 text-xl font-semibold text-center ${
           isMe
             ? 'bg-yellow-600/80 text-white ring-1 ring-yellow-300'
             : 'bg-gray-700/80 text-gray-200'
@@ -60,8 +60,8 @@ export default function SeatingDiagram({ gameState }: Props) {
 
   return (
     <div className="bg-gray-900/80 rounded-lg p-3 flex flex-col items-center">
-      <h3 className="font-bold text-center mb-2 text-yellow-400 text-base">Table</h3>
-      <div className="relative w-48 h-28">
+      <h3 className="font-bold text-center mb-2 text-yellow-400 text-3xl">Table</h3>
+      <div className="relative w-72 h-40">
         <SeatLabel name={players[partnerSeat].name} isMe={false} position="top" />
         <SeatLabel name={players[leftSeat].name} isMe={false} position="left" />
         <SeatLabel name={players[rightSeat].name} isMe={false} position="right" />

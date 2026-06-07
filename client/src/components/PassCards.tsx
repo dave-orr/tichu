@@ -105,8 +105,8 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-bold text-center text-yellow-400">Pass Cards</h3>
-      <p className="text-base text-gray-300 text-center">
+      <h3 className="text-4xl font-bold text-center text-yellow-400">Pass Cards</h3>
+      <p className="text-3xl text-gray-300 text-center">
         Select or drag one card to pass to each player
       </p>
 
@@ -126,7 +126,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
             onDragOver={(e) => handleDragOver(target, e)}
             onDragLeave={() => setDragOverTarget(null)}
           >
-            <div className="text-sm text-gray-400 mb-1">{label}</div>
+            <div className="text-2xl text-gray-400 mb-1">{label}</div>
             {selections[target] ? (
               <div
                 draggable

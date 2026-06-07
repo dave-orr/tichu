@@ -470,14 +470,14 @@ export default function Game({ socket, auth }: Props) {
             <WishDisplay wish={gameState.mahJongWish} />
             {currentTrick && lastPlayedBy !== null ? (
               <div className="text-center">
-                <div className="text-base uppercase tracking-wide text-gray-200 font-semibold">To beat</div>
-                <div className="text-yellow-200 font-bold text-2xl">{comboLabel(currentTrick)}</div>
+                <div className="text-3xl uppercase tracking-wide text-gray-200 font-semibold">To beat</div>
+                <div className="text-yellow-200 font-bold text-4xl">{comboLabel(currentTrick)}</div>
               </div>
             ) : (
-              <div className="text-xl text-gray-200 italic">Waiting for lead</div>
+              <div className="text-4xl text-gray-200 italic">Waiting for lead</div>
             )}
             {isMyTurn && (
-              <div className="text-yellow-300 font-bold animate-pulse text-2xl">Your turn!</div>
+              <div className="text-yellow-300 font-bold animate-pulse text-4xl">Your turn!</div>
             )}
           </div>
 
@@ -511,7 +511,7 @@ export default function Game({ socket, auth }: Props) {
       {/* Toast notification */}
       {(toast || autoSkippedSeat !== null) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-base font-medium">
+          <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-3xl font-medium">
             {autoSkippedSeat !== null
               ? autoSkippedSeat === mySeat
                 ? 'Turn skipped — not enough cards'
@@ -525,7 +525,7 @@ export default function Game({ socket, auth }: Props) {
       <div className={`p-2 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
-          <div className="mb-1 max-w-lg mx-auto">
+          <div className="mb-1 max-w-3xl mx-auto">
             <CardsSeen myHand={myHand} playedCards={gameState.playedCards} />
           </div>
         )}
@@ -550,7 +550,7 @@ export default function Game({ socket, auth }: Props) {
         )}
         {showTichuConfirm && (
           <div className="text-center mb-2 space-y-2">
-            <div className="text-base text-yellow-400">
+            <div className="text-3xl text-yellow-400">
               {players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
                 `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`
               ).join(', ')}. Still call?
@@ -582,7 +582,7 @@ export default function Game({ socket, auth }: Props) {
 
         {/* Bomb mode banner */}
         {gameState.bombWindow && !bombMode && (
-          <div className="text-center text-red-400 font-bold animate-pulse mb-2">
+          <div className="text-center text-3xl text-red-400 font-bold animate-pulse mb-2">
             A player is considering a bomb...
           </div>
         )}
@@ -590,9 +590,9 @@ export default function Game({ socket, auth }: Props) {
         {/* Trick countdown */}
         {phase === 'playing' && !bombMode && gameState.trickCountdown && countdownRemaining !== null && (
           <div className="flex justify-center items-center gap-3 mt-2">
-            <div className="text-sm text-yellow-400">
+            <div className="text-2xl text-yellow-400">
               {playerNames[gameState.trickCountdown.winner]} wins trick in{' '}
-              <span className="font-bold text-lg tabular-nums">{(countdownRemaining / 1000).toFixed(1)}s</span>
+              <span className="font-bold text-3xl tabular-nums">{(countdownRemaining / 1000).toFixed(1)}s</span>
             </div>
             {hasBombInHand && !gameState.bombWindow && (
               <button
@@ -631,7 +631,7 @@ export default function Game({ socket, auth }: Props) {
                   </button>
                 )}
                 {currentTrick && mustPlayWish && gameState.mahJongWish && (
-                  <div className="text-base text-yellow-400 flex items-center px-4">
+                  <div className="text-3xl text-yellow-400 flex items-center px-4">
                     You must play a {RANK_NAMES[gameState.mahJongWish]}!
                   </div>
                 )}
@@ -639,7 +639,7 @@ export default function Game({ socket, auth }: Props) {
             )}
             {!isMyTurn && !gameState.bombWindow && !myPlayer.isOut && (
               <>
-                <div className="text-base text-gray-400">
+                <div className="text-3xl text-gray-400">
                   Waiting for {playerNames[turnIndex]} to play...
                 </div>
                 {currentTrick !== null && !passNextPlay && (
@@ -676,7 +676,7 @@ export default function Game({ socket, auth }: Props) {
         {/* Bomb selection mode */}
         {bombMode && (
           <div className="flex justify-center gap-3 mt-2">
-            <div className="text-base text-red-400 flex items-center">Select your bomb cards</div>
+            <div className="text-3xl text-red-400 flex items-center">Select your bomb cards</div>
             <button
               onClick={confirmBomb}
               disabled={!canBombNow}
@@ -708,7 +708,7 @@ export default function Game({ socket, auth }: Props) {
         {/* Concede confirmation */}
         {showConcedeConfirm && (
           <div className="flex justify-center items-center gap-3 mt-2">
-            <span className="text-base text-yellow-400">End the round? Your hand goes to opponents.</span>
+            <span className="text-3xl text-yellow-400">End the round? Your hand goes to opponents.</span>
             <button
               onClick={handleConcede}
               className="py-1 px-4 bg-red-600 hover:bg-red-500 rounded-lg text-base font-bold transition-colors"
@@ -728,7 +728,7 @@ export default function Game({ socket, auth }: Props) {
         {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
           <div className="mt-2 flex justify-center">
             <div className="text-center">
-              <div className="text-sm text-gray-400 mb-1">Cards passed</div>
+              <div className="text-2xl text-gray-400 mb-1">Cards passed</div>
               <div className="flex justify-center gap-3">
                 {[passRecord.left, passRecord.partner, passRecord.right].map((p) => {
                   const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
@@ -742,7 +742,7 @@ export default function Game({ socket, auth }: Props) {
                           </div>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">to {p.playerName}</div>
+                      <div className="text-2xl text-gray-500 mt-0.5">to {p.playerName}</div>
                     </div>
                   );
                 })}

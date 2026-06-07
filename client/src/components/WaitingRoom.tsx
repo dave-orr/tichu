@@ -63,7 +63,7 @@ export default function WaitingRoom({
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="bg-felt p-8 rounded-xl shadow-2xl max-w-md w-full text-center">
-        <h1 className="text-3xl font-bold mb-2">Tichu</h1>
+        <h1 className="text-5xl font-bold mb-2">Tichu</h1>
         <p className="text-gray-300 mb-6">Room Code</p>
         <div className="text-5xl font-mono font-bold mb-6 tracking-widest text-yellow-400">
           {roomCode}
@@ -90,7 +90,7 @@ export default function WaitingRoom({
 
 
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2">Players ({playerCount}/4)</h3>
+          <h3 className="text-3xl font-semibold mb-2">Players ({playerCount}/4)</h3>
           <div className="grid grid-cols-2 gap-2">
             {gameState.players.map((p, i) => {
               const seat = i as Seat;
@@ -103,25 +103,25 @@ export default function WaitingRoom({
                 <div
                   key={i}
                   onClick={() => handleSeatClick(seat)}
-                  className={`p-2 rounded transition-colors ${
+                  className={`p-2 rounded transition-colors text-2xl ${
                     isAiPlayer ? 'bg-blue-700' : p.name ? 'bg-green-700' : isAiOpen ? 'bg-blue-900 border border-blue-500' : 'bg-gray-700'
                   } ${isSelected ? 'ring-2 ring-yellow-400' : ''} ${
                     isSwappable ? 'cursor-pointer hover:bg-green-600' : ''
                   }`}
                 >
-                  <span className="text-xs text-gray-300">
+                  <span className="text-xl text-gray-300">
                     {SEAT_NAMES[i]}
                     {isAiPlayer && <span className="ml-1 text-blue-300">(Bot)</span>}
                   </span>
                   <br />
                   {p.name || (isAiOpen ? 'Waiting for bot...' : 'Waiting...')}
                   {p.name && roomElos?.seatElos[i] != null && (
-                    <span className="block text-xs text-yellow-300/90 font-semibold">
+                    <span className="block text-xl text-yellow-300/90 font-semibold">
                       {roomElos.seatElos[i]} Elo
                     </span>
                   )}
                   {isDisconnected && (
-                    <span className="block text-xs text-amber-300 italic">reconnecting…</span>
+                    <span className="block text-xl text-amber-300 italic">reconnecting…</span>
                   )}
                   {!p.name && isOrganizer && (
                     <button
@@ -142,11 +142,11 @@ export default function WaitingRoom({
               );
             })}
           </div>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-2xl text-gray-400 mt-2">
             Teams: North & South vs East & West
           </p>
           {roomElos && (roomElos.teamElos[0] != null || roomElos.teamElos[1] != null) && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-2xl text-gray-500 mt-1">
               Pairing Elo:{' '}
               <span className="text-yellow-300/90 font-semibold">
                 N&S {roomElos.teamElos[0] != null ? roomElos.teamElos[0] : '—'}
@@ -158,12 +158,12 @@ export default function WaitingRoom({
             </p>
           )}
           {hasAi && (
-            <p className="text-xs text-amber-300/80 mt-1">
+            <p className="text-2xl text-amber-300/80 mt-1">
               Games with a bot are unrated — no Elo is won or lost.
             </p>
           )}
           {canSwapSeats && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-2xl text-gray-500 mt-1">
               {swapFrom !== null
                 ? `Click another player to swap with ${gameState.players[swapFrom].name}`
                 : 'Click two players to swap their seats'}
@@ -173,7 +173,7 @@ export default function WaitingRoom({
 
         {/* Setup options */}
         <div className="mb-4 space-y-2">
-          <h3 className="text-sm font-semibold text-gray-400 text-left">Setup Options</h3>
+          <h3 className="text-2xl font-semibold text-gray-400 text-left">Setup Options</h3>
           <label
             className={`flex items-center gap-3 p-2 rounded-lg bg-gray-800 border border-gray-600 ${isOrganizer ? 'cursor-pointer' : 'opacity-70'}`}
           >
@@ -185,8 +185,8 @@ export default function WaitingRoom({
               className="w-4 h-4 rounded accent-yellow-500"
             />
             <div className="text-left">
-              <span className="text-sm font-semibold">Random Partners</span>
-              <p className="text-xs text-gray-400">Randomly assign teams when the game starts</p>
+              <span className="text-2xl font-semibold">Random Partners</span>
+              <p className="text-2xl text-gray-400">Randomly assign teams when the game starts</p>
             </div>
           </label>
           {[
@@ -207,15 +207,15 @@ export default function WaitingRoom({
                 className="w-4 h-4 rounded accent-yellow-500"
               />
               <div className="text-left">
-                <span className="text-sm font-semibold">{opt.label}</span>
-                <p className="text-xs text-gray-400">{opt.desc}</p>
+                <span className="text-2xl font-semibold">{opt.label}</span>
+                <p className="text-2xl text-gray-400">{opt.desc}</p>
               </div>
             </label>
           ))}
           <div className={`flex items-center gap-3 p-2 rounded-lg bg-gray-800 border border-gray-600 ${isOrganizer ? '' : 'opacity-70'}`}>
             <div className="flex-1 text-left">
-              <span className="text-sm font-semibold">Target Score</span>
-              <p className="text-xs text-gray-400">Points needed to win</p>
+              <span className="text-2xl font-semibold">Target Score</span>
+              <p className="text-2xl text-gray-400">Points needed to win</p>
             </div>
             <input
               type="number"
@@ -225,7 +225,7 @@ export default function WaitingRoom({
               min={100}
               max={9999}
               step={50}
-              className="w-20 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white text-sm disabled:opacity-50"
+              className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white text-2xl disabled:opacity-50"
             />
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function WaitingRoom({
           </button>
         )}
         {playerCount === 4 && !isOrganizer && (
-          <p className="text-gray-400 text-sm">Waiting for host to start the game...</p>
+          <p className="text-gray-400 text-2xl">Waiting for host to start the game...</p>
         )}
       </div>
     </div>
