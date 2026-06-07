@@ -7,6 +7,22 @@ Production site: https://tichu.squidbox.com
 
 Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Node+Socket.IO) → `client/` (React+Vite+Tailwind).
 
+## Live-Game Persistence & Reconnection
+
+Rooms live in-memory in `server/src/rooms.ts`. Players reconnect via a
+persistent client session token (`client/src/utils/session.ts` →
+`rejoin-room` handler → `reconnectToRoom`). To survive a server
+restart/redeploy, each room is snapshotted to Firestore (`liveRooms/{code}`,
+JSON blob, debounced) by `server/src/persistence.ts`; snapshots are reloaded
+on startup and deleted on room teardown, with an `expireAt` TTL backstop.
+
+**One-time setup:** the TTL backstop needs a Firestore TTL policy on the
+`expireAt` field (Admin SDK can't create it):
+`gcloud firestore fields ttl update expireAt --collection-group=liveRooms --project=<FIREBASE_PROJECT_ID>`
+
+Finished-game history (`games`, `games/*/rounds`) is kept indefinitely by
+design — do not add TTL there.
+
 ## Game Rules
 
 `RULES.md` (repo root) is the authoritative, complete rules reference.

@@ -343,6 +343,42 @@ const WAITING_GRACE_MS = 45 * 1000;
 const roomCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const seatGraceTimers = new Map<string, ReturnType<typeof setTimeout>>(); // `${code}:${seat}`
 
+// Optional hook invoked whenever a room is permanently torn down, so the
+// persistence layer can delete its snapshot. Wired up in handler setup.
+let onRoomGone: ((code: string) => void) | null = null;
+export function setRoomGoneCallback(cb: (code: string) => void): void {
+  onRoomGone = cb;
+}
+
+/** Remove a room from memory and notify any teardown listener (persistence). */
+function destroyRoom(code: string): void {
+  rooms.delete(code);
+  onRoomGone?.(code);
+}
+
+/**
+ * Re-insert a room loaded from a persisted snapshot after a server restart.
+ * No live sockets exist yet, so the socket map is cleared (seats stay reserved
+ * via seatSessions for reconnection) and an abandoned-cleanup timer is armed so
+ * a game nobody returns to is eventually dropped.
+ */
+export function registerRestoredRoom(room: Room): void {
+  room.playerSockets = new Map();
+  rooms.set(room.code, room);
+  const timer = setTimeout(() => {
+    roomCleanupTimers.delete(room.code);
+    const r = rooms.get(room.code);
+    if (r && r.playerSockets.size === 0) {
+      clearTrickCountdownTimer(room.code);
+      clearBombWindowTimer(room.code);
+      destroyRoom(room.code);
+      console.log(`Cleaned up abandoned room: ${room.code}`);
+    }
+  }, ABANDONED_ROOM_TIMEOUT_MS);
+  roomCleanupTimers.set(room.code, timer);
+}
+
+
 function seatGraceKey(code: string, seat: Seat): string {
   return `${code}:${seat}`;
 }
@@ -404,7 +440,7 @@ export function removePlayer(socketId: string): void {
       freeSeat(r, seat);
       if (r.playerSockets.size === 0) {
         clearInvitesForRoom(code);
-        rooms.delete(code);
+        destroyRoom(code);
       }
     }, WAITING_GRACE_MS);
     seatGraceTimers.set(seatGraceKey(code, seat), timer);
@@ -419,7 +455,7 @@ export function removePlayer(socketId: string): void {
       if (r && r.playerSockets.size === 0) {
         clearTrickCountdownTimer(code);
         clearBombWindowTimer(code);
-        rooms.delete(code);
+        destroyRoom(code);
         console.log(`Cleaned up abandoned room: ${code}`);
       }
     }, ABANDONED_ROOM_TIMEOUT_MS);
