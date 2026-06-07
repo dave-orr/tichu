@@ -56,7 +56,7 @@ export default function ScoreBoard({ gameState }: Props) {
           {players.filter(p => p.tichuCall !== 'none').map(p => (
             <div key={p.seat} className="text-2xl text-center">
               <span className="text-yellow-400">{p.name}</span>:{' '}
-              <span className={p.tichuCall === 'grand' ? 'text-red-400 font-bold' : 'text-orange-400'}>
+              <span className={p.tichuCall === 'grand' ? 'text-red-400 font-bold' : 'text-green-400'}>
                 {p.tichuCall === 'grand' ? 'GRAND TICHU' : 'Tichu'}
               </span>
             </div>

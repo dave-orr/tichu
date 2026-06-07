@@ -161,10 +161,10 @@ function AnnouncementItem({ event }: { event: GameEvent }) {
     case 'tichu':
       return (
         <div className="announce-tichu text-center">
-          <div className="text-5xl font-black text-orange-400 announce-text-shadow-orange tracking-wide">
+          <div className="text-5xl font-black text-green-400 announce-text-shadow-green tracking-wide">
             TICHU!
           </div>
-          <div className="text-3xl text-orange-300 font-semibold mt-1">
+          <div className="text-3xl text-green-300 font-semibold mt-1">
             {event.playerName}
           </div>
         </div>
