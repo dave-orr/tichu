@@ -101,6 +101,29 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  // Drop a card back onto the hand to remove it from whichever slot holds it.
+  const handleHandDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    try {
+      const card: CardType = JSON.parse(e.dataTransfer.getData('application/json'));
+      const id = cardId(card);
+      const newSelections = { ...selections };
+      let removedTarget: PassTarget | null = null;
+      for (const t of ['left', 'partner', 'right'] as PassTarget[]) {
+        if (newSelections[t] && cardId(newSelections[t]!) === id) {
+          newSelections[t] = null;
+          removedTarget = t;
+        }
+      }
+      if (removedTarget) {
+        setSelections(newSelections);
+        setCurrentTarget(removedTarget);
+      }
+    } catch {
+      // ignore invalid drag data
+    }
+  };
+
   const allSelected = selections.left && selections.partner && selections.right;
 
   return (
@@ -143,13 +166,18 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
         ))}
       </div>
 
-      <Hand
-        cards={hand}
-        selectedCards={selectedIds}
-        onToggleCard={handleCardClick}
-        draggable
-        onDragStart={() => {}}
-      />
+      <div
+        onDrop={handleHandDrop}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+      >
+        <Hand
+          cards={hand}
+          selectedCards={selectedIds}
+          onToggleCard={handleCardClick}
+          draggable
+          onDragStart={() => {}}
+        />
+      </div>
 
       {allSelected && (
         <div className="text-center">
