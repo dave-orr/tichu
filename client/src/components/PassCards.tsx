@@ -113,7 +113,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
       <div className="flex justify-center gap-8 mb-4">
         {([
           { target: 'left' as PassTarget, label: playerNames[leftSeat], seat: leftSeat },
-          { target: 'partner' as PassTarget, label: playerNames[partnerSeat] + ' (partner)', seat: partnerSeat },
+          { target: 'partner' as PassTarget, label: playerNames[partnerSeat], seat: partnerSeat },
           { target: 'right' as PassTarget, label: playerNames[rightSeat], seat: rightSeat },
         ]).map(({ target, label }) => (
           <div
@@ -126,7 +126,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
             onDragOver={(e) => handleDragOver(target, e)}
             onDragLeave={() => setDragOverTarget(null)}
           >
-            <div className="text-2xl text-gray-400 mb-1">{label}</div>
+            <div className={`text-2xl font-bold mb-1 ${target === 'partner' ? 'text-yellow-400' : 'text-white'}`}>{label}</div>
             {selections[target] ? (
               <div
                 draggable
