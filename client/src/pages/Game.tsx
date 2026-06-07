@@ -410,18 +410,20 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
-  // One card in the "passed" diamond beside the hand, with a full-card ✕ (drawn
-  // corner-to-corner) once it's been played. Recipient is conveyed by position
-  // (and a hover title), keeping the cluster compact.
+  // One small card in the "passed" diamond beside the hand, with a full-card ✕
+  // (drawn corner-to-corner) once it's been played. Recipient is conveyed by
+  // position (and a hover title).
   const renderPassedCard = (p: { card: CardType; playerName: string }) => {
     const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
     return (
-      <div className="relative w-16 h-24" title={`Passed to ${p.playerName}`}>
-        <CardComponent card={p.card} small />
+      <div className="relative w-[39px] h-[58px]" title={`Passed to ${p.playerName}`}>
+        <div className="origin-top-left scale-[0.6]">
+          <CardComponent card={p.card} small />
+        </div>
         {played && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="4" strokeLinecap="round" />
-            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="4" strokeLinecap="round" />
+            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="3" strokeLinecap="round" />
+            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="3" strokeLinecap="round" />
           </svg>
         )}
       </div>
@@ -615,14 +617,14 @@ export default function Game({ socket, auth }: Props) {
             receivedMarkers={receivedMarkers}
           />
 
-          {/* Cards you passed — a tight diamond beside the hand, positioned by
-              recipient (partner top, left/right below) and vertically centered
-              on the hand. */}
+          {/* Cards you passed — a separated diamond (partner top, left/right
+              below) in an auto-height grid, shorter than the hand so items-center
+              keeps it vertically centered on the hand row (never below it). */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
-            <div className="relative w-[140px] h-[130px] shrink-0">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2">{renderPassedCard(passRecord.partner)}</div>
-              <div className="absolute bottom-0 left-0">{renderPassedCard(passRecord.left)}</div>
-              <div className="absolute bottom-0 right-0">{renderPassedCard(passRecord.right)}</div>
+            <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center">
+              <div className="col-start-2 row-start-1">{renderPassedCard(passRecord.partner)}</div>
+              <div className="col-start-1 row-start-2">{renderPassedCard(passRecord.left)}</div>
+              <div className="col-start-3 row-start-2">{renderPassedCard(passRecord.right)}</div>
             </div>
           )}
         </div>
