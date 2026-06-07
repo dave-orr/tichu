@@ -27,8 +27,8 @@ function DirectionArrow({ clockwise }: { clockwise: boolean }) {
 }
 
 function SeatLabel({
-  name, isMe, position,
-}: { name: string; isMe: boolean; position: 'top' | 'bottom' | 'left' | 'right' }) {
+  name, isMe, gold, position,
+}: { name: string; isMe?: boolean; gold?: boolean; position: 'top' | 'bottom' | 'left' | 'right' }) {
   const posClass = {
     top: 'top-0 left-1/2 -translate-x-1/2',
     bottom: 'bottom-0 left-1/2 -translate-x-1/2',
@@ -39,7 +39,7 @@ function SeatLabel({
     <div className={`absolute ${posClass} max-w-[110px]`}>
       <div
         className={`truncate rounded px-1.5 py-0.5 text-xl font-semibold text-center ${
-          isMe
+          gold
             ? 'bg-yellow-600/80 text-white ring-1 ring-yellow-300'
             : 'bg-gray-700/80 text-gray-200'
         }`}
@@ -62,10 +62,10 @@ export default function SeatingDiagram({ gameState }: Props) {
     <div className="bg-gray-900/80 rounded-lg p-3 flex flex-col items-center">
       <h3 className="font-bold text-center mb-2 text-yellow-400 text-3xl">Table</h3>
       <div className="relative w-72 h-40">
-        <SeatLabel name={players[partnerSeat].name} isMe={false} position="top" />
-        <SeatLabel name={players[leftSeat].name} isMe={false} position="left" />
-        <SeatLabel name={players[rightSeat].name} isMe={false} position="right" />
-        <SeatLabel name={players[mySeat].name} isMe position="bottom" />
+        <SeatLabel name={players[partnerSeat].name} gold position="top" />
+        <SeatLabel name={players[leftSeat].name} position="left" />
+        <SeatLabel name={players[rightSeat].name} position="right" />
+        <SeatLabel name={players[mySeat].name} isMe gold position="bottom" />
         <div className="absolute inset-0 flex items-center justify-center">
           <DirectionArrow clockwise={settings.clockwise} />
         </div>
