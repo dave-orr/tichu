@@ -126,27 +126,19 @@ export default function UserStats({
                   />
                   <StatRow
                     label="Tichu Rate (ahead >200)"
-                    value={stats.roundsWhenAhead200 > 0
-                      ? `${tichuFreqAhead200}% (${stats.tichuCallsWhenAhead200}/${stats.roundsWhenAhead200})`
-                      : '—'}
+                    value={`${tichuFreqAhead200}% (${stats.tichuCallsWhenAhead200}/${stats.roundsWhenAhead200})`}
                   />
                   <StatRow
                     label="Tichu Rate (behind >200)"
-                    value={stats.roundsWhenBehind200 > 0
-                      ? `${tichuFreqBehind200}% (${stats.tichuCallsWhenBehind200}/${stats.roundsWhenBehind200})`
-                      : '—'}
+                    value={`${tichuFreqBehind200}% (${stats.tichuCallsWhenBehind200}/${stats.roundsWhenBehind200})`}
                   />
                   <StatRow
                     label="Grand Rate (ahead >200)"
-                    value={stats.roundsWhenAhead200 > 0
-                      ? `${grandFreqAhead200}% (${stats.grandCallsWhenAhead200}/${stats.roundsWhenAhead200})`
-                      : '—'}
+                    value={`${grandFreqAhead200}% (${stats.grandCallsWhenAhead200}/${stats.roundsWhenAhead200})`}
                   />
                   <StatRow
                     label="Grand Rate (behind >200)"
-                    value={stats.roundsWhenBehind200 > 0
-                      ? `${grandFreqBehind200}% (${stats.grandCallsWhenBehind200}/${stats.roundsWhenBehind200})`
-                      : '—'}
+                    value={`${grandFreqBehind200}% (${stats.grandCallsWhenBehind200}/${stats.roundsWhenBehind200})`}
                   />
                   <StatRow
                     label="Close Games"

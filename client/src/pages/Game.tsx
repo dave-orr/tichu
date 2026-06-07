@@ -416,8 +416,8 @@ export default function Game({ socket, auth }: Props) {
   const renderPassedCard = (p: { card: CardType; playerName: string }) => {
     const played = gameState.playedCards.some(c => cardId(c) === cardId(p.card));
     return (
-      <div className="relative w-8 h-12" title={`Passed to ${p.playerName}`}>
-        <div className="origin-top-left scale-50">
+      <div className="relative w-12 h-[72px]" title={`Passed to ${p.playerName}`}>
+        <div className="origin-top-left scale-75">
           <CardComponent card={p.card} small />
         </div>
         {played && (
@@ -608,7 +608,7 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
-        <div className="flex items-end justify-center gap-3">
+        <div className="flex items-center justify-center gap-3">
           <Hand
             cards={myHand}
             selectedCards={selectedCards}
@@ -617,11 +617,11 @@ export default function Game({ socket, auth }: Props) {
             receivedMarkers={receivedMarkers}
           />
 
-          {/* Cards you passed — a tight half-size diamond beside the hand,
-              positioned by recipient (partner top, left/right below) and
-              bottom-aligned with the hand. */}
+          {/* Cards you passed — a tight diamond beside the hand, positioned by
+              recipient (partner top, left/right below) and vertically centered
+              on the hand. */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
-            <div className="relative w-20 h-[68px] shrink-0">
+            <div className="relative w-28 h-[104px] shrink-0">
               <div className="absolute top-0 left-1/2 -translate-x-1/2">{renderPassedCard(passRecord.partner)}</div>
               <div className="absolute bottom-0 left-0">{renderPassedCard(passRecord.left)}</div>
               <div className="absolute bottom-0 right-0">{renderPassedCard(passRecord.right)}</div>
