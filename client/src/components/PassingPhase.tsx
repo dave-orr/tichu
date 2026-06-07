@@ -1,6 +1,7 @@
 import type { Card as CardType, Seat, ClientGameState } from '@tichu/shared';
 import { cardId } from '@tichu/shared';
 import ScoreBoard from './ScoreBoard.js';
+import SeatingDiagram from './SeatingDiagram.js';
 import PassCards from './PassCards.js';
 import CardComponent from './Card.js';
 import Hand from './Hand.js';
@@ -34,7 +35,10 @@ export default function PassingPhase({
         <GameAnnouncements events={gameEvents} />
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="max-w-5xl w-full">
-            <ScoreBoard gameState={gameState} />
+            <div className="flex items-start justify-center gap-4">
+              <ScoreBoard gameState={gameState} />
+              <SeatingDiagram gameState={gameState} />
+            </div>
             <div className="mt-6">
               <PassCards
                 hand={myHand}
@@ -54,7 +58,10 @@ export default function PassingPhase({
       <GameAnnouncements events={gameEvents} />
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-5xl w-full text-center">
-          <ScoreBoard gameState={gameState} />
+          <div className="flex items-start justify-center gap-4">
+            <ScoreBoard gameState={gameState} />
+            <SeatingDiagram gameState={gameState} />
+          </div>
           <p className="mt-6 mb-4 text-gray-300 text-lg">
             {(() => {
               const waiting = gameState.players

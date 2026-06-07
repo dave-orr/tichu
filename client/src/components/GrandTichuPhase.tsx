@@ -1,5 +1,6 @@
 import type { Card as CardType, ClientGameState } from '@tichu/shared';
 import ScoreBoard from './ScoreBoard.js';
+import SeatingDiagram from './SeatingDiagram.js';
 import GrandTichuPrompt from './GrandTichuPrompt.js';
 import GameAnnouncements from './GameAnnouncement.js';
 import type { GameEvent } from './GameAnnouncement.js';
@@ -18,7 +19,10 @@ export default function GrandTichuPhase({ gameState, cards, decided, onDecide, g
       <GameAnnouncements events={gameEvents} />
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-5xl">
-          <ScoreBoard gameState={gameState} />
+          <div className="flex items-start justify-center gap-4">
+            <ScoreBoard gameState={gameState} />
+            <SeatingDiagram gameState={gameState} />
+          </div>
           <div className="mt-6">
             <GrandTichuPrompt
               cards={cards}
