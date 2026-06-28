@@ -462,16 +462,18 @@ export async function updateEloForGameEnd(room: Room): Promise<EloUpdate | null>
   const db = firebaseAdmin.firestore();
   const state = room.state;
 
-  // Don't rate games that include any AI player.
+  // Don't rate games that include any AI player: AI strength is fixed/unrated,
+  // so it would distort the ladder.
   if (state.players.some(p => p.isAi)) return null;
 
-  // Only rate fully-authenticated human tables. Individual ratings are computed
-  // against the *opposing team's average*, so an unrated seat would otherwise be
-  // treated as a phantom 1500-rated player — distorting everyone's expected
-  // score and breaking the zero-sum property (the deltas would no longer cancel
-  // across the table). Requiring all four mirrors the existing "no AI" rule.
+  // Rate any table with at least one signed-in human. A human guest doesn't
+  // block the others: guests carry no rating, so they're treated as a baseline
+  // 1500 partner/opponent when computing expected scores, only signed-in seats
+  // receive an individual update, and a pairing is rated only when both of its
+  // seats are signed in. With a guest in the mix the per-game deltas no longer
+  // sum to zero across the table — that's expected, not a bug.
   const seatUids = buildSeatUidMap(room);
-  if (seatUids.size !== 4) return null;
+  if (seatUids.size === 0) return null;
   const winningTeam = state.teams[0].score > state.teams[1].score ? 0 : 1;
 
   const teamKeys: [string | null, string | null] = [
