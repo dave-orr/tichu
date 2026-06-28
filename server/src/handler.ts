@@ -790,6 +790,11 @@ export function broadcastState(io: Server, room: Room): void {
   const disconnectedSeats = getDisconnectedSeats(room);
   for (const [socketId, seat] of room.playerSockets) {
     if (isApiPlayer(socketId)) continue;
+    // Self-heal the persistent seat->uid map from live, authenticated sockets so
+    // a player who later disconnects is still attributed at game end. Set-only:
+    // a not-yet-authenticated socket must not wipe a previously-known uid.
+    const uid = getSocketUid(socketId);
+    if (uid) room.seatUids.set(seat, uid);
     const clientState = toClientState(room.state, seat);
     io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats });
   }

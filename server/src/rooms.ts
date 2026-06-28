@@ -27,6 +27,7 @@ export type Room = {
   playerSockets: Map<string, Seat>; // socket.id -> seat
   seatPlayers: Map<Seat, string>;   // seat -> socket.id
   seatSessions: Map<Seat, string>;  // seat -> client session token (reconnect key)
+  seatUids: Map<Seat, string>;      // seat -> Firebase uid (persists across disconnects; humans only)
   passes: Map<Seat, PassInfo>;      // pending card passes
   randomPartners: boolean;
   organizer: string;                // socket.id of room creator
@@ -102,6 +103,21 @@ export function setSocketUid(socketId: string, uid: string): void {
 
 export function getSocketUid(socketId: string): string | null {
   return socketUids.get(socketId) ?? null;
+}
+
+/**
+ * Persist the authenticated uid for a seat so it survives the player's
+ * disconnects. `socketUids` is keyed by live socket and is wiped when a socket
+ * drops, so without this the uid of a momentarily-disconnected player is
+ * unrecoverable — which previously caused that seat (and any pairing it was
+ * part of) to be silently skipped when Elo / stats were computed at game end.
+ * Records the uid when known; clears the seat when the new occupant is
+ * anonymous, so a guest substitute never inherits the prior player's uid.
+ */
+export function recordSeatUid(room: Room, seat: Seat, socketId: string): void {
+  const uid = getSocketUid(socketId);
+  if (uid) room.seatUids.set(seat, uid);
+  else room.seatUids.delete(seat);
 }
 
 export function getSocketForUid(uid: string): string | null {
@@ -238,6 +254,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     playerSockets: new Map([[socketId, 0]]),
     seatPlayers: new Map([[0, socketId]]),
     seatSessions: new Map(sessionId ? [[0 as Seat, sessionId]] : []),
+    seatUids: new Map(),
     passes: new Map(),
     randomPartners,
     organizer: socketId,
@@ -250,6 +267,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
 
   rooms.set(code, room);
   socketRooms.set(socketId, code);
+  recordSeatUid(room, 0, socketId);
   return room;
 }
 
@@ -288,6 +306,8 @@ export function joinRoom(
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
   if (sessionId) room.seatSessions.set(seat, sessionId);
+  // Bind the seat to the new occupant's uid (clears it for a guest substitute).
+  recordSeatUid(room, seat, socketId);
   socketRooms.set(socketId, room.code);
 
   // A substitute taking over cancels any pending teardown for this seat/room.
@@ -325,6 +345,11 @@ export function reconnectToRoom(
   room.state.players[seat].id = socketId;
   room.playerSockets.set(socketId, seat);
   room.seatPlayers.set(seat, socketId);
+  // Same person reconnecting: refresh the uid if this socket is already
+  // authenticated, but keep the previously-recorded one if auth lags the
+  // reconnect (it arrives on the handshake) rather than dropping it.
+  const reUid = getSocketUid(socketId);
+  if (reUid) room.seatUids.set(seat, reUid);
   socketRooms.set(socketId, room.code);
 
   // Restore organizer status if the room creator reconnected
@@ -384,6 +409,10 @@ function destroyRoom(code: string): void {
  */
 export function registerRestoredRoom(room: Room): void {
   room.playerSockets = new Map();
+  // Older snapshots predate seatUids; the seat->uid map (when present) is the
+  // whole point of persisting it — it lets a game that ends right after a
+  // restart still rate everyone before they've re-established live sockets.
+  if (!room.seatUids) room.seatUids = new Map();
   rooms.set(room.code, room);
   const timer = setTimeout(() => {
     roomCleanupTimers.delete(room.code);
@@ -421,6 +450,7 @@ function freeSeat(room: Room, seat: Seat): void {
   }
   room.seatPlayers.delete(seat);
   room.seatSessions.delete(seat);
+  room.seatUids.delete(seat);
   room.state.players[seat].id = '';
   room.state.players[seat].name = '';
   room.state.players[seat].photoURL = null;
@@ -516,6 +546,7 @@ function shuffleSeats(room: Room): void {
   room.playerSockets.clear();
   room.seatPlayers.clear();
   room.seatSessions.clear();
+  room.seatUids.clear();
   for (let i = 0; i < 4; i++) {
     const seat = i as Seat;
     const { id: socketId, name, photoURL, isAi, session } = playerInfos[i];
@@ -526,6 +557,7 @@ function shuffleSeats(room: Room): void {
     room.playerSockets.set(socketId, seat);
     room.seatPlayers.set(seat, socketId);
     if (session) room.seatSessions.set(seat, session);
+    recordSeatUid(room, seat, socketId);
   }
 }
 
@@ -556,6 +588,12 @@ export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
   const sessB = room.seatSessions.get(seatB);
   if (sessB !== undefined) room.seatSessions.set(seatA, sessB); else room.seatSessions.delete(seatA);
   if (sessA !== undefined) room.seatSessions.set(seatB, sessA); else room.seatSessions.delete(seatB);
+
+  // Swap recorded uids so Elo / stats follow the person, not the seat
+  const uidA = room.seatUids.get(seatA);
+  const uidB = room.seatUids.get(seatB);
+  if (uidB !== undefined) room.seatUids.set(seatA, uidB); else room.seatUids.delete(seatA);
+  if (uidA !== undefined) room.seatUids.set(seatB, uidA); else room.seatUids.delete(seatB);
 
   return true;
 }

@@ -4,7 +4,7 @@ import {
   GameSummary, GameSummaryPlayer, GameHistoryRound,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
-import { Room, getSocketUid } from './rooms.js';
+import { Room } from './rooms.js';
 
 const inc = (n: number) => firebaseAdmin!.firestore.FieldValue.increment(n);
 const arrayUnion = (...elements: string[]) => firebaseAdmin!.firestore.FieldValue.arrayUnion(...elements);
@@ -183,9 +183,7 @@ export async function updateTeamStats(
     const seats = state.teams[teamIdx].players;
     const uids: string[] = [];
     for (const s of seats) {
-      const socketId = room.seatPlayers.get(s);
-      if (!socketId) continue;
-      const uid = getSocketUid(socketId);
+      const uid = room.seatUids.get(s);
       if (uid) uids.push(uid);
     }
     if (uids.length !== 2) continue;
@@ -224,9 +222,7 @@ export async function updateTeamStats(
 
     // Per-player breakdown within team
     for (const s of seats) {
-      const socketId = room.seatPlayers.get(s);
-      if (!socketId) continue;
-      const uid = getSocketUid(socketId);
+      const uid = room.seatUids.get(s);
       if (!uid) continue;
       const player = state.players[s];
 
@@ -281,8 +277,7 @@ export async function saveRoundLog(
   const acc = room.accumulator;
 
   const players: RoundLogPlayerEntry[] = state.players.map(p => {
-    const socketId = room.seatPlayers.get(p.seat);
-    const uid = socketId ? getSocketUid(socketId) : null;
+    const uid = room.seatUids.get(p.seat) ?? null;
     const pass = acc.passes.get(p.seat);
     return {
       seat: p.seat,
@@ -334,8 +329,7 @@ export async function saveGameSummary(room: Room): Promise<void> {
   const acc = room.accumulator;
 
   const players: GameSummaryPlayer[] = state.players.map(p => {
-    const socketId = room.seatPlayers.get(p.seat);
-    const uid = socketId ? getSocketUid(socketId) : null;
+    const uid = room.seatUids.get(p.seat) ?? null;
     return { seat: p.seat, uid, name: p.name, team: getTeamForSeat(p.seat) };
   });
   const playerUids = players.map(p => p.uid).filter((u): u is string => !!u);
@@ -410,14 +404,15 @@ export async function fetchGameHistory(uid: string, gameId: string): Promise<Gam
 
 // ===== Elo ratings =====
 
-/** Map of seat -> authenticated uid (humans only; AI / anonymous seats excluded). */
+/**
+ * Map of seat -> authenticated uid (humans only; AI / anonymous seats excluded).
+ * Reads the room's persistent seat->uid map rather than live sockets, so a
+ * player who is momentarily disconnected at game end (or a game ending right
+ * after a server restart) is still attributed instead of being silently
+ * dropped from rating / stats.
+ */
 function buildSeatUidMap(room: Room): Map<Seat, string> {
-  const map = new Map<Seat, string>();
-  for (const [socketId, seat] of room.playerSockets) {
-    const uid = getSocketUid(socketId);
-    if (uid) map.set(seat, uid);
-  }
-  return map;
+  return new Map(room.seatUids ?? []);
 }
 
 /** Sorted "_"-joined doc key for a team's pairing, or null unless both seats are authenticated. */
@@ -470,8 +465,13 @@ export async function updateEloForGameEnd(room: Room): Promise<EloUpdate | null>
   // Don't rate games that include any AI player.
   if (state.players.some(p => p.isAi)) return null;
 
+  // Only rate fully-authenticated human tables. Individual ratings are computed
+  // against the *opposing team's average*, so an unrated seat would otherwise be
+  // treated as a phantom 1500-rated player — distorting everyone's expected
+  // score and breaking the zero-sum property (the deltas would no longer cancel
+  // across the table). Requiring all four mirrors the existing "no AI" rule.
   const seatUids = buildSeatUidMap(room);
-  if (seatUids.size === 0) return null;
+  if (seatUids.size !== 4) return null;
   const winningTeam = state.teams[0].score > state.teams[1].score ? 0 : 1;
 
   const teamKeys: [string | null, string | null] = [
@@ -670,12 +670,13 @@ export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
     .sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.roundsPlayed - a.roundsPlayed);
 }
 
-// Helper: build uid -> seat map from room
+// Helper: build uid -> seat map from the room's persistent seat->uid map, so a
+// momentarily-disconnected player still has their stats credited (live sockets
+// are gone the instant they drop; the recorded uid survives).
 function buildUidMap(room: Room): Map<string, Seat> {
   const uidMap = new Map<string, Seat>();
-  for (const [socketId, seat] of room.playerSockets) {
-    const uid = getSocketUid(socketId);
-    if (uid) uidMap.set(uid, seat);
+  for (const [seat, uid] of room.seatUids ?? []) {
+    uidMap.set(uid, seat);
   }
   return uidMap;
 }
