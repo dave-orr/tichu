@@ -88,7 +88,7 @@ export default function Game({ socket, auth }: Props) {
       countdownStartRef.current = Date.now();
     }
     const startTime = countdownStartRef.current;
-    const duration = 3000;
+    const duration = gameState.trickCountdown.durationMs ?? 3000;
     const update = () => {
       const elapsed = Date.now() - startTime;
       setCountdownRemaining(Math.max(0, duration - elapsed));
