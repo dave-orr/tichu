@@ -155,10 +155,10 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
                 draggable
                 onDragStart={(e) => handleSlotDragStart(target, e)}
               >
-                <CardComponent card={selections[target]!} small />
+                <CardComponent card={selections[target]!} large />
               </div>
             ) : (
-              <div className="w-16 h-24 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-sm">
+              <div className="w-36 h-[216px] border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-2xl">
                 ?
               </div>
             )}
@@ -175,6 +175,7 @@ export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) 
           selectedCards={selectedIds}
           onToggleCard={handleCardClick}
           draggable
+          large
           onDragStart={() => {}}
         />
       </div>

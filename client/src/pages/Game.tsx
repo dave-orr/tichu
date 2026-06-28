@@ -692,6 +692,7 @@ export default function Game({ socket, auth }: Props) {
             selectedCards={selectedCards}
             onToggleCard={toggleCard}
             disabled={phase !== 'playing'}
+            large
           />
 
           {/* Cards you passed — a separated diamond (partner top, left/right
