@@ -267,17 +267,17 @@ export type PlayResult = {
   needMahJongWish?: boolean;
 };
 
-// Trick countdown durations (ms). The countdown exists to give opponents a
-// chance to bomb the just-won trick. When nobody other than the winner could
-// possibly hold a bomb (everyone still in has < 4 cards), there's nothing to
-// wait for, so collapse it to a brief beat.
+// Trick countdown durations (ms). The countdown exists to give players a chance
+// to bomb the just-won trick — including the winner bombing their own trick (the
+// classic case: bombing your own Dragon trick so the bomb, not the Dragon, wins
+// it, keeping the points on your team and dodging the giveaway). When nobody
+// still in could possibly hold a bomb (everyone has < 4 cards), there's nothing
+// to wait for, so collapse it to a brief beat.
 export const TRICK_COUNTDOWN_MS = 3000;
 export const TRICK_COUNTDOWN_FAST_MS = 500;
 
-export function trickCountdownDuration(state: GameState, winner: Seat): number {
-  const bombPossible = state.players.some(
-    p => !p.isOut && p.seat !== winner && p.hand.length >= 4
-  );
+export function trickCountdownDuration(state: GameState): number {
+  const bombPossible = state.players.some(p => !p.isOut && p.hand.length >= 4);
   return bombPossible ? TRICK_COUNTDOWN_MS : TRICK_COUNTDOWN_FAST_MS;
 }
 
@@ -463,7 +463,7 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
         ...state,
         passCount: newPassCount,
         passedSeats: [...state.passedSeats, seat],
-        trickCountdown: { winner, durationMs: trickCountdownDuration(state, winner) },
+        trickCountdown: { winner, durationMs: trickCountdownDuration(state) },
       },
       trickCountdownStarted: true,
     };

@@ -250,4 +250,27 @@ describe('passTurn — pass-count threshold when leader is out', () => {
     expect(after.trickCountdownStarted).toBe(true);
     expect(after.state.trickCountdown).toEqual({ winner: 0, durationMs: 3000 });
   });
+
+  it('uses the full countdown when the winner holds a bomb (e.g. to bomb their own Dragon)', () => {
+    // Only the winner (seat 0) has >= 4 cards. They may still want to bomb their
+    // own trick — the classic Dragon case — so the countdown stays full.
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(9), c(9), c(9), c(9)] }),
+      makePlayer(1, { hand: [c(8)] }),
+      makePlayer(2, { hand: [c(10)] }),
+      makePlayer(3, { hand: [c(11)] }),
+    ];
+    const state = makeState({
+      players,
+      turnIndex: 3,
+      lastPlayedBy: 0,
+      currentTrick: trickSeven,
+      currentTrickPlays: [{ seat: 0, cards: [c(7)] }],
+      passCount: 2,
+    });
+
+    const after = passTurn(state, 3);
+    expect(after.trickCountdownStarted).toBe(true);
+    expect(after.state.trickCountdown).toEqual({ winner: 0, durationMs: 3000 });
+  });
 });
