@@ -5,72 +5,81 @@ type Props = {
   selected?: boolean;
   onClick?: () => void;
   small?: boolean;
+  large?: boolean;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
 };
 
-export default function CardComponent({ card, selected, onClick, small, draggable, onDragStart }: Props) {
+export default function CardComponent({ card, selected, onClick, small, large, draggable, onDragStart }: Props) {
+  // Default card is w-24 h-36. `large` is 50% bigger (w-36 h-[216px]) with
+  // proportionally scaled glyphs, used for the player's own hand and pass slots.
+  const sizeClass = small ? 'w-16 h-24 text-xs' : large ? 'w-36 h-[216px]' : '';
+  const cornerClass = large ? 'text-2xl' : 'text-base';
+  const suitClass = large ? 'text-6xl' : 'text-4xl';
+
   if (card.type === 'special') {
     return (
       <div
-        className={`card special-${card.name} ${selected ? 'selected' : ''} ${small ? 'w-16 h-24 text-xs' : ''}`}
+        className={`card special-${card.name} ${selected ? 'selected' : ''} ${sizeClass}`}
         onClick={onClick}
         draggable={draggable}
         onDragStart={onDragStart}
       >
-        <SpecialCardContent name={card.name} />
+        <SpecialCardContent name={card.name} large={large} />
       </div>
     );
   }
 
-  const suitClass = `suit-${card.suit}`;
   return (
     <div
-      className={`card ${suitClass} ${selected ? 'selected' : ''} ${small ? 'w-16 h-24 text-xs' : ''}`}
+      className={`card suit-${card.suit} ${selected ? 'selected' : ''} ${sizeClass}`}
       onClick={onClick}
       draggable={draggable}
       onDragStart={onDragStart}
     >
-      <div className="text-base font-bold absolute top-1 left-1.5">
+      <div className={`${cornerClass} font-bold absolute top-1 left-1.5`}>
         {RANK_NAMES[card.rank]}
       </div>
-      <div className="text-4xl">{SUIT_SYMBOLS[card.suit]}</div>
-      <div className="text-base font-bold absolute bottom-1 right-1.5 rotate-180">
+      <div className={suitClass}>{SUIT_SYMBOLS[card.suit]}</div>
+      <div className={`${cornerClass} font-bold absolute bottom-1 right-1.5 rotate-180`}>
         {RANK_NAMES[card.rank]}
       </div>
     </div>
   );
 }
 
-function SpecialCardContent({ name }: { name: string }) {
+function SpecialCardContent({ name, large }: { name: string; large?: boolean }) {
+  const cornerClass = large ? 'text-2xl' : 'text-base';
+  const glyphClass = large ? 'text-6xl' : 'text-4xl';
+  const labelClass = large ? 'text-base' : 'text-xs';
   switch (name) {
     case 'mahjong':
       return (
         <>
-          <div className="text-base font-bold absolute top-1 left-1.5">1</div>
-          <div className="text-2xl font-bold">MJ</div>
-          <div className="text-xs">Mah Jong</div>
+          <div className={`${cornerClass} font-bold absolute top-1 left-1.5`}>1</div>
+          <div className={`${large ? 'text-4xl' : 'text-2xl'} font-bold`}>MJ</div>
+          <div className={labelClass}>Mah Jong</div>
         </>
       );
     case 'dog':
       return (
         <>
-          <div className="text-4xl">🐕</div>
-          <div className="text-xs">Dog</div>
+          <div className={glyphClass}>🐕</div>
+          <div className={labelClass}>Dog</div>
         </>
       );
     case 'phoenix':
       return (
         <>
-          <div className="text-4xl">🔥</div>
-          <div className="text-xs">Phoenix</div>
+          <div className={glyphClass}>🔥</div>
+          <div className={labelClass}>Phoenix</div>
         </>
       );
     case 'dragon':
       return (
         <>
-          <div className="text-4xl">🐉</div>
-          <div className="text-xs">Dragon</div>
+          <div className={glyphClass}>🐉</div>
+          <div className={labelClass}>Dragon</div>
         </>
       );
     default:

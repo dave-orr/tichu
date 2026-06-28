@@ -825,7 +825,7 @@ export function processPlayResult(io: Server, room: Room, seat: Seat, result: Pl
   if (result.trickCountdownStarted) {
     const timer = setTimeout(() => {
       resolveTrickCountdown(io, room);
-    }, 3000);
+    }, result.state.trickCountdown?.durationMs ?? 3000);
     setTrickCountdownTimer(room.code, timer);
     broadcastState(io, room);
     return;
@@ -872,7 +872,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
       // Start countdown — stop auto-skipping
       const timer = setTimeout(() => {
         resolveTrickCountdown(io, room);
-      }, 2000);
+      }, result.state.trickCountdown?.durationMs ?? 3000);
       setTrickCountdownTimer(room.code, timer);
       break;
     }

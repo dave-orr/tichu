@@ -7,11 +7,15 @@ type Props = {
   onToggleCard: (card: CardType) => void;
   disabled?: boolean;
   draggable?: boolean;
+  large?: boolean;
   onDragStart?: (card: CardType) => void;
 };
 
-export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, onDragStart }: Props) {
-  const overlap = cards.length > 10 ? -30 : cards.length > 7 ? -18 : cards.length > 4 ? -6 : 0;
+export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, large, onDragStart }: Props) {
+  // Larger cards are 50% wider, so scale the overlap up to keep the hand from
+  // sprawling off-screen.
+  const baseOverlap = cards.length > 10 ? -30 : cards.length > 7 ? -18 : cards.length > 4 ? -6 : 0;
+  const overlap = large ? Math.round(baseOverlap * 1.5) : baseOverlap;
   return (
     <div className="flex justify-center">
       {cards.map((card, i) => {
@@ -21,6 +25,7 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled, dra
             <CardComponent
               card={card}
               selected={selectedCards.has(id)}
+              large={large}
               onClick={disabled ? undefined : () => onToggleCard(card)}
               draggable={draggable && !disabled}
               onDragStart={draggable && !disabled && onDragStart ? (e) => {
