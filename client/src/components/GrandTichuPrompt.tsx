@@ -80,7 +80,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
             onClick={() => onDecide(false)}
             className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
           >
-            Pass
+            Decline
           </button>
         </div>
       )}

@@ -14,6 +14,10 @@ type Props = {
   combo: Combo | null;
   tichuStatus?: TichuStatus;
   passed?: boolean;
+  /** Reverse the identity/play layout so the play grows toward the table
+   *  center instead of the screen edge (used for the right-hand opponent, whose
+   *  large plays would otherwise clip off the right side of the screen). */
+  mirror?: boolean;
 };
 
 /**
@@ -22,20 +26,22 @@ type Props = {
  * on one screen without scrolling.
  */
 export default function PlayerPanel({
-  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed,
+  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed, mirror,
 }: Props) {
   return (
     <div
       className={`flex items-center gap-4 rounded-xl px-4 py-3 min-h-[140px] min-w-[440px] transition-shadow ${
+        mirror ? 'flex-row-reverse' : ''
+      } ${
         isCurrentTurn
           ? 'bg-black/45 ring-2 ring-yellow-400 shadow-[0_0_18px_rgba(250,204,21,0.4)]'
           : `bg-black/35 ring-1 ${isMe ? 'ring-sky-400/50' : 'ring-white/15'}`
       }`}
     >
       {/* Identity */}
-      <div className="shrink-0 w-52 text-left">
+      <div className={`shrink-0 w-52 ${mirror ? 'text-right' : 'text-left'}`}>
         {label && <div className="text-3xl uppercase tracking-wide text-gray-200 font-semibold">{label}</div>}
-        <div className="flex items-center gap-1 min-w-0">
+        <div className={`flex items-center gap-1 min-w-0 ${mirror ? 'justify-end' : ''}`}>
           <span className={`font-bold text-4xl leading-tight truncate ${isCurrentTurn ? 'text-yellow-200' : 'text-white'}`}>
             {player.name}
           </span>
@@ -47,7 +53,7 @@ export default function PlayerPanel({
             Disconnected
           </div>
         )}
-        <div className="flex items-center gap-3 text-3xl mt-1 font-semibold">
+        <div className={`flex items-center gap-3 text-3xl mt-1 font-semibold ${mirror ? 'justify-end' : ''}`}>
           {player.isOut ? (
             <span className="text-gray-200 italic">Out</span>
           ) : (
