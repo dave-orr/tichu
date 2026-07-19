@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react';
 import type { Card as CardType, Combo, TichuCall } from '@tichu/shared';
+import { cardId } from '@tichu/shared';
 import SeatPlay from './SeatPlay.js';
 import TichuBadge, { type TichuStatus } from './TichuBadge.js';
 
@@ -18,6 +20,9 @@ type Props = {
    *  center instead of the screen edge (used for the right-hand opponent, whose
    *  large plays would otherwise clip off the right side of the screen). */
   mirror?: boolean;
+  /** When set, the play is a just-cleared trick sweeping toward the winner:
+   *  animate it flying by this (x, y) offset while fading out. */
+  sweepOffset?: { x: number; y: number } | null;
 };
 
 /**
@@ -26,7 +31,7 @@ type Props = {
  * on one screen without scrolling.
  */
 export default function PlayerPanel({
-  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed, mirror,
+  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed, mirror, sweepOffset,
 }: Props) {
   return (
     <div
@@ -67,18 +72,22 @@ export default function PlayerPanel({
       </div>
 
       {/* Their last play this trick (plus a "Passed" tag if they passed — shown
-          alongside any cards, never overwriting them) */}
+          alongside any cards, never overwriting them). The key on SeatPlay
+          re-triggers its arrival animation per play without remounting the
+          whole panel; the sweep wrapper flies a cleared trick to the winner. */}
       <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-[180px]">
         {play.length > 0 && (
-          <SeatPlay cards={play} isTopOfTrick={isTopOfTrick} combo={combo} />
+          <div
+            className={sweepOffset ? 'seat-play-sweep' : undefined}
+            style={sweepOffset ? ({ '--sx': `${sweepOffset.x}px`, '--sy': `${sweepOffset.y}px` } as CSSProperties) : undefined}
+          >
+            <SeatPlay key={play.map(cardId).join('|')} cards={play} isTopOfTrick={isTopOfTrick} combo={combo} />
+          </div>
         )}
         {passed && (
           <span className="text-2xl font-semibold text-gray-300 bg-gray-700/70 rounded px-2 py-0.5 uppercase tracking-wide">
             Passed
           </span>
-        )}
-        {play.length === 0 && !passed && (
-          <span className="text-gray-500 text-4xl leading-none">·</span>
         )}
       </div>
     </div>

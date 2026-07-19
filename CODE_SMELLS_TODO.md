@@ -64,9 +64,6 @@ aggregates, with no metric/retry/alert. Also `fetchInvitableUsers` comments
   and sibling layout (`PassCards` slot placeholders, `Hand` overlap `×1.5`,
   `renderMiniCard` wrappers) is sized assuming the modifiers work — fixing the cascade
   would change every card's size, so re-tune those alongside. [confirmed]
-- `Game.tsx` — `PlayerPanel` `key` includes the seat's played card ids, so the panel fully
-  remounts every play (intended for the seat-play animation, but it defeats
-  `transition-shadow` on the turn ring). [by design — verify]
 - `InvitePanel.tsx` — `p.displayName[0]` throws/renders undefined on an empty name.
 - `RoundResults.tsx` — `readyCount` computed but unused (dead code).
 - `useSocket.ts` — stale-token race: if the socket connects before `idToken` is set and the
