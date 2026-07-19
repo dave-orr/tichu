@@ -6,9 +6,14 @@ type Props = {
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
   sendInvite: (targetUid: string) => void;
   expiredInviteUids: Set<string>;
+  /** Called when a player is invited, so a parent can persist/show the list. */
+  onInvite?: (player: InvitablePlayer) => void;
+  /** Players already invited (tracked by a parent), so the panel keeps showing
+   *  them as "Invited" even after it's been closed and reopened. */
+  invitedUids?: Set<string>;
 };
 
-export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expiredInviteUids }: Props) {
+export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expiredInviteUids, onInvite, invitedUids }: Props) {
   const [players, setPlayers] = useState<InvitablePlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [invited, setInvited] = useState<Set<string>>(new Set());
@@ -33,9 +38,10 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
     });
   }, [fetchPlayers]);
 
-  const handleInvite = (uid: string) => {
-    sendInvite(uid);
-    setInvited(prev => new Set(prev).add(uid));
+  const handleInvite = (player: InvitablePlayer) => {
+    sendInvite(player.uid);
+    setInvited(prev => new Set(prev).add(player.uid));
+    onInvite?.(player);
   };
 
   // Split into played-with and others for section headers
@@ -43,12 +49,13 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
   const others = players.filter(p => !p.playedWith);
 
   const renderPlayer = (p: InvitablePlayer) => {
-    const buttonLabel = invited.has(p.uid)
+    const isInvited = invited.has(p.uid) || !!invitedUids?.has(p.uid);
+    const buttonLabel = isInvited
       ? 'Invited'
       : p.isOnline && !p.isAvailable
         ? 'In Game'
         : 'Invite';
-    const canInvite = !invited.has(p.uid) && !(p.isOnline && !p.isAvailable);
+    const canInvite = !isInvited && !(p.isOnline && !p.isAvailable);
 
     return (
       <div key={p.uid} className="flex items-center justify-between p-2 rounded-lg bg-gray-700">
@@ -66,7 +73,7 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
           <span className="text-2xl truncate">{p.displayName}</span>
         </div>
         <button
-          onClick={() => handleInvite(p.uid)}
+          onClick={() => handleInvite(p)}
           disabled={!canInvite}
           className="text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed flex-shrink-0 ml-2 transition-colors"
         >
