@@ -437,7 +437,7 @@ export default function Game({ socket, auth }: Props) {
 
   // Main playing phase
   return (
-    <div className="h-screen overflow-hidden flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative">
       {/* Score box — top left */}
       <div className="absolute top-2 left-2 z-10">
         <ScoreBoard gameState={gameState} />
@@ -540,8 +540,7 @@ export default function Game({ socket, auth }: Props) {
       {/* Table: partner (top), left/right opponents (middle), me (bottom) —
           each panel shows the player's info and their last play together so the
           whole table fits on one screen. */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex px-2">
-       <div className="m-auto w-full flex flex-col gap-2 py-2">
+      <div className="flex-1 flex flex-col justify-center gap-2 py-2 px-2">
         {/* Top: partner */}
         <div className="flex justify-center">
           <PlayerPanel
@@ -620,7 +619,6 @@ export default function Game({ socket, auth }: Props) {
             combo={currentTrick}
           />
         </div>
-       </div>
       </div>
 
       {/* Toast notification */}
@@ -637,7 +635,7 @@ export default function Game({ socket, auth }: Props) {
       )}
 
       {/* Bottom area: player's hand and controls */}
-      <div className={`shrink-0 p-2 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
+      <div className={`p-2 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
           <div className="mb-1 max-w-3xl mx-auto">
