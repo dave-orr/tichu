@@ -16,6 +16,7 @@ type Props = {
   onUpdateSettings: (settings: Record<string, boolean | number>) => void;
   onUpdateRandomPartners: (randomPartners: boolean) => void;
   onStartGame: () => void;
+  onCancelRoom: () => void;
   onMarkSeatAi: (seat: Seat) => void;
   onUnmarkSeatAi: (seat: Seat) => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
@@ -27,13 +28,30 @@ type Props = {
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
   aiOpenSeats, disconnectedSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
-  onMarkSeatAi, onUnmarkSeatAi,
+  onCancelRoom, onMarkSeatAi, onUnmarkSeatAi,
   fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
 }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [roomElos, setRoomElos] = useState<RoomElos | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [invitedPlayers, setInvitedPlayers] = useState<InvitablePlayer[]>([]);
+
+  const handleInvited = (player: InvitablePlayer) => {
+    setInvitedPlayers(prev => prev.some(p => p.uid === player.uid) ? prev : [...prev, player]);
+  };
+
+  // Show only invitees who haven't joined yet. Seated players don't expose their
+  // uid, so match on photo/name (both come from the same Google profile). Also
+  // drop any the server has told us expired.
+  const seatedPhotos = new Set(gameState.players.filter(p => p.name && p.photoURL).map(p => p.photoURL));
+  const seatedNames = new Set(gameState.players.filter(p => p.name).map(p => p.name.toLowerCase()));
+  const pendingInvited = invitedPlayers.filter(p =>
+    !expiredInviteUids.has(p.uid) &&
+    !(p.photoURL && seatedPhotos.has(p.photoURL)) &&
+    !seatedNames.has(p.displayName.toLowerCase())
+  );
 
   const handleCopyCode = () => {
     navigator.clipboard?.writeText(roomCode).then(() => {
@@ -112,7 +130,34 @@ export default function WaitingRoom({
             fetchPlayers={fetchPlayers}
             sendInvite={sendInvite}
             expiredInviteUids={expiredInviteUids}
+            onInvite={handleInvited}
+            invitedUids={new Set(invitedPlayers.map(p => p.uid))}
           />
+        )}
+
+        {pendingInvited.length > 0 && playerCount < 4 && (
+          <div className="mb-4 text-left">
+            <p className="text-xl text-gray-400 uppercase tracking-wide mb-1">
+              Invited — waiting to join
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {pendingInvited.map(p => (
+                <span
+                  key={p.uid}
+                  className="inline-flex items-center gap-1.5 bg-gray-800 border border-gray-600 rounded-full pl-1 pr-3 py-0.5 text-xl"
+                >
+                  {p.photoURL ? (
+                    <img src={p.photoURL} alt="" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="w-7 h-7 rounded-full bg-gray-600 flex items-center justify-center">
+                      {p.displayName[0]}
+                    </span>
+                  )}
+                  {p.displayName}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
 
 
@@ -267,6 +312,39 @@ export default function WaitingRoom({
         )}
         {playerCount === 4 && !isOrganizer && (
           <p className="text-gray-400 text-2xl">Waiting for host to start the game...</p>
+        )}
+
+        {isOrganizer && (
+          <div className="mt-3">
+            {showCancelConfirm ? (
+              <div className="space-y-2">
+                <p className="text-2xl text-gray-300">
+                  Cancel the room and remove everyone?
+                </p>
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={onCancelRoom}
+                    className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
+                  >
+                    Yes, cancel room
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(false)}
+                    className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+                  >
+                    Keep room
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="w-full py-2 text-gray-400 hover:text-red-400 transition-colors"
+              >
+                Cancel room
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -72,6 +72,27 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       }
     });
 
+    // The organizer cancelled the room — drop everyone back to the start screen.
+    socket.on('room-closed', () => {
+      clearRoom();
+      setGameState(null);
+      gameStateRef.current = null;
+      setRoomCode(null);
+      roomCodeRef.current = null;
+      setRoomLost(false);
+      setRoundResult(null);
+      setEloUpdate(null);
+      setIsOrganizer(false);
+      setDisconnectedSeats([]);
+      setError('The room was cancelled.');
+      setNeedMahJongWish(false);
+      setRandomPartners(false);
+      setPendingInvites([]);
+      setExpiredInviteUids(new Set());
+      setAutoSkippedSeat(null);
+      setAiOpenSeats([]);
+    });
+
     socket.on('room-created', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
       setRoomCode(roomCode);
       roomCodeRef.current = roomCode;
@@ -240,6 +261,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('swap-seats', { seatA, seatB });
   }, []);
 
+  const closeRoom = useCallback(() => {
+    socketRef.current?.emit('close-room');
+  }, []);
+
   // Emit an event with a callback; if the server signals needsAuth, force-refresh
   // the token, wait for the server to accept it, and retry once.
   const emitWithAuthRetry = useCallback(async <T extends { needsAuth?: boolean }>(
@@ -359,6 +384,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     concede: concedeAction,
     nextRound,
     swapSeats: swapSeatsAction,
+    closeRoom,
     updateSettings,
     autoSkippedSeat,
     pendingInvites,

@@ -32,7 +32,7 @@ The total point value of the entire deck is always **100 points**.
 
 ## Tichu Calls
 - **Grand Tichu**: May be declared after seeing your first 8 cards but **before** receiving the remaining 6. Worth **+200 points** if the caller goes out first, **−200** otherwise.
-- **Small Tichu**: May be declared at any time **before playing your first card** of the round. Worth **+100 points** if the caller goes out first, **−100** otherwise.
+- **Small Tichu**: May be declared at any time **before playing your first card** of the round — but **not once another player has already gone out** (a first-place finish is no longer possible, so the call would be a guaranteed loss). Worth **+100 points** if the caller goes out first, **−100** otherwise.
 - Multiple players (even partners) may call Tichu in the same round. Only one can succeed.
 
 ## Card Passing

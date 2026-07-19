@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
+import { applyPasses, callSmallTichu, passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -60,6 +60,54 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
 }
 
 const trickSeven: Combo = { type: 'single', cards: [c(7)], rank: 7, length: 1 };
+
+describe('applyPasses — received card ordering', () => {
+  it('puts a same-rank card from the left player to the left of the one from the right player', () => {
+    // Recipient is seat 0: left neighbour = seat 3, partner = seat 2,
+    // right neighbour = seat 1. Both opponents pass seat 0 a "2".
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(3), c(4), c(6)] }),               // seat 0's own passes
+      makePlayer(1, { hand: [c(2, 'sword'), c(7), c(8)] }),      // right neighbour: passes 2♦ left → seat 0
+      makePlayer(2, { hand: [c(9), c(5, 'star'), c(10)] }),      // partner: passes 5 → seat 0
+      makePlayer(3, { hand: [c(11), c(12), c(2, 'jade')] }),     // left neighbour: passes 2♣ right → seat 0
+    ];
+    const passes = {
+      0: { left: c(3), partner: c(4), right: c(6) },
+      1: { left: c(2, 'sword'), partner: c(7), right: c(8) },
+      2: { left: c(9), partner: c(5, 'star'), right: c(10) },
+      3: { left: c(11), partner: c(12), right: c(2, 'jade') },
+    } as const;
+
+    const after = applyPasses(makeState({ players }), passes);
+    const hand = after.players[0].hand;
+
+    // The two 2s lead the hand; the left player's (jade) precedes the right's (sword).
+    expect(hand[0]).toEqual(c(2, 'jade'));
+    expect(hand[1]).toEqual(c(2, 'sword'));
+  });
+});
+
+describe('callSmallTichu', () => {
+  it('allows a call before playing a first card when nobody is out', () => {
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(8)], hasPlayedFirstCard: false }),
+      makePlayer(1), makePlayer(2), makePlayer(3),
+    ];
+    const after = callSmallTichu(makeState({ players }), 0);
+    expect(after.players[0].tichuCall).toBe('small');
+  });
+
+  it('rejects a call once any player has gone out', () => {
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(8)], hasPlayedFirstCard: false }),
+      makePlayer(1),
+      makePlayer(2, { isOut: true, outOrder: 1, hasPlayedFirstCard: true }),
+      makePlayer(3),
+    ];
+    const after = callSmallTichu(makeState({ players }), 0);
+    expect(after.players[0].tichuCall).toBe('none');
+  });
+});
 
 describe('passTurn — pass-count threshold when leader is out', () => {
   it('still requires remaining active players to act after the leader goes out on their last play', () => {
