@@ -35,12 +35,12 @@ function TeamHeader({ p1, p2, compact }: { p1: ClientPlayer; p2: ClientPlayer; c
     return (
       <span className="inline-flex items-center gap-1">
         <img src={p1.photoURL!} alt="" className={`${size} rounded-full`} referrerPolicy="no-referrer" />
-        <span className="text-gray-500 text-2xl">&</span>
+        <span className="text-gray-500 text-2xl">+</span>
         <img src={p2.photoURL!} alt="" className={`${size} rounded-full`} referrerPolicy="no-referrer" />
       </span>
     );
   }
-  return <span>{p1.name} & {p2.name}</span>;
+  return <span>{p1.name} + {p2.name}</span>;
 }
 
 function formatDelta(delta: number): string {
@@ -80,7 +80,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
               Double Victory!
             </span>
             <p className="text-gray-300">
-              {players[(result.doubleVictoryTeam ?? 0) === 0 ? 0 : 1].name} &{' '}
+              {players[(result.doubleVictoryTeam ?? 0) === 0 ? 0 : 1].name} +{' '}
               {players[(result.doubleVictoryTeam ?? 0) === 0 ? 2 : 3].name} went out 1st and 2nd!
             </p>
           </div>
@@ -206,8 +206,8 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
           <div className="text-center">
             <div className="text-4xl font-bold text-yellow-400 mb-4">
               {result.totalScores[0] > result.totalScores[1]
-                ? `${players[0].name} & ${players[2].name} Win!`
-                : `${players[1].name} & ${players[3].name} Win!`
+                ? `${players[0].name} + ${players[2].name} Win!`
+                : `${players[1].name} + ${players[3].name} Win!`
               }
             </div>
 

@@ -13,7 +13,7 @@ function teamNames(game: GameSummary, team: 0 | 1): string {
     .filter(p => p.team === team)
     .sort((a, b) => a.seat - b.seat)
     .map(p => p.name)
-    .join(' & ');
+    .join(' + ');
 }
 
 export default function RecentGames({ games, myUid, fetchGameHistory }: Props) {
