@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
+import { callSmallTichu, passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -60,6 +60,28 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
 }
 
 const trickSeven: Combo = { type: 'single', cards: [c(7)], rank: 7, length: 1 };
+
+describe('callSmallTichu', () => {
+  it('allows a call before playing a first card when nobody is out', () => {
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(8)], hasPlayedFirstCard: false }),
+      makePlayer(1), makePlayer(2), makePlayer(3),
+    ];
+    const after = callSmallTichu(makeState({ players }), 0);
+    expect(after.players[0].tichuCall).toBe('small');
+  });
+
+  it('rejects a call once any player has gone out', () => {
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(8)], hasPlayedFirstCard: false }),
+      makePlayer(1),
+      makePlayer(2, { isOut: true, outOrder: 1, hasPlayedFirstCard: true }),
+      makePlayer(3),
+    ];
+    const after = callSmallTichu(makeState({ players }), 0);
+    expect(after.players[0].tichuCall).toBe('none');
+  });
+});
 
 describe('passTurn — pass-count threshold when leader is out', () => {
   it('still requires remaining active players to act after the leader goes out on their last play', () => {

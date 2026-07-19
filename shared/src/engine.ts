@@ -155,6 +155,9 @@ export function callSmallTichu(state: GameState, seat: Seat): GameState {
   const player = state.players[seat];
   if (player.hasPlayedFirstCard) return state;
   if (player.tichuCall !== 'none') return state;
+  // Once a player has gone out, no one can go out first anymore, so a Tichu
+  // call would be a guaranteed loss — disallow it.
+  if (state.players.some(p => p.isOut)) return state;
 
   const newPlayers = toPlayers([...state.players]);
   newPlayers[seat] = { ...newPlayers[seat], tichuCall: 'small' };

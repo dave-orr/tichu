@@ -646,7 +646,7 @@ export default function Game({ socket, auth }: Props) {
         )}
 
         {/* Tichu call button */}
-        {!myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none' && phase === 'playing' && !showTichuConfirm && (
+        {!myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none' && phase === 'playing' && !players.some(p => p.isOut) && !showTichuConfirm && (
           <div className="text-center mb-2">
             <button
               onClick={() => {
