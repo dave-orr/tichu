@@ -201,38 +201,38 @@ export function applyPasses(
     hand: [...p.hand],
   })));
 
-  // Remove passed cards and add received cards
+  // Remove each player's passed cards from their hand.
   for (let seat = 0; seat < 4; seat++) {
     const s = seat as Seat;
     const pass = passes[s];
-    const leftSeat = ((s + 3) % 4) as Seat;
-    const partnerSeat = ((s + 2) % 4) as Seat;
-    const rightSeat = ((s + 1) % 4) as Seat;
-
-    // Remove cards from this player's hand
     removeCard(newPlayers[s].hand, pass.left);
     removeCard(newPlayers[s].hand, pass.partner);
     removeCard(newPlayers[s].hand, pass.right);
-
-    // Add cards to recipients
-    newPlayers[leftSeat].hand.push(pass.left);
-    newPlayers[partnerSeat].hand.push(pass.partner);
-    newPlayers[rightSeat].hand.push(pass.right);
   }
 
-  // Compute received cards for each player
+  // Add each player's three received cards in a consistent left-neighbour →
+  // partner → right-neighbour order. The hand sort below is stable, so this
+  // keeps same-rank cards laid out to match where they came from: the card from
+  // the player on your left sits to the left of the one from the player on your
+  // right. (You receive your left neighbour's "right" card, your right
+  // neighbour's "left" card, and your partner's "partner" card.)
   const receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]] = [[], [], [], []];
   for (let seat = 0; seat < 4; seat++) {
-    const s = seat as Seat;
-    const pass = passes[s];
-    const leftSeat = ((s + 3) % 4) as Seat;
-    const partnerSeat = ((s + 2) % 4) as Seat;
-    const rightSeat = ((s + 1) % 4) as Seat;
+    const r = seat as Seat;
+    const leftSeat = ((r + 3) % 4) as Seat;
+    const partnerSeat = ((r + 2) % 4) as Seat;
+    const rightSeat = ((r + 1) % 4) as Seat;
 
-    // This player passed left to leftSeat, partner to partnerSeat, right to rightSeat
-    receivedCards[leftSeat].push({ card: pass.left, fromSeat: s });
-    receivedCards[partnerSeat].push({ card: pass.partner, fromSeat: s });
-    receivedCards[rightSeat].push({ card: pass.right, fromSeat: s });
+    const fromLeft = passes[leftSeat].right;
+    const fromPartner = passes[partnerSeat].partner;
+    const fromRight = passes[rightSeat].left;
+
+    newPlayers[r].hand.push(fromLeft, fromPartner, fromRight);
+    receivedCards[r].push(
+      { card: fromLeft, fromSeat: leftSeat },
+      { card: fromPartner, fromSeat: partnerSeat },
+      { card: fromRight, fromSeat: rightSeat },
+    );
   }
 
   // Sort all hands
