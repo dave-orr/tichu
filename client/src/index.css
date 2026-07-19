@@ -200,6 +200,17 @@ body {
   animation: seat-play-in 0.25s ease-out;
 }
 
+/* Trick sweep — a just-cleared trick flies toward the winner's seat.
+   --sx/--sy are set per play by PlayerPanel. */
+@keyframes seat-play-sweep {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(0.35); opacity: 0; }
+}
+.seat-play-sweep {
+  animation: seat-play-sweep 0.65s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
+  pointer-events: none;
+}
+
 @keyframes dragon-handoff {
   0% { transform: scale(0.6); opacity: 0; }
   15% { transform: scale(1.1); opacity: 1; }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, getPartnerSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
@@ -26,7 +26,7 @@ function comboLabel(combo: Combo): string {
         ? 'Dragon'
         : String(combo.rank);
   switch (combo.type) {
-    case 'single': return `Single, ${r}`;
+    case 'single': return combo.rank === 0 ? 'Dog' : `Single, ${r}`;
     case 'pair': return `Pair, ${r}s`;
     case 'triple': return `Triple, ${r}s`;
     case 'fullHouse': return `Full House, ${r}s`;
@@ -223,13 +223,16 @@ export default function Game({ socket, auth }: Props) {
     }
   }, [currentTrick]);
 
+  const selectedCombo = useMemo(
+    () => (selectedCardList.length > 0 ? identifyCombo(selectedCardList) : null),
+    [selectedCardList],
+  );
+
   const canPlay = useMemo(() => {
-    if (!isMyTurn || selectedCardList.length === 0) return false;
-    const combo = identifyCombo(selectedCardList);
-    if (!combo) return false;
+    if (!isMyTurn || !selectedCombo) return false;
     if (currentTrick === null) return true; // leading
-    return canBeat(currentTrick, combo);
-  }, [isMyTurn, selectedCardList, currentTrick]);
+    return canBeat(currentTrick, selectedCombo);
+  }, [isMyTurn, selectedCombo, currentTrick]);
 
   const canBombNow = useMemo(() => {
     if (phase !== 'playing' || selectedCardList.length < 4) return false;
@@ -238,6 +241,30 @@ export default function Game({ socket, auth }: Props) {
     if (currentTrick && !canBeat(currentTrick, combo)) return false;
     return true;
   }, [phase, selectedCardList, currentTrick]);
+
+  // Trick sweep — when the trick clears after a countdown, briefly keep
+  // rendering the cleared plays while they fly toward the winner's seat,
+  // instead of having them blink out. useLayoutEffect so the sweep state is
+  // set before the empty-trick frame paints (no flicker).
+  const [sweep, setSweep] = useState<{ plays: Record<Seat, CardType[]>; winner: Seat; combo: Combo | null } | null>(null);
+  const lastTrickRef = useRef<{ plays: { seat: Seat; cards: CardType[] }[]; combo: Combo | null; winner: Seat | null }>({ plays: [], combo: null, winner: null });
+  useLayoutEffect(() => {
+    if (!gameState || gameState.phase !== 'playing') {
+      lastTrickRef.current = { plays: [], combo: null, winner: null };
+      return;
+    }
+    const last = lastTrickRef.current;
+    if (gameState.trickCountdown) last.winner = gameState.trickCountdown.winner;
+    if (gameState.currentTrickPlays.length === 0 && last.plays.length > 0 && last.winner !== null) {
+      const bySeat: Record<Seat, CardType[]> = { 0: [], 1: [], 2: [], 3: [] };
+      for (const p of last.plays) bySeat[p.seat] = p.cards;
+      setSweep({ plays: bySeat, winner: last.winner, combo: last.combo });
+      setTimeout(() => setSweep(null), 700);
+      last.winner = null;
+    }
+    last.plays = [...gameState.currentTrickPlays];
+    last.combo = gameState.currentTrick;
+  }, [gameState]);
 
   // Detect if player has any bomb available in hand
   const hasBombInHand = useMemo(() => {
@@ -285,6 +312,22 @@ export default function Game({ socket, auth }: Props) {
 
   const myPlayer = players[mySeat];
   const playerNames = players.map(p => p.name);
+
+  // Screen-space anchor per relative seat position (bottom/right/top/left),
+  // used to aim the trick-sweep animation from each play toward the winner.
+  const SWEEP_ANCHORS: Record<number, [number, number]> = { 0: [0, 300], 1: [430, 0], 2: [0, -300], 3: [-430, 0] };
+  const relOf = (seat: Seat) => (seat - mySeat + 4) % 4;
+  const displayPlayFor = (seat: Seat): CardType[] =>
+    lastPlayBySeat[seat].length > 0 ? lastPlayBySeat[seat] : (sweep?.plays[seat] ?? []);
+  const displayComboFor = (seat: Seat): Combo | null =>
+    lastPlayBySeat[seat].length > 0 ? currentTrick : (sweep?.combo ?? currentTrick);
+  const sweepOffsetFor = (seat: Seat): { x: number; y: number } | null => {
+    if (!sweep || lastPlayBySeat[seat].length > 0 || !sweep.plays[seat]?.length) return null;
+    const [sx, sy] = SWEEP_ANCHORS[relOf(seat)];
+    if (seat === sweep.winner) return { x: sx * 0.15, y: sy * 0.15 }; // drift toward own edge
+    const [wx, wy] = SWEEP_ANCHORS[relOf(sweep.winner)];
+    return { x: wx - sx, y: wy - sy };
+  };
 
   // Tichu/Grand Tichu call outcome, resolved as players go out: the caller
   // "made" it by going out first (outOrder === 1); once anyone else is out
@@ -372,6 +415,76 @@ export default function Game({ socket, auth }: Props) {
     setSelectedCards(new Set());
     setPassNextPlay(false);
   };
+
+  // Action-bar state. The bar keeps every button mounted in a fixed slot and
+  // toggles disabled instead, so nothing moves or appears under the cursor.
+  const inCountdown = !!gameState.trickCountdown;
+  const canPlayNow = canPlay && !gameState.bombWindow && !inCountdown;
+  const passQueued = !isMyTurn && passNextPlay;
+  const passDisabled = myPlayer.isOut || gameState.bombWindow || inCountdown || currentTrick === null
+    || (isMyTurn && (mustPlayWish || selectedCards.size > 0));
+  const passTitle = isMyTurn && selectedCards.size > 0
+    ? 'Unselect cards to pass'
+    : currentTrick === null
+      ? 'You cannot pass a lead'
+      : !isMyTurn
+        ? (passQueued ? 'Auto-pass queued — click to cancel' : 'Queue an automatic pass for your next turn')
+        : undefined;
+  const handlePassClick = () => {
+    if (isMyTurn) handlePassTurn();
+    else setPassNextPlay(v => !v);
+  };
+  const bombDisabled = gameState.bombWindow || (currentTrick === null && !inCountdown);
+  const canCallTichu = phase === 'playing' && !myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none';
+  const handleTichuClick = () => {
+    const otherCaller = players.find(p => p.seat !== mySeat && p.tichuCall !== 'none');
+    if (otherCaller) setShowTichuConfirm(true);
+    else socket.callSmallTichu();
+  };
+
+  // What you've selected, and whether it plays — live feedback so the Play
+  // button's disabled state is never the only signal.
+  const selectedComboPreview = (() => {
+    if (selectedCardList.length === 0) return null;
+    if (!selectedCombo) return <span className="text-2xl text-red-300">Not a valid combo</span>;
+    const label = comboLabel(selectedCombo);
+    if (currentTrick === null) return <span className="text-2xl text-green-300">{label} ✓</span>;
+    if (canBeat(currentTrick, selectedCombo)) {
+      return <span className="text-2xl text-green-300">{label} ✓ — beats {comboLabel(currentTrick)}</span>;
+    }
+    return <span className="text-2xl text-amber-300">{label} — doesn't beat {comboLabel(currentTrick)}</span>;
+  })();
+
+  const statusContent = (() => {
+    if (bombMode) return <span className="text-2xl text-red-400 font-bold">Select your bomb cards</span>;
+    if (gameState.trickCountdown && countdownRemaining !== null) {
+      const duration = gameState.trickCountdown.durationMs ?? 3000;
+      return (
+        <div className="min-w-[220px]">
+          <div className="text-2xl text-yellow-400">{playerNames[gameState.trickCountdown.winner]} wins the trick</div>
+          <div className="h-1.5 mt-1 bg-gray-700 rounded overflow-hidden">
+            <div className="h-full bg-yellow-400 rounded" style={{ width: `${(countdownRemaining / duration) * 100}%` }} />
+          </div>
+        </div>
+      );
+    }
+    if (gameState.bombWindow) {
+      return <span className="text-2xl text-red-400 font-bold animate-pulse">A player is considering a bomb…</span>;
+    }
+    if (selectedComboPreview) return selectedComboPreview;
+    if (isMyTurn && mustPlayWish && gameState.mahJongWish) {
+      return <span className="text-2xl text-yellow-400">You must play a {RANK_NAMES[gameState.mahJongWish]}!</span>;
+    }
+    if (myPlayer.isOut) return <span className="text-2xl text-gray-500 italic">You're out</span>;
+    if (!isMyTurn) {
+      return (
+        <span className="text-2xl text-gray-400">
+          {passQueued ? `Auto-pass queued — waiting for ${playerNames[turnIndex]}…` : `Waiting for ${playerNames[turnIndex]}…`}
+        </span>
+      );
+    }
+    return null;
+  })();
 
   // Grand Tichu phase
   if (phase === 'grandTichuWindow') {
@@ -530,7 +643,6 @@ export default function Game({ socket, auth }: Props) {
         {/* Top: partner */}
         <div className="flex justify-center">
           <PlayerPanel
-            key={`p2-${lastPlayBySeat[relativeSeats[2]].map(cardId).join('|') || 'empty'}`}
             player={players[relativeSeats[2]]}
             isCurrentTurn={turnIndex === relativeSeats[2]}
             tichuStatus={tichuStatusFor(players[relativeSeats[2]])}
@@ -538,25 +650,26 @@ export default function Game({ socket, auth }: Props) {
             label="Partner"
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[2])}
-            play={lastPlayBySeat[relativeSeats[2]]}
+            play={displayPlayFor(relativeSeats[2])}
             isTopOfTrick={lastPlayedBy === relativeSeats[2]}
-            combo={currentTrick}
+            combo={displayComboFor(relativeSeats[2])}
+            sweepOffset={sweepOffsetFor(relativeSeats[2])}
           />
         </div>
 
         {/* Middle: left opponent, center status, right opponent */}
         <div className="flex items-center justify-between gap-3">
           <PlayerPanel
-            key={`p3-${lastPlayBySeat[relativeSeats[3]].map(cardId).join('|') || 'empty'}`}
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
             tichuStatus={tichuStatusFor(players[relativeSeats[3]])}
             passed={gameState.passedSeats.includes(relativeSeats[3])}
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[3])}
-            play={lastPlayBySeat[relativeSeats[3]]}
+            play={displayPlayFor(relativeSeats[3])}
             isTopOfTrick={lastPlayedBy === relativeSeats[3]}
-            combo={currentTrick}
+            combo={displayComboFor(relativeSeats[3])}
+            sweepOffset={sweepOffsetFor(relativeSeats[3])}
           />
 
           {/* Center: wish + what's on the table */}
@@ -573,19 +686,26 @@ export default function Game({ socket, auth }: Props) {
             {isMyTurn && (
               <div className="text-yellow-300 font-bold animate-pulse text-4xl">Your turn!</div>
             )}
+            <div
+              className="text-3xl text-gray-500/80 select-none"
+              title={gameState.settings.clockwise ? 'Play passes clockwise' : 'Play passes counterclockwise'}
+              aria-hidden="true"
+            >
+              {gameState.settings.clockwise ? '↻' : '↺'}
+            </div>
           </div>
 
           <PlayerPanel
-            key={`p1-${lastPlayBySeat[relativeSeats[1]].map(cardId).join('|') || 'empty'}`}
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
             tichuStatus={tichuStatusFor(players[relativeSeats[1]])}
             passed={gameState.passedSeats.includes(relativeSeats[1])}
             showPoints={gameState.settings.countPoints}
             disconnected={disconnectedSeats.includes(relativeSeats[1])}
-            play={lastPlayBySeat[relativeSeats[1]]}
+            play={displayPlayFor(relativeSeats[1])}
             isTopOfTrick={lastPlayedBy === relativeSeats[1]}
-            combo={currentTrick}
+            combo={displayComboFor(relativeSeats[1])}
+            sweepOffset={sweepOffsetFor(relativeSeats[1])}
             mirror
           />
         </div>
@@ -593,16 +713,16 @@ export default function Game({ socket, auth }: Props) {
         {/* Bottom: me */}
         <div className="flex justify-center">
           <PlayerPanel
-            key={`me-${lastPlayBySeat[mySeat].map(cardId).join('|') || 'empty'}`}
             player={myPlayer}
             isCurrentTurn={isMyTurn}
             tichuStatus={tichuStatusFor(myPlayer)}
             passed={gameState.passedSeats.includes(mySeat)}
             isMe
             showPoints={gameState.settings.countPoints}
-            play={lastPlayBySeat[mySeat]}
+            play={displayPlayFor(mySeat)}
             isTopOfTrick={lastPlayedBy === mySeat}
-            combo={currentTrick}
+            combo={displayComboFor(mySeat)}
+            sweepOffset={sweepOffsetFor(mySeat)}
           />
         </div>
        </div>
@@ -630,62 +750,24 @@ export default function Game({ socket, auth }: Props) {
           </div>
         )}
 
-        {/* Tichu call button */}
-        {!myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none' && phase === 'playing' && !showTichuConfirm && (
-          <div className="text-center mb-2">
-            <button
-              onClick={() => {
-                const otherCaller = players.find(p => p.seat !== mySeat && p.tichuCall !== 'none');
-                if (otherCaller) {
-                  setShowTichuConfirm(true);
-                } else {
-                  socket.callSmallTichu();
-                }
-              }}
-              className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-base font-bold transition-colors"
-            >
-              Call Tichu!
-            </button>
-          </div>
-        )}
-        {showTichuConfirm && (
-          <div className="text-center mb-2 space-y-2">
-            <div className="text-3xl text-yellow-400">
-              {players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
-                `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`
-              ).join(', ')}. Still call?
-            </div>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => { socket.callSmallTichu(); setShowTichuConfirm(false); }}
-                className="py-1 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg text-base font-bold transition-colors"
-              >
-                Yes, Call Tichu!
-              </button>
-              <button
-                onClick={() => setShowTichuConfirm(false)}
-                className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="flex items-center justify-center gap-3">
           {/* Cards passed to you — a separated diamond to the LEFT of the hand,
               positioned by who passed each card (partner top, left/right below),
               mirroring the outgoing diamond on the right. */}
           {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
-            <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center mr-10">
-              <div className="col-start-2 row-start-1">
-                {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
-              </div>
-              <div className="col-start-1 row-start-2">
-                {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`, false)}
-              </div>
-              <div className="col-start-3 row-start-2">
-                {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`, false)}
+            <div className="flex flex-col items-center gap-0.5 shrink-0 mr-10">
+              {/* Label above the diamond — the wide hand can overlap the space below it */}
+              <div className="text-lg text-gray-400/90 uppercase tracking-wider">Received</div>
+              <div className="grid grid-cols-3 gap-1 justify-items-center items-center">
+                <div className="col-start-2 row-start-1">
+                  {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
+                </div>
+                <div className="col-start-1 row-start-2">
+                  {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`, false)}
+                </div>
+                <div className="col-start-3 row-start-2">
+                  {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`, false)}
+                </div>
               </div>
             </div>
           )}
@@ -699,158 +781,123 @@ export default function Game({ socket, auth }: Props) {
           />
 
           {/* Cards you passed — a separated diamond (partner top, left/right
-              below) in an auto-height grid, shorter than the hand so items-center
-              keeps it vertically centered on the hand row (never below it). */}
+              below), labeled to mirror the received diamond on the other side. */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
-            <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center">
-              <div className="col-start-2 row-start-1">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
-              <div className="col-start-1 row-start-2">{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
-              <div className="col-start-3 row-start-2">{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
+            <div className="flex flex-col items-center gap-0.5 shrink-0">
+              <div className="text-lg text-gray-400/90 uppercase tracking-wider">Passed</div>
+              <div className="grid grid-cols-3 gap-1 justify-items-center items-center">
+                <div className="col-start-2 row-start-1">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
+                <div className="col-start-1 row-start-2">{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
+                <div className="col-start-3 row-start-2">{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Bomb mode banner */}
-        {gameState.bombWindow && !bombMode && (
-          <div className="text-center text-3xl text-red-400 font-bold animate-pulse mb-2">
-            A player is considering a bomb...
-          </div>
-        )}
+        {/* Action bar — fixed height, stable slots. Play/Pass never move or
+            unmount mid-round (they disable instead), so nothing reflows or
+            appears under the cursor. Status/preview text sits left of the
+            buttons; secondary actions (Bomb, Call Tichu, Concede) right.
+            Confirm flows render as popovers above the bar — no layout shift. */}
+        {phase === 'playing' && (
+          <div className="relative mt-1">
+            {showTichuConfirm && (
+              <ConfirmPopover
+                message={`${players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
+                  `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`).join(', ')}. Still call?`}
+                confirmLabel="Yes, Call Tichu!"
+                confirmClass="bg-orange-600 hover:bg-orange-500"
+                onConfirm={() => { socket.callSmallTichu(); setShowTichuConfirm(false); }}
+                onCancel={() => setShowTichuConfirm(false)}
+              />
+            )}
+            {showConcedeConfirm && (
+              <ConfirmPopover
+                message="End the round? Your hand goes to opponents."
+                confirmLabel="Yes, Concede"
+                confirmClass="bg-red-600 hover:bg-red-500"
+                onConfirm={handleConcede}
+                onCancel={() => setShowConcedeConfirm(false)}
+              />
+            )}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 min-h-[56px]">
+              {/* Status / preview — clustered toward the buttons */}
+              <div className="flex justify-end text-right">{statusContent}</div>
 
-        {/* Trick countdown */}
-        {phase === 'playing' && !bombMode && gameState.trickCountdown && countdownRemaining !== null && (
-          <div className="flex justify-center items-center gap-3 mt-2">
-            <div className="text-2xl text-yellow-400">
-              {playerNames[gameState.trickCountdown.winner]} wins trick in{' '}
-              <span className="font-bold text-3xl tabular-nums">{(countdownRemaining / 1000).toFixed(1)}s</span>
+              {/* Primary actions — fixed slots */}
+              <div
+                className={`flex gap-3 ${urgencyFlashing ? 'urgency-flash' : ''}`}
+                style={urgencyGlowStyle}
+              >
+                {bombMode ? (
+                  <>
+                    <button
+                      onClick={confirmBomb}
+                      disabled={!canBombNow}
+                      className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-red-900 disabled:text-red-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                    >
+                      Confirm Bomb
+                    </button>
+                    <button
+                      onClick={cancelBombMode}
+                      className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handlePlay}
+                      disabled={!canPlayNow}
+                      className="py-2 px-8 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                    >
+                      Play
+                    </button>
+                    <button
+                      onClick={handlePassClick}
+                      disabled={passDisabled}
+                      title={passTitle}
+                      className={`py-2 px-8 rounded-lg font-bold transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed ${
+                        passQueued ? 'bg-yellow-600 hover:bg-yellow-500 text-yellow-100' : 'bg-gray-600 hover:bg-gray-500'
+                      }`}
+                    >
+                      {passQueued ? 'Pass ✓' : 'Pass'}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Secondary actions */}
+              <div className="flex items-center gap-2">
+                {hasBombInHand && !bombMode && (
+                  <button
+                    onClick={enterBombMode}
+                    disabled={bombDisabled}
+                    title={bombDisabled ? 'Wait for a card to be played' : undefined}
+                    className="py-2 px-5 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                  >
+                    Bomb!
+                  </button>
+                )}
+                {canCallTichu && !bombMode && (
+                  <button
+                    onClick={handleTichuClick}
+                    className="py-2 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg font-bold transition-colors"
+                  >
+                    Call Tichu!
+                  </button>
+                )}
+                {partnerIsOut && !bombMode && (
+                  <button
+                    onClick={() => setShowConcedeConfirm(true)}
+                    className="py-1.5 px-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-base transition-colors"
+                  >
+                    Concede
+                  </button>
+                )}
+              </div>
             </div>
-            {hasBombInHand && !gameState.bombWindow && (
-              <button
-                onClick={enterBombMode}
-                className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors animate-pulse"
-              >
-                Bomb!
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Action buttons */}
-        {phase === 'playing' && !bombMode && !gameState.trickCountdown && (
-          <div
-            className={`flex justify-center gap-3 mt-2 ${urgencyFlashing ? 'urgency-flash' : ''}`}
-            style={urgencyGlowStyle}
-          >
-            {isMyTurn && !gameState.bombWindow && (
-              <>
-                <button
-                  onClick={handlePlay}
-                  disabled={!canPlay}
-                  className="py-2 px-6 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
-                >
-                  Play
-                </button>
-                {currentTrick && !mustPlayWish && (
-                  <button
-                    onClick={handlePassTurn}
-                    disabled={selectedCards.size > 0}
-                    title={selectedCards.size > 0 ? 'Unselect cards to pass' : undefined}
-                    className="py-2 px-6 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
-                  >
-                    Pass
-                  </button>
-                )}
-                {currentTrick && mustPlayWish && gameState.mahJongWish && (
-                  <div className="text-3xl text-yellow-400 flex items-center px-4">
-                    You must play a {RANK_NAMES[gameState.mahJongWish]}!
-                  </div>
-                )}
-              </>
-            )}
-            {!isMyTurn && !gameState.bombWindow && !myPlayer.isOut && (
-              <>
-                <div className="text-3xl text-gray-400">
-                  Waiting for {playerNames[turnIndex]} to play...
-                </div>
-                {currentTrick !== null && !passNextPlay && (
-                  <button
-                    onClick={() => setPassNextPlay(true)}
-                    className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-base font-medium text-gray-300 transition-colors"
-                  >
-                    Pass Next Turn
-                  </button>
-                )}
-                {passNextPlay && (
-                  <button
-                    onClick={() => setPassNextPlay(false)}
-                    className="py-2 px-4 bg-yellow-700 hover:bg-yellow-600 rounded-lg text-base font-medium text-yellow-200 transition-colors"
-                  >
-                    Cancel Auto-Pass
-                  </button>
-                )}
-              </>
-            )}
-            {hasBombInHand && !gameState.bombWindow && (
-              <button
-                onClick={enterBombMode}
-                disabled={currentTrick === null}
-                title={currentTrick === null ? 'Wait for a card to be played' : undefined}
-                className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
-              >
-                Bomb!
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Bomb selection mode */}
-        {bombMode && (
-          <div className="flex justify-center gap-3 mt-2">
-            <div className="text-3xl text-red-400 flex items-center">Select your bomb cards</div>
-            <button
-              onClick={confirmBomb}
-              disabled={!canBombNow}
-              className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-red-900 disabled:text-red-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
-            >
-              Confirm Bomb
-            </button>
-            <button
-              onClick={cancelBombMode}
-              className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-
-        {/* Concede button — visible when partner is out */}
-        {partnerIsOut && !bombMode && !showConcedeConfirm && (
-          <div className="flex justify-center mt-2">
-            <button
-              onClick={() => setShowConcedeConfirm(true)}
-              className="py-1 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-base transition-colors"
-            >
-              Concede Round
-            </button>
-          </div>
-        )}
-
-        {/* Concede confirmation */}
-        {showConcedeConfirm && (
-          <div className="flex justify-center items-center gap-3 mt-2">
-            <span className="text-3xl text-yellow-400">End the round? Your hand goes to opponents.</span>
-            <button
-              onClick={handleConcede}
-              className="py-1 px-4 bg-red-600 hover:bg-red-500 rounded-lg text-base font-bold transition-colors"
-            >
-              Yes, Concede
-            </button>
-            <button
-              onClick={() => setShowConcedeConfirm(false)}
-              className="py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
-            >
-              Cancel
-            </button>
           </div>
         )}
 
@@ -858,6 +905,33 @@ export default function Game({ socket, auth }: Props) {
 
       {/* Event log */}
       <EventLog entries={logEntries} />
+    </div>
+  );
+}
+
+/** Small confirm dialog floated above the action bar so it never shifts layout. */
+function ConfirmPopover({ message, confirmLabel, confirmClass, onConfirm, onCancel }: {
+  message: string;
+  confirmLabel: string;
+  confirmClass: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 max-w-3xl bg-gray-900/95 border border-gray-700 rounded-xl shadow-xl px-4 py-3 flex items-center gap-3">
+      <span className="text-2xl text-yellow-400">{message}</span>
+      <button
+        onClick={onConfirm}
+        className={`shrink-0 py-1 px-4 rounded-lg text-base font-bold transition-colors ${confirmClass}`}
+      >
+        {confirmLabel}
+      </button>
+      <button
+        onClick={onCancel}
+        className="shrink-0 py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
+      >
+        Cancel
+      </button>
     </div>
   );
 }
