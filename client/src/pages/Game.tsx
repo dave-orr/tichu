@@ -585,6 +585,7 @@ export default function Game({ socket, auth }: Props) {
             play={lastPlayBySeat[relativeSeats[1]]}
             isTopOfTrick={lastPlayedBy === relativeSeats[1]}
             combo={currentTrick}
+            mirror
           />
         </div>
 
