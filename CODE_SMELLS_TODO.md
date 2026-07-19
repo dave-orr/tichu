@@ -57,6 +57,13 @@ aggregates, with no metric/retry/alert. Also `fetchInvitableUsers` comments
   `useSocket` return.
 
 ### C6. Misc client smells — LOW
+- `Card.tsx` — the `large`/`small` size classes (`w-36 h-[216px]`, `w-16 h-24`) never
+  apply: the `.card { @apply w-24 h-36 ... }` rule in `index.css` comes after the
+  `@tailwind utilities` layer, so it wins the cascade and every card renders at the
+  base 96×144 size. The inner glyph/text scaling for `large`/`small` still applies,
+  and sibling layout (`PassCards` slot placeholders, `Hand` overlap `×1.5`,
+  `renderMiniCard` wrappers) is sized assuming the modifiers work — fixing the cascade
+  would change every card's size, so re-tune those alongside. [confirmed]
 - `Game.tsx` — `PlayerPanel` `key` includes the seat's played card ids, so the panel fully
   remounts every play (intended for the seat-play animation, but it defeats
   `transition-shadow` on the turn ring). [by design — verify]

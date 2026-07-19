@@ -17,8 +17,10 @@ export default function GrandTichuPhase({ gameState, cards, decided, onDecide, g
   return (
     <>
       <GameAnnouncements events={gameEvents} />
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-5xl">
+      {/* h-full (not min-h-screen): sized by the FitToViewport scaler. m-auto
+          centers while still allowing scroll if content overflows the box. */}
+      <div className="h-full overflow-y-auto flex p-4">
+        <div className="m-auto w-full max-w-5xl">
           <div className="flex items-start justify-center gap-4">
             <ScoreBoard gameState={gameState} />
             <SeatingDiagram gameState={gameState} />
