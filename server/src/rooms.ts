@@ -402,6 +402,24 @@ function destroyRoom(code: string): void {
 }
 
 /**
+ * Forcibly close a room: clear every timer/invite tied to it and remove it from
+ * memory (and its persisted snapshot). Used when the organizer cancels the room
+ * from the waiting room.
+ */
+export function closeRoom(code: string): void {
+  clearTrickCountdownTimer(code);
+  clearBombWindowTimer(code);
+  const cleanup = roomCleanupTimers.get(code);
+  if (cleanup) {
+    clearTimeout(cleanup);
+    roomCleanupTimers.delete(code);
+  }
+  for (const seat of [0, 1, 2, 3] as Seat[]) clearSeatGraceTimer(code, seat);
+  clearInvitesForRoom(code);
+  destroyRoom(code);
+}
+
+/**
  * Re-insert a room loaded from a persisted snapshot after a server restart.
  * No live sockets exist yet, so the socket map is cleared (seats stay reserved
  * via seatSessions for reconnection) and an abandoned-cleanup timer is armed so

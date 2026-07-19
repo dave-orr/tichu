@@ -16,6 +16,7 @@ type Props = {
   onUpdateSettings: (settings: Record<string, boolean | number>) => void;
   onUpdateRandomPartners: (randomPartners: boolean) => void;
   onStartGame: () => void;
+  onCancelRoom: () => void;
   onMarkSeatAi: (seat: Seat) => void;
   onUnmarkSeatAi: (seat: Seat) => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
@@ -27,13 +28,14 @@ type Props = {
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
   aiOpenSeats, disconnectedSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
-  onMarkSeatAi, onUnmarkSeatAi,
+  onCancelRoom, onMarkSeatAi, onUnmarkSeatAi,
   fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
 }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [roomElos, setRoomElos] = useState<RoomElos | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [invitedPlayers, setInvitedPlayers] = useState<InvitablePlayer[]>([]);
 
   const handleInvited = (player: InvitablePlayer) => {
@@ -310,6 +312,39 @@ export default function WaitingRoom({
         )}
         {playerCount === 4 && !isOrganizer && (
           <p className="text-gray-400 text-2xl">Waiting for host to start the game...</p>
+        )}
+
+        {isOrganizer && (
+          <div className="mt-3">
+            {showCancelConfirm ? (
+              <div className="space-y-2">
+                <p className="text-2xl text-gray-300">
+                  Cancel the room and remove everyone?
+                </p>
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={onCancelRoom}
+                    className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
+                  >
+                    Yes, cancel room
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(false)}
+                    className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+                  >
+                    Keep room
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="w-full py-2 text-gray-400 hover:text-red-400 transition-colors"
+              >
+                Cancel room
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
