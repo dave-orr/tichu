@@ -4,6 +4,7 @@ type Props = {
   result: RoundResult;
   players: ClientPlayer[];
   onNextRound: () => void;
+  onLeave: () => void;
   isGameOver: boolean;
   mySeat: Seat;
   roundEndReady: Seat[];
@@ -51,7 +52,7 @@ function deltaColor(delta: number): string {
   return delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400';
 }
 
-export default function RoundResults({ result, players, onNextRound, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate }: Props) {
+export default function RoundResults({ result, players, onNextRound, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
   const readyCount = roundEndReady.length;
@@ -248,12 +249,20 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
               </div>
             )}
 
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-2 py-3 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
-            >
-              New Game
-            </button>
+            <div className="mt-2 flex justify-center gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="py-3 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
+              >
+                New Game
+              </button>
+              <button
+                onClick={onLeave}
+                className="py-3 px-8 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-lg transition-colors"
+              >
+                Back to Lobby
+              </button>
+            </div>
           </div>
         ) : iAmReady ? (
           <div className="text-center text-gray-400 py-3">
