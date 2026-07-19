@@ -12,7 +12,7 @@ function teamNames(game: GameSummary, team: 0 | 1): string {
     .filter(p => p.team === team)
     .sort((a, b) => a.seat - b.seat)
     .map(p => p.name)
-    .join(' & ');
+    .join(' + ');
 }
 
 function CallChip({ call }: { call: GameHistoryCall }) {

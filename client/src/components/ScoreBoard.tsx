@@ -21,12 +21,12 @@ function TeamDisplay({ p1, p2, score }: { p1: ClientPlayer; p2: ClientPlayer; sc
         {bothHavePhotos ? (
           <>
             <PlayerAvatar player={p1} size="md" />
-            <span className="text-gray-500 text-2xl">&</span>
+            <span className="text-gray-500 text-2xl">+</span>
             <PlayerAvatar player={p2} size="md" />
           </>
         ) : (
           <span className="text-2xl font-medium text-gray-200">
-            {p1.name} & {p2.name}
+            {p1.name} + {p2.name}
           </span>
         )}
       </div>

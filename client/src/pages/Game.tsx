@@ -674,7 +674,7 @@ export default function Game({ socket, auth }: Props) {
               positioned by who passed each card (partner top, left/right below),
               mirroring the outgoing diamond on the right. */}
           {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
-            <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center">
+            <div className="grid grid-cols-3 gap-1 shrink-0 justify-items-center items-center mr-10">
               <div className="col-start-2 row-start-1">
                 {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
               </div>

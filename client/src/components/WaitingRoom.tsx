@@ -170,7 +170,7 @@ export default function WaitingRoom({
             })}
           </div>
           <p className="text-2xl text-gray-400 mt-2">
-            Teams: North & South vs East & West
+            Teams: North + South vs East + West
           </p>
           {roomElos && (roomElos.teamElos[0] != null || roomElos.teamElos[1] != null) && (
             <p className="text-2xl text-gray-500 mt-1">
