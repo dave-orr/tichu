@@ -435,7 +435,8 @@ export default function Game({ socket, auth }: Props) {
     else setPassNextPlay(v => !v);
   };
   const bombDisabled = gameState.bombWindow || (currentTrick === null && !inCountdown);
-  const canCallTichu = phase === 'playing' && !myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none';
+  const canCallTichu = phase === 'playing' && !myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none'
+    && !players.some(p => p.isOut);
   const handleTichuClick = () => {
     const otherCaller = players.find(p => p.seat !== mySeat && p.tichuCall !== 'none');
     if (otherCaller) setShowTichuConfirm(true);
@@ -556,6 +557,20 @@ export default function Game({ socket, auth }: Props) {
         <ScoreBoard gameState={gameState} />
       </div>
 
+      {/* Once the game is over, always offer a way back to the lobby — even if
+          the results modal was dismissed (e.g. by a page reload, which drops the
+          modal but leaves the room in its finished state). */}
+      {phase === 'gameEnd' && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
+          <button
+            onClick={socket.resetRoom}
+            className="py-2 px-6 bg-gray-700/90 hover:bg-gray-600 rounded-lg font-bold text-base shadow-lg transition-colors"
+          >
+            Back to Lobby
+          </button>
+        </div>
+      )}
+
       {/* Room code + invite, tucked behind a gear so it stays unobtrusive.
           Shown to everyone so a dropped player can be replaced mid-game (by
           sharing the code or inviting) even if the organizer is the one who
@@ -627,6 +642,7 @@ export default function Game({ socket, auth }: Props) {
           result={roundResult}
           players={[...players]}
           onNextRound={socket.nextRound}
+          onLeave={socket.resetRoom}
           isGameOver={phase === 'gameEnd'}
           mySeat={mySeat}
           roundEndReady={gameState.roundEndReady}

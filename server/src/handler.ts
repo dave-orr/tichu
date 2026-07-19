@@ -8,7 +8,7 @@ import {
   startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
-  clearInvitesForRoom,
+  clearInvitesForRoom, closeRoom,
   setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
   setBombWindowTimer, clearBombWindowTimer,
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
@@ -473,6 +473,20 @@ export function setupHandlers(io: Server): void {
       if (swapSeats(room, seatA, seatB)) {
         broadcastState(io, room);
       }
+    });
+
+    socket.on('close-room', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can cancel the room' });
+        return;
+      }
+      // Tell everyone (including the organizer) to return to the start screen,
+      // then tear the room down completely.
+      io.to(room.code).emit('room-closed');
+      closeRoom(room.code);
     });
 
     // ===== AI Seat Management =====
