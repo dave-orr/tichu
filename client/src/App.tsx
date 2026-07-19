@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth.js';
 import type { UserProfile } from './hooks/useAuth.js';
 import Lobby from './pages/Lobby.js';
 import Game from './pages/Game.js';
+import FitToViewport from './components/FitToViewport.js';
 
 export default function App() {
   const authState = useAuth();
@@ -61,7 +62,9 @@ export default function App() {
       {!inGame ? (
         <Lobby socket={socket} auth={authState} />
       ) : (
-        <Game socket={socket} auth={authState} />
+        <FitToViewport>
+          <Game socket={socket} auth={authState} />
+        </FitToViewport>
       )}
     </div>
   );

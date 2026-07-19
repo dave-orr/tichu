@@ -437,7 +437,7 @@ export default function Game({ socket, auth }: Props) {
 
   // Main playing phase
   return (
-    <div className="h-screen overflow-hidden flex flex-col relative">
+    <div className="h-full overflow-hidden flex flex-col relative">
       {/* Score box — top left */}
       <div className="absolute top-2 left-2 z-10">
         <ScoreBoard gameState={gameState} />

@@ -69,7 +69,7 @@ export default function RoundResults({ result, players, onNextRound, isGameOver,
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90%] overflow-y-auto">
         <h2 className="text-4xl font-bold text-center mb-6 text-yellow-400">
           {isGameOver ? 'Game Over!' : 'Round Complete'}
         </h2>

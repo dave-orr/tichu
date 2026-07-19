@@ -33,8 +33,10 @@ export default function PassingPhase({
     return (
       <>
         <GameAnnouncements events={gameEvents} />
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="max-w-5xl w-full">
+        {/* h-full (not min-h-screen): sized by the FitToViewport scaler. m-auto
+            centers while still allowing scroll if content overflows the box. */}
+        <div className="h-full overflow-y-auto flex p-4">
+          <div className="m-auto max-w-5xl w-full">
             <div className="flex items-start justify-center gap-4">
               <ScoreBoard gameState={gameState} />
               <SeatingDiagram gameState={gameState} />
@@ -56,8 +58,8 @@ export default function PassingPhase({
   return (
     <>
       <GameAnnouncements events={gameEvents} />
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-5xl w-full text-center">
+      <div className="h-full overflow-y-auto flex p-4">
+        <div className="m-auto max-w-5xl w-full text-center">
           <div className="flex items-start justify-center gap-4">
             <ScoreBoard gameState={gameState} />
             <SeatingDiagram gameState={gameState} />
