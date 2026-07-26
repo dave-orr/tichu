@@ -33,6 +33,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
   const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
   const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
+  const autoSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [roomLost, setRoomLost] = useState(false);
   const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
   const [eloUpdate, setEloUpdate] = useState<EloUpdate | null>(null);
@@ -49,6 +50,12 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
     socket.on('connect', () => {
       setConnectionState('connected');
+      // Authenticate on every (re)connect. This closes a race: if the token
+      // arrived while the socket was still connecting, the token-change effect
+      // below saw a disconnected socket and skipped its emit.
+      if (tokenRef.current) {
+        socket.emit('authenticate', { token: tokenRef.current });
+      }
       // On (re)connect — whether a dropped socket or a full page reload — try to
       // reclaim our seat using the persistent session token.
       if (roomCodeRef.current) {
@@ -158,7 +165,8 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
     socket.on('turn-auto-skipped', ({ seat }: { seat: number }) => {
       setAutoSkippedSeat(seat);
-      setTimeout(() => setAutoSkippedSeat(null), 2000);
+      if (autoSkipTimerRef.current) clearTimeout(autoSkipTimerRef.current);
+      autoSkipTimerRef.current = setTimeout(() => setAutoSkippedSeat(null), 2000);
     });
 
     socket.on('random-partners-updated', ({ randomPartners }: { randomPartners: boolean }) => {
@@ -177,6 +185,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     setConnectionState('connecting');
 
     return () => {
+      if (autoSkipTimerRef.current) clearTimeout(autoSkipTimerRef.current);
       socket.disconnect();
     };
   }, []);

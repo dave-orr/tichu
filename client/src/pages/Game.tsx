@@ -64,6 +64,14 @@ export default function Game({ socket, auth }: Props) {
   const gameEvents = useGameEvents(gameState, roundResult);
   const logEntries = useEventLog(gameState, roundResult, autoSkippedSeat);
   const prevEventCountRef = useRef(0);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear pending toast/copy timers on unmount so they can't setState after.
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
 
   // Play gong when someone calls tichu/grand
   useEffect(() => {
@@ -146,22 +154,23 @@ export default function Game({ socket, auth }: Props) {
       }
     : undefined;
 
-  // Set document title with player name
+  // Set document title with player name. Depend on the name string, not the
+  // players array — a fresh array arrives with every broadcast and would tear
+  // this (and the tab-flash effect below) down on every state update.
+  const myPlayerName = gameState ? gameState.players[gameState.mySeat].name : null;
   useEffect(() => {
-    if (gameState) {
-      const name = gameState.players[gameState.mySeat].name;
-      document.title = `Tichu — ${name}`;
+    if (myPlayerName) {
+      document.title = `Tichu — ${myPlayerName}`;
     }
     return () => { document.title = 'Tichu'; };
-  }, [gameState?.mySeat, gameState?.players]);
+  }, [myPlayerName]);
 
   // Flash tab title when it's your turn and tab is not focused
   useEffect(() => {
     if (!isMyTurnNow || pendingWish) return;
     let interval: ReturnType<typeof setInterval> | null = null;
     let flash = false;
-    const playerName = gameState?.players[gameState.mySeat].name ?? '';
-    const baseTitle = `Tichu — ${playerName}`;
+    const baseTitle = `Tichu — ${myPlayerName ?? ''}`;
 
     const startFlashing = () => {
       if (document.hidden) {
@@ -193,7 +202,7 @@ export default function Game({ socket, auth }: Props) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       stopFlashing();
     };
-  }, [isMyTurnNow, pendingWish, gameState?.mySeat, gameState?.players]);
+  }, [isMyTurnNow, pendingWish, myPlayerName]);
 
   // Derived game values, computed null-safely so the hooks that follow run
   // unconditionally (Rules of Hooks). The early return comes after them.
@@ -205,16 +214,19 @@ export default function Game({ socket, auth }: Props) {
     ? canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick)
     : false;
 
-  // Auto-pass when "pass next play" is queued
+  // Auto-pass when "pass next play" is queued. Depends on the stable
+  // socket.passTurn callback, not the socket object (rebuilt every render).
+  const emitPassTurn = socket.passTurn;
   useEffect(() => {
     if (passNextPlay && isMyTurn && currentTrick !== null && !mustPlayWish && !gameState?.bombWindow) {
       setPassNextPlay(false);
-      socket.passTurn();
+      emitPassTurn();
       setSelectedCards(new Set());
       setToast('Auto-passed (queued)');
-      setTimeout(() => setToast(null), 2000);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setToast(null), 2000);
     }
-  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState?.bombWindow, socket]);
+  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState?.bombWindow, emitPassTurn]);
 
   // Cancel auto-pass when the trick ends (new lead)
   useEffect(() => {
@@ -381,7 +393,8 @@ export default function Game({ socket, auth }: Props) {
     if (!socket.roomCode) return;
     navigator.clipboard?.writeText(socket.roomCode).then(() => {
       setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 1500);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopiedCode(false), 1500);
     }).catch(() => { /* clipboard unavailable — ignore */ });
   };
 

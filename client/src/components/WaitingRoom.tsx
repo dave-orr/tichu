@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Seat, ClientGameState, InvitablePlayer, RoomElos } from '@tichu/shared';
 import InvitePanel from './InvitePanel.js';
 
@@ -53,10 +53,18 @@ export default function WaitingRoom({
     !seatedNames.has(p.displayName.toLowerCase())
   );
 
+  // Track the copied-indicator timer so it can't setState after unmount
+  // (the waiting room unmounts the moment the game starts).
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
+
   const handleCopyCode = () => {
     navigator.clipboard?.writeText(roomCode).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
     }).catch(() => { /* clipboard unavailable — ignore */ });
   };
 

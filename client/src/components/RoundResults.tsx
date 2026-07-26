@@ -55,7 +55,6 @@ function deltaColor(delta: number): string {
 export default function RoundResults({ result, players, onNextRound, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
-  const readyCount = roundEndReady.length;
 
   function renderTichuIndicator(seat: Seat) {
     const call = players[seat].tichuCall;

@@ -15,19 +15,6 @@ sits on the table, `endRound` pushes those cards (incl. the 25-pt Dragon) to
 path is guarded (`!dragonGiveaway`), but verify the `playDog`/`playBomb`/`giveDragonTrick`
 paths can't reach `endRound` with a Dragon trick pending. Needs a test.
 
-### E7. `getNextActiveSeat` can return an out player — LOW [confirmed]
-**`shared/src/engine.ts` `getNextActiveSeat`** Loops only `attempts < 4`; if 3 players
-are out it can land back on an out seat with no guard. Should be unreachable (round
-ends at 3-out) but there's no assertion, so bad state stalls the game silently.
-
-### E8. Minor smells — LOW
-- `getNormalRank` (`combinations.ts`) is dead code (only `singleCardRank` is used).
-- Dog rank convention is inconsistent: `cardSortValue` uses 0, `singleCardRank`/`identifyCombo`
-  use -1 (`deck.ts` vs `combinations.ts`). Harmless (Dog never compared) but confusing.
-- `passCards`/`callGrandTichu` (`engine.ts`) shallow-copy the players array then replace
-  one index; correct today but fragile vs the deep-copy pattern in `playCards`.
-  `applyPasses` assumes all 4 seats present in `passes` with no defensive check.
-
 ## Stats / persistence correctness
 
 ### S3. `playedWith` array grows unbounded — MED [confirmed]
@@ -44,18 +31,6 @@ aggregates, with no metric/retry/alert. Also `fetchInvitableUsers` comments
 
 ## Client correctness / React
 
-### C3. Uncleared timers fire setState after unmount — MED/LOW [confirmed]
-- `WishDisplay.tsx` — 800ms `setTimeout` never cleared; also leaks if `wish` toggles again mid-animation.
-- `GameAnnouncement.tsx` — per-event removal `setTimeout`s not tracked/cleared on unmount.
-- `Game.tsx` (toast) and `useSocket.ts` (autoSkip) — 2s `setTimeout`s not cleared.
-
-### C5. Effects re-run on every broadcast via unstable refs — LOW/MED [confirmed]
-- `Game.tsx` — title + tab-flash effects depend on `gameState?.players`, a fresh array each
-  broadcast; they tear down/rebuild listeners and fight over `document.title` every update.
-- `Game.tsx` — auto-pass effect depends on `socket` (a new object each render from
-  `useSocket`), so it re-runs every render (guarded, but fragile). Consider memoizing the
-  `useSocket` return.
-
 ### C6. Misc client smells — LOW
 - `Card.tsx` — the `large`/`small` size classes (`w-36 h-[216px]`, `w-16 h-24`) never
   apply: the `.card { @apply w-24 h-36 ... }` rule in `index.css` comes after the
@@ -64,11 +39,6 @@ aggregates, with no metric/retry/alert. Also `fetchInvitableUsers` comments
   and sibling layout (`PassCards` slot placeholders, `Hand` overlap `×1.5`,
   `renderMiniCard` wrappers) is sized assuming the modifiers work — fixing the cascade
   would change every card's size, so re-tune those alongside. [confirmed]
-- `InvitePanel.tsx` — `p.displayName[0]` throws/renders undefined on an empty name.
-- `RoundResults.tsx` — `readyCount` computed but unused (dead code).
-- `useSocket.ts` — stale-token race: if the socket connects before `idToken` is set and the
-  token then arrives a tick before `connect` fires, the `authenticate` emit can be missed.
-  Consider emitting `authenticate` inside the `connect` handler.
 
 ## Cross-cutting design smells — MED/LOW
 - **Duplicated event-detection logic:** `useGameEvents` (`GameAnnouncement.tsx`) and

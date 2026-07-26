@@ -67,7 +67,7 @@ export default function InvitePanel({ onClose, fetchPlayers, sendInvite, expired
             <img src={p.photoURL} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
-              {p.displayName[0]}
+              {p.displayName?.[0] || '?'}
             </div>
           )}
           <span className="text-2xl truncate">{p.displayName}</span>
