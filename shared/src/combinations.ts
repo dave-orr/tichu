@@ -1,19 +1,6 @@
 import { Card, Combo, ComboType, NormalCard, NormalRank, Suit, cardId } from './types.js';
 
 /**
- * Get the effective rank of a card for comparison purposes.
- * Phoenix rank depends on context and is handled separately.
- */
-function getNormalRank(card: Card): NormalRank | null {
-  if (card.type === 'normal') return card.rank;
-  if (card.type === 'special') {
-    if (card.name === 'mahjong') return 1 as NormalRank; // special: rank 1
-    // dog, phoenix, dragon don't have a "normal" rank in combos
-  }
-  return null;
-}
-
-/**
  * Get the single-card rank for comparison when playing singles.
  * The Mah Jong = 1, Phoenix = contextual (0.5 above last played), Dragon = 15.
  */
@@ -23,7 +10,9 @@ export function singleCardRank(card: Card, lastPlayedRank?: number): number {
     case 'mahjong': return 1;
     case 'phoenix': return lastPlayedRank != null ? lastPlayedRank + 0.5 : 1.5;
     case 'dragon': return 15;
-    case 'dog': return -1; // dog can't be played as a normal single in a trick
+    // Dog is never rank-compared (it can only be led, and a led Dog passes the
+    // lead rather than starting a trick); 0 matches cardSortValue in deck.ts.
+    case 'dog': return 0;
   }
 }
 
@@ -43,7 +32,7 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
   // Dog can only be played alone as a lead
   if (hasDog) {
     if (cards.length === 1) {
-      return { type: 'single', cards, rank: -1, length: 1 };
+      return { type: 'single', cards, rank: singleCardRank(cards[0]), length: 1 };
     }
     return null; // dog can't be part of any combo
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPasses, callSmallTichu, passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
+import { applyPasses, callSmallTichu, concede, passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -320,5 +320,38 @@ describe('passTurn — pass-count threshold when leader is out', () => {
     const after = passTurn(state, 3);
     expect(after.trickCountdownStarted).toBe(true);
     expect(after.state.trickCountdown).toEqual({ winner: 0, durationMs: 3000 });
+  });
+});
+
+describe('round history — tichu call records', () => {
+  it('records each call with its outcome when the round ends', () => {
+    // Seat 2 called Tichu and went out first (made); seat 1 called Grand and
+    // did not (missed). Seat 0 concedes (partner 2 is out), ending the round.
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(5)] }),
+      makePlayer(1, { hand: [c(6)], tichuCall: 'grand' }),
+      makePlayer(2, { hand: [], isOut: true, outOrder: 1, tichuCall: 'small' }),
+      makePlayer(3, { hand: [c(8)] }),
+    ];
+    const state = makeState({ players, outCount: 1 });
+
+    const after = concede(state, 0);
+    expect(after.roundEnded).toBe(true);
+    expect(after.state.roundHistory).toHaveLength(1);
+    expect(after.state.roundHistory[0].tichuCalls).toEqual([
+      { seat: 1, call: 'grand', made: false },
+      { seat: 2, call: 'small', made: true },
+    ]);
+  });
+
+  it('records an empty list when nobody called', () => {
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(5)] }),
+      makePlayer(1, { hand: [c(6)] }),
+      makePlayer(2, { hand: [], isOut: true, outOrder: 1 }),
+      makePlayer(3, { hand: [c(8)] }),
+    ];
+    const after = concede(makeState({ players, outCount: 1 }), 0);
+    expect(after.state.roundHistory[0].tichuCalls).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ import ScoreBoard from '../components/ScoreBoard.js';
 import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
 import RoundResults from '../components/RoundResults.js';
+import UserStats from '../components/UserStats.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
@@ -57,6 +58,7 @@ export default function Game({ socket, auth }: Props) {
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
@@ -64,6 +66,14 @@ export default function Game({ socket, auth }: Props) {
   const gameEvents = useGameEvents(gameState, roundResult);
   const logEntries = useEventLog(gameState, roundResult, autoSkippedSeat);
   const prevEventCountRef = useRef(0);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear pending toast/copy timers on unmount so they can't setState after.
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
 
   // Play gong when someone calls tichu/grand
   useEffect(() => {
@@ -146,22 +156,23 @@ export default function Game({ socket, auth }: Props) {
       }
     : undefined;
 
-  // Set document title with player name
+  // Set document title with player name. Depend on the name string, not the
+  // players array — a fresh array arrives with every broadcast and would tear
+  // this (and the tab-flash effect below) down on every state update.
+  const myPlayerName = gameState ? gameState.players[gameState.mySeat].name : null;
   useEffect(() => {
-    if (gameState) {
-      const name = gameState.players[gameState.mySeat].name;
-      document.title = `Tichu — ${name}`;
+    if (myPlayerName) {
+      document.title = `Tichu — ${myPlayerName}`;
     }
     return () => { document.title = 'Tichu'; };
-  }, [gameState?.mySeat, gameState?.players]);
+  }, [myPlayerName]);
 
   // Flash tab title when it's your turn and tab is not focused
   useEffect(() => {
     if (!isMyTurnNow || pendingWish) return;
     let interval: ReturnType<typeof setInterval> | null = null;
     let flash = false;
-    const playerName = gameState?.players[gameState.mySeat].name ?? '';
-    const baseTitle = `Tichu — ${playerName}`;
+    const baseTitle = `Tichu — ${myPlayerName ?? ''}`;
 
     const startFlashing = () => {
       if (document.hidden) {
@@ -193,7 +204,7 @@ export default function Game({ socket, auth }: Props) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       stopFlashing();
     };
-  }, [isMyTurnNow, pendingWish, gameState?.mySeat, gameState?.players]);
+  }, [isMyTurnNow, pendingWish, myPlayerName]);
 
   // Derived game values, computed null-safely so the hooks that follow run
   // unconditionally (Rules of Hooks). The early return comes after them.
@@ -205,16 +216,19 @@ export default function Game({ socket, auth }: Props) {
     ? canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick)
     : false;
 
-  // Auto-pass when "pass next play" is queued
+  // Auto-pass when "pass next play" is queued. Depends on the stable
+  // socket.passTurn callback, not the socket object (rebuilt every render).
+  const emitPassTurn = socket.passTurn;
   useEffect(() => {
     if (passNextPlay && isMyTurn && currentTrick !== null && !mustPlayWish && !gameState?.bombWindow) {
       setPassNextPlay(false);
-      socket.passTurn();
+      emitPassTurn();
       setSelectedCards(new Set());
       setToast('Auto-passed (queued)');
-      setTimeout(() => setToast(null), 2000);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setToast(null), 2000);
     }
-  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState?.bombWindow, socket]);
+  }, [passNextPlay, isMyTurn, currentTrick, mustPlayWish, gameState?.bombWindow, emitPassTurn]);
 
   // Cancel auto-pass when the trick ends (new lead)
   useEffect(() => {
@@ -381,7 +395,8 @@ export default function Game({ socket, auth }: Props) {
     if (!socket.roomCode) return;
     navigator.clipboard?.writeText(socket.roomCode).then(() => {
       setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 1500);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopiedCode(false), 1500);
     }).catch(() => { /* clipboard unavailable — ignore */ });
   };
 
@@ -529,22 +544,18 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
-  // One small card in a passed/received diamond beside the hand, with a full-card
-  // ✕ (drawn corner-to-corner) once it's been played. The other player is
-  // conveyed by position (and a hover title).
-  const renderMiniCard = (card: CardType, title: string, crossWhenPlayed = true) => {
-    const played = crossWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
+  // One small card in the passed/received trio beside the hand, grayed out
+  // once it's been played. The other player is conveyed by position (left
+  // opponent / partner / right opponent, matching the table) and a hover
+  // title. The wrapper matches the scaled card's true size (96x144 x 0.8) so
+  // spacing stays honest.
+  const renderMiniCard = (card: CardType, title: string, fadeWhenPlayed = true) => {
+    const played = fadeWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
     return (
-      <div className="relative w-[39px] h-[58px]" title={title}>
-        <div className="origin-top-left scale-[0.6]">
+      <div className="relative w-[77px] h-[116px]" title={played ? `${title} — played` : title}>
+        <div className={`origin-top-left scale-[0.8] transition-[filter,opacity] duration-300 ${played ? 'grayscale opacity-40' : ''}`}>
           <CardComponent card={card} small />
         </div>
-        {played && (
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="3" strokeLinecap="round" />
-            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-        )}
       </div>
     );
   };
@@ -648,6 +659,20 @@ export default function Game({ socket, auth }: Props) {
           roundEndReady={gameState.roundEndReady}
           roundHistory={gameState.roundHistory}
           eloUpdate={socket.eloUpdate}
+          headToHead={socket.headToHead}
+          onShowStats={auth.profile ? () => setShowStatsModal(true) : undefined}
+        />
+      )}
+      {/* Full lifetime stats, reachable from the game-over analytics panel.
+          Rendered after RoundResults so it paints on top. */}
+      {showStatsModal && auth.profile && (
+        <UserStats
+          stats={auth.profile.stats}
+          myUid={auth.profile.uid}
+          fetchPartnerStats={socket.fetchPartnerStats}
+          fetchRecentGames={socket.fetchRecentGames}
+          fetchGameHistory={socket.fetchGameHistory}
+          onClose={() => setShowStatsModal(false)}
         />
       )}
 
@@ -771,17 +796,19 @@ export default function Game({ socket, auth }: Props) {
               positioned by who passed each card (partner top, left/right below),
               mirroring the outgoing diamond on the right. */}
           {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
-            <div className="flex flex-col items-center gap-0.5 shrink-0 mr-10">
-              {/* Label above the diamond — the wide hand can overlap the space below it */}
+            <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-gray-400/90 uppercase tracking-wider">Received</div>
-              <div className="grid grid-cols-3 gap-1 justify-items-center items-center">
-                <div className="col-start-2 row-start-1">
-                  {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
-                </div>
-                <div className="col-start-1 row-start-2">
+              {/* A row instead of a diamond keeps the group no taller than the
+                  hand, so the cards can be bigger: left opponent / partner
+                  (raised, echoing the table) / right opponent. */}
+              <div className="grid grid-cols-3 gap-1 items-start">
+                <div>
                   {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`, false)}
                 </div>
-                <div className="col-start-3 row-start-2">
+                <div className="-translate-y-2">
+                  {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
+                </div>
+                <div>
                   {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`, false)}
                 </div>
               </div>
@@ -796,15 +823,15 @@ export default function Game({ socket, auth }: Props) {
             large
           />
 
-          {/* Cards you passed — a separated diamond (partner top, left/right
-              below), labeled to mirror the received diamond on the other side. */}
+          {/* Cards you passed — a row mirroring the received trio: left
+              opponent / partner (raised) / right opponent. */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-gray-400/90 uppercase tracking-wider">Passed</div>
-              <div className="grid grid-cols-3 gap-1 justify-items-center items-center">
-                <div className="col-start-2 row-start-1">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
-                <div className="col-start-1 row-start-2">{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
-                <div className="col-start-3 row-start-2">{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
+              <div className="grid grid-cols-3 gap-1 items-start">
+                <div>{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
+                <div className="-translate-y-2">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
+                <div>{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
               </div>
             </div>
           )}

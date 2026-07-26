@@ -9,24 +9,33 @@ export default function WishDisplay({ wish }: Props) {
   const [displayWish, setDisplayWish] = useState<NormalRank | null>(null);
   const [evaporating, setEvaporating] = useState(false);
   const prevWish = useRef<NormalRank | null>(null);
+  const evaporateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (wish !== null && prevWish.current === null) {
-      // Wish just appeared
+    if (wish !== null) {
+      // A live wish always cancels any pending evaporation clear — otherwise a
+      // wish set again mid-animation would be wiped when the old timer fires.
+      if (evaporateTimer.current) {
+        clearTimeout(evaporateTimer.current);
+        evaporateTimer.current = null;
+      }
       setDisplayWish(wish);
       setEvaporating(false);
-    } else if (wish === null && prevWish.current !== null) {
+    } else if (prevWish.current !== null) {
       // Wish just fulfilled — start evaporate animation
       setEvaporating(true);
-      setTimeout(() => {
+      evaporateTimer.current = setTimeout(() => {
+        evaporateTimer.current = null;
         setDisplayWish(null);
         setEvaporating(false);
       }, 800);
-    } else if (wish !== null) {
-      setDisplayWish(wish);
     }
     prevWish.current = wish;
   }, [wish]);
+
+  useEffect(() => () => {
+    if (evaporateTimer.current) clearTimeout(evaporateTimer.current);
+  }, []);
 
   if (displayWish === null) return null;
 

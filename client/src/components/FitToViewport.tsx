@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-/** The comfortable "design size" of the in-game UI: the middle table row
- *  (two 440px player panels + center status) sets the width, and the three
- *  panel rows plus the large hand and action buttons set the height. */
-const DESIGN_WIDTH = 1150;
+/** The comfortable "design size" of the in-game UI: the bottom row (14-card
+ *  hand flanked by the passed/received card trios) sets the width, and the
+ *  three panel rows plus the hand and action bar set the height. */
+const DESIGN_WIDTH = 1300;
 const DESIGN_HEIGHT = 900;
 
 function useViewportSize() {

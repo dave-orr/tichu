@@ -28,6 +28,7 @@ export function useGameEvents(
   const prevRef = useRef<ClientGameState | null>(null);
   const prevRoundRef = useRef<RoundResult | null>(null);
   const nextId = useRef(0);
+  const removalTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   useEffect(() => {
     if (!gameState) return;
@@ -106,12 +107,19 @@ export function useGameEvents(
       const withIds = detected.map(e => ({ ...e, id: nextId.current++ }));
       setEvents(prev => [...prev, ...withIds]);
       for (const e of withIds) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          removalTimers.current.delete(timer);
           setEvents(prev => prev.filter(ev => ev.id !== e.id));
         }, DURATIONS[e.type]);
+        removalTimers.current.add(timer);
       }
     }
   }, [gameState, roundResult]);
+
+  // Clear any pending removal timers on unmount so they can't setState after.
+  useEffect(() => () => {
+    for (const timer of removalTimers.current) clearTimeout(timer);
+  }, []);
 
   return events;
 }

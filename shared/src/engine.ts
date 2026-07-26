@@ -129,6 +129,8 @@ export function callGrandTichu(state: GameState, seat: Seat, call: boolean): Gam
   if (state.phase !== 'grandTichuWindow') return state;
   if (state.players[seat].grandTichuDecided) return state;
 
+  // Shallow copy is intentional: the one player we touch is replaced below,
+  // never mutated, so the other seats can share their objects with the old state.
   const newPlayers = toPlayers([...state.players]);
   newPlayers[seat] = {
     ...newPlayers[seat],
@@ -181,7 +183,9 @@ export function passCards(
   if (state.phase !== 'passing') return state;
   if (state.players[seat].passedCards) return state;
 
-  // Store the pass selections (we'll apply them all at once when everyone has passed)
+  // Store the pass selections (we'll apply them all at once when everyone has
+  // passed). Shallow copy is intentional: the one player we touch is replaced,
+  // never mutated.
   const newPlayers = toPlayers([...state.players]);
   newPlayers[seat] = {
     ...newPlayers[seat],
@@ -205,6 +209,7 @@ export function applyPasses(
   for (let seat = 0; seat < 4; seat++) {
     const s = seat as Seat;
     const pass = passes[s];
+    if (!pass) throw new Error(`applyPasses: missing pass for seat ${s}`);
     removeCard(newPlayers[s].hand, pass.left);
     removeCard(newPlayers[s].hand, pass.partner);
     removeCard(newPlayers[s].hand, pass.right);
@@ -799,6 +804,11 @@ function endRound(state: GameState, concededBy?: Seat): PlayResult {
     tichuBonuses: result.tichuBonuses,
     roundTotal,
     cumulativeScores: result.totalScores,
+    // Record who called (Grand) Tichu and whether they made it (went out
+    // first) — same rule the scoring bonuses use.
+    tichuCalls: state.players
+      .filter(p => p.tichuCall !== 'none')
+      .map(p => ({ seat: p.seat, call: p.tichuCall as 'small' | 'grand', made: p.outOrder === 1 })),
   };
 
   return {
@@ -840,6 +850,11 @@ function getNextActiveSeat(
   while (players[next].isOut && attempts < 4) {
     next = advance(next);
     attempts++;
+  }
+  // Unreachable in valid state (rounds end at three players out), but if state
+  // is ever corrupt, surface it instead of silently seating an out player.
+  if (players[next].isOut) {
+    console.error(`getNextActiveSeat: no active seat found from seat ${currentSeat}`);
   }
   return next;
 }

@@ -89,6 +89,13 @@ export type RoomElos = {
   teamElos: [number | null, number | null]; // pairing Elo, null unless both seats are authenticated
 };
 
+/** Historical head-to-head record between the two pairings seated in a room,
+ *  computed from finished-game summaries (including the game just ended). */
+export type HeadToHead = {
+  games: number;           // finished games between exactly these two pairings
+  wins: [number, number];  // wins by current team index (0 = seats 0&2); draws = games - wins[0] - wins[1]
+};
+
 /** Elo changes emitted to clients at the end of a game. */
 export type EloUpdate = {
   seatElos: (number | null)[];     // new individual ratings, index = seat
@@ -233,12 +240,21 @@ export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
   isAi: boolean;           // true for API-connected AI players
 };
 
+/** One player's Tichu/Grand call and its outcome, recorded per round. */
+export type RoundTichuCall = {
+  seat: Seat;
+  call: 'small' | 'grand';
+  made: boolean;
+};
+
 export type RoundHistoryEntry = {
   roundNumber: number;
   cardPoints: [number, number];
   tichuBonuses: [number, number];
   roundTotal: [number, number];
   cumulativeScores: [number, number];
+  /** Optional: absent in room snapshots taken before this field existed. */
+  tichuCalls?: RoundTichuCall[];
 };
 
 export type RoundResult = {

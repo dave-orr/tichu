@@ -1,7 +1,7 @@
 import {
   GameState, Seat, getTeamForSeat, RoundResult, RoundLog, RoundLogPlayerEntry, PartnerStats,
   RoomElos, EloUpdate, ELO_INITIAL, eloExpected, eloKFactor,
-  GameSummary, GameSummaryPlayer, GameHistoryRound,
+  GameSummary, GameSummaryPlayer, GameHistoryRound, HeadToHead,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room } from './rooms.js';
@@ -350,6 +350,46 @@ export async function saveGameSummary(room: Room): Promise<void> {
 
   // playerUids is stored alongside the summary purely for querying.
   await db.collection('games').doc(acc.gameId).set({ ...summary, playerUids }, { merge: true });
+}
+
+/**
+ * Historical record between the two pairings currently seated in the room,
+ * from finished-game summaries. Wins are indexed by the room's current team
+ * numbering (0 = seats 0&2) regardless of which side each pairing sat on in
+ * past games. Null when any seat is unauthenticated (pairings can't be
+ * identified) or Firebase is unavailable.
+ */
+export async function fetchHeadToHead(room: Room): Promise<HeadToHead | null> {
+  if (!firebaseAdmin) return null;
+  const pairKey = (uids: (string | undefined | null)[]) =>
+    uids.every((u): u is string => !!u) ? [...uids].sort().join('|') : null;
+  const ourTeam0 = pairKey([room.seatUids.get(0), room.seatUids.get(2)]);
+  const ourTeam1 = pairKey([room.seatUids.get(1), room.seatUids.get(3)]);
+  if (!ourTeam0 || !ourTeam1) return null;
+
+  const db = firebaseAdmin.firestore();
+  const anyUid = room.seatUids.get(0)!;
+  const snap = await db.collection('games').where('playerUids', 'array-contains', anyUid).get();
+
+  const wins: [number, number] = [0, 0];
+  let games = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as GameSummary;
+    const gameTeam0 = pairKey(g.players.filter(p => p.team === 0).map(p => p.uid));
+    const gameTeam1 = pairKey(g.players.filter(p => p.team === 1).map(p => p.uid));
+    // Match the game's pairings to ours in either orientation.
+    let winnerAsOurs: 0 | 1 | null;
+    if (gameTeam0 === ourTeam0 && gameTeam1 === ourTeam1) {
+      winnerAsOurs = g.winningTeam ?? null;
+    } else if (gameTeam0 === ourTeam1 && gameTeam1 === ourTeam0) {
+      winnerAsOurs = g.winningTeam == null ? null : g.winningTeam === 0 ? 1 : 0;
+    } else {
+      continue;
+    }
+    games++;
+    if (winnerAsOurs !== null) wins[winnerAsOurs]++;
+  }
+  return { games, wins };
 }
 
 /** The most recent finished games this user took part in (newest first, max 10). */

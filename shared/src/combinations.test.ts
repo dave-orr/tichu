@@ -38,10 +38,10 @@ describe('identifyCombo', () => {
       expect(combo!.type).toBe('single');
     });
 
-    it('identifies dog as single with rank -1', () => {
+    it('identifies dog as single with rank 0', () => {
       const combo = identifyCombo([dog]);
       expect(combo!.type).toBe('single');
-      expect(combo!.rank).toBe(-1);
+      expect(combo!.rank).toBe(0);
     });
   });
 
