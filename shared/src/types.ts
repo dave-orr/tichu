@@ -233,12 +233,21 @@ export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
   isAi: boolean;           // true for API-connected AI players
 };
 
+/** One player's Tichu/Grand call and its outcome, recorded per round. */
+export type RoundTichuCall = {
+  seat: Seat;
+  call: 'small' | 'grand';
+  made: boolean;
+};
+
 export type RoundHistoryEntry = {
   roundNumber: number;
   cardPoints: [number, number];
   tichuBonuses: [number, number];
   roundTotal: [number, number];
   cumulativeScores: [number, number];
+  /** Optional: absent in room snapshots taken before this field existed. */
+  tichuCalls?: RoundTichuCall[];
 };
 
 export type RoundResult = {

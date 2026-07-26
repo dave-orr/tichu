@@ -804,6 +804,11 @@ function endRound(state: GameState, concededBy?: Seat): PlayResult {
     tichuBonuses: result.tichuBonuses,
     roundTotal,
     cumulativeScores: result.totalScores,
+    // Record who called (Grand) Tichu and whether they made it (went out
+    // first) — same rule the scoring bonuses use.
+    tichuCalls: state.players
+      .filter(p => p.tichuCall !== 'none')
+      .map(p => ({ seat: p.seat, call: p.tichuCall as 'small' | 'grand', made: p.outOrder === 1 })),
   };
 
   return {

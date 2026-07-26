@@ -9,6 +9,7 @@ import ScoreBoard from '../components/ScoreBoard.js';
 import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
 import RoundResults from '../components/RoundResults.js';
+import UserStats from '../components/UserStats.js';
 import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
@@ -57,6 +58,7 @@ export default function Game({ socket, auth }: Props) {
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
@@ -657,6 +659,19 @@ export default function Game({ socket, auth }: Props) {
           roundEndReady={gameState.roundEndReady}
           roundHistory={gameState.roundHistory}
           eloUpdate={socket.eloUpdate}
+          onShowStats={auth.profile ? () => setShowStatsModal(true) : undefined}
+        />
+      )}
+      {/* Full lifetime stats, reachable from the game-over analytics panel.
+          Rendered after RoundResults so it paints on top. */}
+      {showStatsModal && auth.profile && (
+        <UserStats
+          stats={auth.profile.stats}
+          myUid={auth.profile.uid}
+          fetchPartnerStats={socket.fetchPartnerStats}
+          fetchRecentGames={socket.fetchRecentGames}
+          fetchGameHistory={socket.fetchGameHistory}
+          onClose={() => setShowStatsModal(false)}
         />
       )}
 
