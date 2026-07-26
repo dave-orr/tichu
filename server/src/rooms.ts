@@ -772,6 +772,36 @@ export function removeApiPlayer(room: Room, seat: Seat): { error?: string } {
   return {};
 }
 
+/**
+ * Aggregate activity counts for the /health endpoint (e.g. to judge whether
+ * a restart would interrupt anyone). Counts only — never room codes or
+ * player names, since /health is public and codes are join credentials.
+ */
+export function getActivitySummary(): {
+  rooms: number;
+  roomsInGame: number;
+  playersSeated: number;
+  playersConnected: number;
+  phases: Record<string, number>;
+} {
+  let roomsInGame = 0;
+  let playersSeated = 0;
+  let playersConnected = 0;
+  const phases: Record<string, number> = {};
+  for (const room of rooms.values()) {
+    const phase = room.state.phase;
+    phases[phase] = (phases[phase] ?? 0) + 1;
+    if (phase !== 'waiting' && phase !== 'gameEnd') roomsInGame++;
+    const connectedSeats = new Set(room.playerSockets.values());
+    for (const p of room.state.players) {
+      if (!p.name || p.isAi) continue;
+      playersSeated++;
+      if (connectedSeats.has(p.seat)) playersConnected++;
+    }
+  }
+  return { rooms: rooms.size, roomsInGame, playersSeated, playersConnected, phases };
+}
+
 export function findRoomWithOpenAiSeat(): { room: Room; seat: Seat } | null {
   for (const room of rooms.values()) {
     if (room.state.phase !== 'waiting') continue;

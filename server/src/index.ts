@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { setupHandlers } from './handler.js';
 import { createApiRouter } from './api.js';
+import { getActivitySummary } from './rooms.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,8 +38,10 @@ app.use('/api', createApiRouter(io));
 const clientDist = path.resolve(__dirname, '../../client/dist');
 app.use(express.static(clientDist));
 
+// Health + activity: aggregate counts so an operator can judge whether a
+// restart would interrupt anyone (roomsInGame > 0 means live games).
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', ...getActivitySummary() });
 });
 
 // SPA fallback — serve index.html for any non-API route
