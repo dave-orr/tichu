@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, GameSummary, GameHistoryRound } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound } from '@tichu/shared';
 import { getSessionId, saveRoom, loadRoom, clearRoom } from '../utils/session.js';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
@@ -37,6 +37,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   const [roomLost, setRoomLost] = useState(false);
   const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
   const [eloUpdate, setEloUpdate] = useState<EloUpdate | null>(null);
+  const [headToHead, setHeadToHead] = useState<HeadToHead | null>(null);
   const [disconnectedSeats, setDisconnectedSeats] = useState<number[]>([]);
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setRoomLost(false);
       setRoundResult(null);
       setEloUpdate(null);
+      setHeadToHead(null);
       setIsOrganizer(false);
       setDisconnectedSeats([]);
       setError('The room was cancelled.');
@@ -124,15 +126,20 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setError(null);
       if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
       setDisconnectedSeats(disconnectedSeats ?? []);
-      // Clear round result / elo update when the phase moves past roundEnd
+      // Clear round result / elo / head-to-head when the phase moves past roundEnd
       if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
         setRoundResult(null);
         setEloUpdate(null);
+        setHeadToHead(null);
       }
     });
 
     socket.on('elo-update', (update: EloUpdate) => {
       setEloUpdate(update);
+    });
+
+    socket.on('head-to-head', (h2h: HeadToHead) => {
+      setHeadToHead(h2h);
     });
 
     socket.on('error', ({ message }: { message: string }) => {
@@ -356,6 +363,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     setRoomLost(false);
     setRoundResult(null);
     setEloUpdate(null);
+    setHeadToHead(null);
     setIsOrganizer(false);
     setDisconnectedSeats([]);
     setError(null);
@@ -404,6 +412,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     fetchGameHistory,
     fetchRoomElos,
     eloUpdate,
+    headToHead,
     sendInvite,
     respondInvite,
     roomLost,

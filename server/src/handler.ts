@@ -16,7 +16,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, updateEloForGameEnd } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards,
@@ -958,10 +958,18 @@ function handleRoundResult(io: Server, room: Room, roundResult: RoundResult): vo
       console.error('Failed to update game stats:', err)
     );
 
-    // Top-level game summary so players can browse their recent games.
-    saveGameSummary(room).catch(err =>
-      console.error('Failed to save game summary:', err)
-    );
+    // Top-level game summary so players can browse their recent games; once
+    // it's written, compute and broadcast the pairings' head-to-head record
+    // (sequenced so the just-finished game is included in the count).
+    saveGameSummary(room)
+      .catch(err => console.error('Failed to save game summary:', err))
+      .then(() => fetchHeadToHead(room))
+      .then(h2h => {
+        if (h2h && h2h.games > 0) {
+          io.to(room.code).emit('head-to-head', h2h);
+        }
+      })
+      .catch(err => console.error('Failed to fetch head-to-head record:', err));
 
     // Elo: recompute ratings, then broadcast the changes to the room so the
     // game-over screen can show new ratings and deltas.

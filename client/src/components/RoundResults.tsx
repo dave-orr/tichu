@@ -1,4 +1,4 @@
-import { RoundResult, RoundHistoryEntry, RoundTichuCall, ClientPlayer, Seat, EloUpdate, getTeamForSeat } from '@tichu/shared';
+import { RoundResult, RoundHistoryEntry, RoundTichuCall, ClientPlayer, Seat, EloUpdate, HeadToHead, getTeamForSeat } from '@tichu/shared';
 
 type Props = {
   result: RoundResult;
@@ -10,6 +10,8 @@ type Props = {
   roundEndReady: Seat[];
   roundHistory: RoundHistoryEntry[];
   eloUpdate?: EloUpdate | null;
+  /** Historical record between these two pairings (includes this game). */
+  headToHead?: HeadToHead | null;
   /** When provided, the game-over view shows a "View full stats" link. */
   onShowStats?: () => void;
 };
@@ -69,7 +71,7 @@ function deltaColor(delta: number): string {
   return delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400';
 }
 
-export default function RoundResults({ result, players, onNextRound, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate, onShowStats }: Props) {
+export default function RoundResults({ result, players, onNextRound, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate, headToHead, onShowStats }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
 
@@ -266,6 +268,32 @@ export default function RoundResults({ result, players, onNextRound, onLeave, is
     return { player: p, small: count('small'), grand: count('grand') };
   }).filter(r => r.small.attempted + r.grand.attempted > 0);
 
+  // Head-to-head: lifetime record between these two pairings (already
+  // includes the game that just finished). Draws are shown only if any exist.
+  const headToHeadBlock = isGameOver && headToHead && headToHead.games > 0 && (() => {
+    const draws = headToHead.games - headToHead.wins[0] - headToHead.wins[1];
+    return (
+      <div className="bg-gray-900/60 rounded-lg p-3">
+        <div className="text-2xl text-gray-400 uppercase tracking-wide mb-2 text-center">Head to Head</div>
+        <div className="flex items-center justify-center gap-4 text-2xl">
+          <div className="text-right">
+            <div className="text-gray-400"><TeamHeader p1={players[0]} p2={players[2]} compact /></div>
+            <div className="text-4xl font-bold text-white">{headToHead.wins[0]}</div>
+          </div>
+          <div className="text-gray-500 text-3xl">–</div>
+          <div className="text-left">
+            <div className="text-gray-400"><TeamHeader p1={players[1]} p2={players[3]} compact /></div>
+            <div className="text-4xl font-bold text-white">{headToHead.wins[1]}</div>
+          </div>
+        </div>
+        <div className="text-center text-2xl text-gray-500 mt-1">
+          {headToHead.games} game{headToHead.games === 1 ? '' : 's'} between these teams
+          {draws > 0 ? ` · ${draws} drawn` : ''}
+        </div>
+      </div>
+    );
+  })();
+
   const gameStatsBlock = isGameOver && (
     <div className="bg-gray-900/60 rounded-lg p-3">
       <div className="text-2xl text-gray-400 uppercase tracking-wide mb-2 text-center">Game Stats</div>
@@ -351,6 +379,7 @@ export default function RoundResults({ result, players, onNextRound, onLeave, is
                 {historyBlock}
               </div>
               <div className="space-y-4 text-center">
+                {headToHeadBlock}
                 {eloBlock}
                 {gameStatsBlock}
               </div>

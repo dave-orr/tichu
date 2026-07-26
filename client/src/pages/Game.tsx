@@ -659,6 +659,7 @@ export default function Game({ socket, auth }: Props) {
           roundEndReady={gameState.roundEndReady}
           roundHistory={gameState.roundHistory}
           eloUpdate={socket.eloUpdate}
+          headToHead={socket.headToHead}
           onShowStats={auth.profile ? () => setShowStatsModal(true) : undefined}
         />
       )}
