@@ -542,14 +542,16 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
-  // One small card in a passed/received diamond beside the hand, grayed out
-  // once it's been played. The other player is conveyed by position (and a
-  // hover title).
+  // One small card in the passed/received trio beside the hand, grayed out
+  // once it's been played. The other player is conveyed by position (left
+  // opponent / partner / right opponent, matching the table) and a hover
+  // title. The wrapper matches the scaled card's true size (96x144 x 0.8) so
+  // spacing stays honest.
   const renderMiniCard = (card: CardType, title: string, fadeWhenPlayed = true) => {
     const played = fadeWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
     return (
-      <div className="relative w-[39px] h-[58px]" title={played ? `${title} — played` : title}>
-        <div className={`origin-top-left scale-[0.6] transition-[filter,opacity] duration-300 ${played ? 'grayscale opacity-40' : ''}`}>
+      <div className="relative w-[77px] h-[116px]" title={played ? `${title} — played` : title}>
+        <div className={`origin-top-left scale-[0.8] transition-[filter,opacity] duration-300 ${played ? 'grayscale opacity-40' : ''}`}>
           <CardComponent card={card} small />
         </div>
       </div>
@@ -778,17 +780,19 @@ export default function Game({ socket, auth }: Props) {
               positioned by who passed each card (partner top, left/right below),
               mirroring the outgoing diamond on the right. */}
           {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
-            <div className="flex flex-col items-center gap-0.5 shrink-0 mr-10">
-              {/* Label above the diamond — the wide hand can overlap the space below it */}
+            <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-gray-400/90 uppercase tracking-wider">Received</div>
-              <div className="grid grid-cols-3 gap-1 justify-items-center items-center">
-                <div className="col-start-2 row-start-1">
-                  {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
-                </div>
-                <div className="col-start-1 row-start-2">
+              {/* A row instead of a diamond keeps the group no taller than the
+                  hand, so the cards can be bigger: left opponent / partner
+                  (raised, echoing the table) / right opponent. */}
+              <div className="grid grid-cols-3 gap-1 items-start">
+                <div>
                   {receivedByRel.left && renderMiniCard(receivedByRel.left.card, `Received from ${playerNames[receivedByRel.left.fromSeat]}`, false)}
                 </div>
-                <div className="col-start-3 row-start-2">
+                <div className="-translate-y-2">
+                  {receivedByRel.partner && renderMiniCard(receivedByRel.partner.card, `Received from ${playerNames[receivedByRel.partner.fromSeat]}`, false)}
+                </div>
+                <div>
                   {receivedByRel.right && renderMiniCard(receivedByRel.right.card, `Received from ${playerNames[receivedByRel.right.fromSeat]}`, false)}
                 </div>
               </div>
@@ -803,15 +807,15 @@ export default function Game({ socket, auth }: Props) {
             large
           />
 
-          {/* Cards you passed — a separated diamond (partner top, left/right
-              below), labeled to mirror the received diamond on the other side. */}
+          {/* Cards you passed — a row mirroring the received trio: left
+              opponent / partner (raised) / right opponent. */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-gray-400/90 uppercase tracking-wider">Passed</div>
-              <div className="grid grid-cols-3 gap-1 justify-items-center items-center">
-                <div className="col-start-2 row-start-1">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
-                <div className="col-start-1 row-start-2">{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
-                <div className="col-start-3 row-start-2">{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
+              <div className="grid grid-cols-3 gap-1 items-start">
+                <div>{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
+                <div className="-translate-y-2">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
+                <div>{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
               </div>
             </div>
           )}
