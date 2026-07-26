@@ -6,6 +6,9 @@
     "server",
     "client"
   ],
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "scripts": {
     "dev:shared": "npm run dev --workspace=shared",
     "dev:server": "npm run dev --workspace=server",

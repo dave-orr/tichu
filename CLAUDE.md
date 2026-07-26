@@ -65,6 +65,19 @@ these files.
 - **New game setting**: Add to `GameSettings` + `DEFAULT_SETTINGS` in `types.ts` → check `gameState.settings.X` in components → add checkbox in Lobby waiting room setup options
 - **Teams**: Seats 0&2 (Team 0) vs 1&3 (Team 1). Relative seating from mySeat: +1=right, +2=partner, +3=left
 
+### Toolchain
+
+Node 22.22.2+ (`.nvmrc` pins the major; CI reads the same file) and npm 12+.
+The Node floor is npm 12's requirement — it also keeps us off Node 20, which
+reached EOL in April 2026.
+
+npm 12 blocks dependency install scripts unless allowlisted in `allowScripts`.
+No allowlist is needed today: the five packages that declare install scripts
+(`esbuild` ×2, `fsevents`, `protobufjs`, `@firebase/util`) are not load-bearing
+here — esbuild resolves its binary through `optionalDependencies`. If a future
+dependency genuinely needs its postinstall, `npm approve-scripts <pkg>` writes
+the entry and it gets committed like any other config.
+
 ### Build & Test
 
 - `npm run build` — Builds shared → server → client in order
