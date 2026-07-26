@@ -529,22 +529,16 @@ export default function Game({ socket, auth }: Props) {
     );
   }
 
-  // One small card in a passed/received diamond beside the hand, with a full-card
-  // ✕ (drawn corner-to-corner) once it's been played. The other player is
-  // conveyed by position (and a hover title).
-  const renderMiniCard = (card: CardType, title: string, crossWhenPlayed = true) => {
-    const played = crossWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
+  // One small card in a passed/received diamond beside the hand, grayed out
+  // once it's been played. The other player is conveyed by position (and a
+  // hover title).
+  const renderMiniCard = (card: CardType, title: string, fadeWhenPlayed = true) => {
+    const played = fadeWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
     return (
-      <div className="relative w-[39px] h-[58px]" title={title}>
-        <div className="origin-top-left scale-[0.6]">
+      <div className="relative w-[39px] h-[58px]" title={played ? `${title} — played` : title}>
+        <div className={`origin-top-left scale-[0.6] transition-[filter,opacity] duration-300 ${played ? 'grayscale opacity-40' : ''}`}>
           <CardComponent card={card} small />
         </div>
-        {played && (
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="0" y1="0" x2="100%" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="3" strokeLinecap="round" />
-            <line x1="100%" y1="0" x2="0" y2="100%" stroke="rgba(239,68,68,0.9)" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-        )}
       </div>
     );
   };
