@@ -8,3 +8,6 @@ dist/
 
 # Local Elo seeding file (may contain player emails); keep the example only
 server/elo-import.json
+
+# pm2 logs (see ecosystem.config.js)
+logs/
