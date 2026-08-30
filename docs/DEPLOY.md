@@ -56,6 +56,60 @@ npm run build
 pm2 restart tichu --update-env
 ```
 
+### `ERR_REQUIRE_ESM: Must use import to load ES Module`
+
+pm2 is loading the entry point with `require()` instead of `import()`. Every
+workspace is ESM (`"type": "module"`), so this kills the process before it
+binds a port and repeats identically on every restart — `pm2 restart` will
+never clear it.
+
+This is a pm2/Node problem on the host, not a code problem. pm2 decides how to
+load the script in `lib/ProcessContainerFork.js`: `ProcessUtils.isESModule()`
+walks up from the script's directory to the nearest `package.json` — for
+`server/dist/index.js` that is `server/package.json`, which is `"type":
+"module"` — and dynamic-`import()`s when true. Versions from roughly pm2 4.5
+onward do this. Older pm2 has no such check and always `require()`s.
+
+The catch: **the pm2 daemon keeps running the Node and pm2 it was started
+with.** `pm2 restart` only restarts the app, so a stale daemon forks every
+process under the old Node forever. Under nvm this bites twice, because pm2 is
+installed per Node version — switching Node leaves you with no pm2, or an old
+one, unless you reinstall it. A reboot can trigger this on its own: `pm2
+startup` writes an init script pinned to one Node path, so the resurrected
+daemon may not be the one that had been running fine.
+
+Check what is actually running before changing anything:
+
+```sh
+pm2 -v                                # pm2 version (client)
+node -v                               # must be >= 22.22.2
+pm2 report | grep -iE 'node version|pm2 version'   # what the DAEMON runs
+```
+
+Fix by moving the host onto Node 22 and rebuilding the daemon under it:
+
+```sh
+pm2 save                 # keep the process list
+pm2 kill                 # stop the OLD daemon — restart is not enough
+
+nvm install 22 && nvm alias default 22
+node -v                  # confirm v22.22.x before continuing
+
+npm install -g pm2       # pm2 is per-Node-version under nvm; reinstall it
+
+cd <repo> && npm ci && npm run build
+
+pm2 start ecosystem.config.js
+pm2 save
+```
+
+If the box must survive a reboot, re-point the init script at the new Node —
+the old one still references the Node 20 path:
+
+```sh
+pm2 unstartup && pm2 startup   # run the command it prints, then: pm2 save
+```
+
 ### `ERR_MODULE_NOT_FOUND` for a third-party package
 
 `node_modules` is incomplete, usually from an `npm ci` that failed partway.
@@ -103,3 +157,6 @@ cd <repo> && node server/dist/index.js
 - After changing `server/.env`, restart with `--update-env`; pm2 otherwise
   reuses the environment captured when the process was first started.
 - `pm2 save` after a `start`/`delete` so the process list survives a reboot.
+- `pm2 restart` restarts the app, not the daemon. After changing Node versions
+  or upgrading pm2, `pm2 kill` (or `pm2 update`) is what actually moves the
+  daemon onto the new runtime — otherwise it keeps forking under the old one.

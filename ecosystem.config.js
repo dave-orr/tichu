@@ -15,6 +15,12 @@ module.exports = {
       name: 'tichu',
       // Built output; `dist/` is git-ignored, so the host must run
       // `npm run build` (shared → server → client) before this resolves.
+      //
+      // This entry point is ESM. pm2 only loads it correctly if its
+      // `isESModule()` check finds `server/package.json` ("type": "module")
+      // and dynamic-imports it; older pm2 `require()`s the file and dies with
+      // ERR_REQUIRE_ESM before the port is bound. Needs pm2 >= 4.5 running on
+      // a daemon started under Node >= 22.22.2 — see docs/DEPLOY.md.
       script: 'server/dist/index.js',
       // Anchor every relative path to the repo root, regardless of the
       // directory pm2 happens to be invoked from.
