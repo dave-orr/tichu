@@ -3,6 +3,13 @@
 ## Site
 
 Production site: https://tichu.squidbox.com
+
+Deployed manually on the host: pm2 runs the built server as the process
+`tichu` (`ecosystem.config.js`), behind a reverse proxy. `dist/` is
+git-ignored in every workspace, so a deploy **must** run `npm run build`
+(shared → server → client) or the server crash-loops on a missing
+`@tichu/shared`. Deploy steps and outage triage: `docs/DEPLOY.md`.
+
 ## Architecture
 
 Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Node+Socket.IO) → `client/` (React+Vite+Tailwind).
