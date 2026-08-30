@@ -125,6 +125,59 @@ npm ci && npm run build
 pm2 restart tichu --update-env
 ```
 
+### Process is up, but the proxy still returns 503
+
+The app is listening on a different port than the reverse proxy forwards to.
+Ask each side what it thinks the port is.
+
+What the app bound (it logs the port on every boot):
+
+```sh
+pm2 logs tichu --lines 20 --nostream | grep 'running on port'
+ss -lptn | grep node                  # authoritative: what is actually bound
+curl -s localhost:<port>/health       # should return JSON
+```
+
+What the proxy forwards to:
+
+```sh
+sudo nginx -T 2>/dev/null | grep -n proxy_pass
+# Caddy instead:
+grep -rn reverse_proxy /etc/caddy/Caddyfile
+```
+
+If `/health` answers on the app's port but the site is still 503, the two
+numbers disagree — fix whichever is wrong and reload the proxy
+(`sudo nginx -s reload`).
+
+The usual cause is `PORT` being set in two places. It belongs in
+`server/.env` only. `ecosystem.config.js` deliberately does not set it, since
+a value there silently overrides the one the proxy was configured against.
+
+### `server/.env` is being ignored (wrong port, auth disabled)
+
+`server/src/index.ts` does `import 'dotenv/config'`, and dotenv resolves
+`.env` against `process.cwd()` — **not** the script's own directory. So the
+env file is only picked up when the process runs with its cwd inside
+`server/`. `ecosystem.config.js` sets `cwd` there for exactly this reason;
+starting the app by hand from the repo root does not.
+
+Run from the repo root, the server still boots and looks healthy, but on the
+default port 3000 instead of whatever `server/.env` says, with
+`FIREBASE_PROJECT_ID not set — auth verification disabled` in the log, no
+Firestore persistence, and `ALLOWED_ORIGINS`/`TRUST_PROXY` unset. The tell is
+that warning appearing on a host that does have credentials configured:
+
+```sh
+pm2 logs tichu --lines 20 --nostream | grep -i firebase
+```
+
+Start it through the config rather than by hand:
+
+```sh
+cd <repo> && pm2 delete tichu; pm2 start ecosystem.config.js && pm2 save
+```
+
 ### `EADDRINUSE`
 
 An orphaned process still holds the port. Find and kill it, then start clean:
@@ -151,9 +204,10 @@ cd <repo> && node server/dist/index.js
   connections are sticky, so cluster mode would shard players across processes
   that cannot see each other's rooms.
 - `server/.env` is git-ignored and is not in the repo (see
-  `server/.env.example`). A missing `.env` does **not** crash the server — it
-  logs `FIREBASE_PROJECT_ID not set — auth verification disabled` and runs
-  without auth or persistence. So a crash loop is never a missing `.env`.
+  `server/.env.example`). A missing — or unread — `.env` does **not** crash the
+  server: it logs `FIREBASE_PROJECT_ID not set — auth verification disabled`
+  and runs without auth or persistence, on the default port. So a crash loop is
+  never a missing `.env`, but a silent wrong-port 503 can be.
 - After changing `server/.env`, restart with `--update-env`; pm2 otherwise
   reuses the environment captured when the process was first started.
 - `pm2 save` after a `start`/`delete` so the process list survives a reboot.

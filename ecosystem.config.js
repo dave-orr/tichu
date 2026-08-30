@@ -21,10 +21,14 @@ module.exports = {
       // and dynamic-imports it; older pm2 `require()`s the file and dies with
       // ERR_REQUIRE_ESM before the port is bound. Needs pm2 >= 4.5 running on
       // a daemon started under Node >= 22.22.2 — see docs/DEPLOY.md.
-      script: 'server/dist/index.js',
-      // Anchor every relative path to the repo root, regardless of the
-      // directory pm2 happens to be invoked from.
-      cwd: __dirname,
+      script: 'dist/index.js',
+      // Must be the server workspace, not the repo root. index.ts does
+      // `import 'dotenv/config'`, and dotenv resolves `.env` against
+      // process.cwd() — so running from the repo root silently skips
+      // server/.env, taking FIREBASE_*, ALLOWED_ORIGINS, TRUST_PROXY and PORT
+      // with it. The server still boots, on the wrong port and with auth and
+      // Firestore persistence disabled. `script` is resolved relative to this.
+      cwd: path.join(__dirname, 'server'),
 
       // Rooms live in-memory in server/src/rooms.ts and Socket.IO connections
       // are sticky to one process, so this must stay a single fork. Cluster
@@ -33,9 +37,11 @@ module.exports = {
       exec_mode: 'fork',
       instances: 1,
 
+      // Deliberately no PORT here: it belongs in server/.env, which is the
+      // only copy the reverse proxy's upstream is matched against. Hardcoding
+      // it here would silently override that. Falls back to 3000 in index.ts.
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
       },
 
       // A missing build or a bad env crashes at import time, before the server
