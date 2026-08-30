@@ -4,11 +4,15 @@
 
 Production site: https://tichu.squidbox.com
 
-Deployed manually on the host: pm2 runs the built server as the process
-`tichu` (`ecosystem.config.js`), behind a reverse proxy. `dist/` is
-git-ignored in every workspace, so a deploy **must** run `npm run build`
-(shared → server → client) or the server crash-loops on a missing
-`@tichu/shared`. Deploy steps and outage triage: `docs/DEPLOY.md`.
+Deployed manually on the host with `scripts/deploy.sh`: pm2 runs the built
+server as the process `tichu` (`ecosystem.config.js`), behind a reverse proxy.
+`dist/` is git-ignored in every workspace, so a deploy **must** run
+`npm run build` (shared → server → client) or the server crash-loops on a
+missing `@tichu/shared`. pm2 must run with its cwd inside `server/`, since
+dotenv resolves `server/.env` against `process.cwd()`. Every boot logs a
+banner naming the Node version, cwd, whether `.env` loaded, the port and its
+source — read it first when triaging. Deploy steps and outage triage:
+`docs/DEPLOY.md`.
 
 ## Architecture
 

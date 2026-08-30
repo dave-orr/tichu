@@ -1,4 +1,6 @@
-import 'dotenv/config';
+// Must stay first: loads .env and enforces the Node floor before any module
+// that reads process.env at import time (firebase.ts) is evaluated.
+import { describeStartup } from './bootstrap.js';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -50,6 +52,11 @@ app.get('*', (_req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Log the resolved runtime before binding, so a failure to listen still leaves
+// the diagnosis (wrong Node, unread .env, missing client build) in the log.
+console.log(describeStartup(clientDist, PORT));
+
 httpServer.listen(PORT, () => {
   console.log(`Tichu server running on port ${PORT}`);
 });

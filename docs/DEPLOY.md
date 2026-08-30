@@ -8,11 +8,20 @@ tests PRs. Deploys are a manual pull-and-build on the host.
 ## Deploy
 
 ```sh
+~/tichu/scripts/deploy.sh
+```
+
+That runs the whole sequence and only reports success once `/health` answers on
+the port the app bound. It refuses to restart while a game is in progress
+(`--force` overrides, `--no-pull` deploys the working tree as-is). The
+equivalent by hand:
+
+```sh
 cd <repo>
 git pull
 npm ci
 npm run build          # shared → server → client, in that order
-pm2 restart tichu --update-env
+pm2 startOrRestart ecosystem.config.js --update-env
 ```
 
 `npm run build` is not optional and the order matters. `dist/` is git-ignored
@@ -30,6 +39,28 @@ curl -s localhost:3000/health   # roomsInGame > 0 means people are mid-game
 Rooms are snapshotted to Firestore and restored on boot
 (`server/src/persistence.ts`), so players can reconnect after a restart — but
 they still get disconnected first.
+
+## Read the startup banner first
+
+Every boot logs the runtime it resolved, before it binds the port:
+
+```
+Tichu server starting
+  node        v22.22.2
+  cwd         /home/dmorr/tichu/server
+  env file    loaded /home/dmorr/tichu/server/.env (6 keys)
+  port        8080 (from .env)
+  firebase    enabled (project tichu-xxxxx)
+  client      /home/dmorr/tichu/client/dist
+```
+
+```sh
+pm2 logs tichu --lines 20 --nostream
+```
+
+Most of the failures below are visible in it directly — `env file NOT FOUND`,
+`port ... (from default)` when you expect `.env`, `firebase DISABLED` on a host
+that has credentials, or `client ... MISSING`. Check it before anything else.
 
 ## Triage: process is "online" but the site is 503
 
