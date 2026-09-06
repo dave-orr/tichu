@@ -53,7 +53,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
               ? `${otherCallers.join(', ')} already called Grand Tichu. Still call?`
               : 'Call Grand Tichu? This is for +200/-200 points.'}
           </div>
-          <div className="flex justify-center gap-4">
+          <div className="inline-grid grid-cols-2 gap-4">
             <button
               onClick={() => { onDecide(true); setShowConfirm(false); }}
               className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
@@ -69,7 +69,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
           </div>
         </div>
       ) : (
-        <div className="flex justify-center gap-4 mt-4">
+        <div className="inline-grid grid-cols-2 gap-4 mt-4">
           <button
             onClick={handleCallClick}
             className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
