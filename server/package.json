@@ -6,7 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "import-elo": "tsx src/scripts/importElo.ts"
+    "import-elo": "tsx src/scripts/importElo.ts",
+    "audit-stats": "tsx src/scripts/auditStats.ts"
   },
   "dependencies": {
     "@tichu/shared": "*",
