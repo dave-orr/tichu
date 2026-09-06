@@ -15,6 +15,7 @@
     "dev:client": "npm run dev --workspace=client",
     "build": "npm run build --workspace=shared && npm run build --workspace=server && npm run build --workspace=client",
     "test": "npm test --workspace=shared",
+    "audit-stats": "npm run build --workspace=shared && npm run audit-stats --workspace=server --",
     "dev": "npm run build --workspace=shared && concurrently \"npm run dev:shared\" \"npm run dev:server\" \"npm run dev:client\""
   },
   "devDependencies": {
