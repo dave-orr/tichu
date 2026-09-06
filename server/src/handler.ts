@@ -3,7 +3,7 @@ import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, Invit
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
-  handlePassCards, handlePlayCards, handlePassTurn, handleBomb,
+  handlePassCards, handleUndoPass, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
   startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
   getSocketForUid, isUidOnline, isUidAvailable,
@@ -294,6 +294,14 @@ export function setupHandlers(io: Server): void {
       if (!found) return;
       const { room, seat } = found;
       handlePassCards(room, seat, data);
+      broadcastState(io, room);
+    });
+
+    socket.on('undo-pass', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      if (!handleUndoPass(room, seat)) return;
       broadcastState(io, room);
     });
 

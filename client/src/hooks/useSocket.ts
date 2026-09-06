@@ -232,6 +232,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('pass-cards', { left, partner, right });
   }, []);
 
+  const undoPass = useCallback(() => {
+    socketRef.current?.emit('undo-pass');
+  }, []);
+
   const playCards = useCallback((cards: Card[]) => {
     socketRef.current?.emit('play-cards', { cards });
   }, []);
@@ -391,6 +395,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     callGrandTichu,
     callSmallTichu,
     passCards,
+    undoPass,
     playCards,
     passTurn: passTurnAction,
     bomb: bombAction,

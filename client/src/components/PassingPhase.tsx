@@ -23,11 +23,12 @@ type Props = {
   playerName: string;
   passRecord: PassRecord | null;
   onPass: (left: CardType, partner: CardType, right: CardType) => void;
+  onUndoPass: () => void;
   gameEvents: GameEvent[];
 };
 
 export default function PassingPhase({
-  gameState, myHand, mySeat, playerNames, hasPassed, playerName, passRecord, onPass, gameEvents,
+  gameState, myHand, mySeat, playerNames, hasPassed, playerName, passRecord, onPass, onUndoPass, gameEvents,
 }: Props) {
   if (!hasPassed) {
     return (
@@ -46,6 +47,11 @@ export default function PassingPhase({
                 hand={myHand}
                 mySeat={mySeat}
                 playerNames={playerNames}
+                initialSelections={passRecord ? {
+                  left: passRecord.left.card,
+                  partner: passRecord.partner.card,
+                  right: passRecord.right.card,
+                } : undefined}
                 onPass={onPass}
               />
             </div>
@@ -54,6 +60,13 @@ export default function PassingPhase({
       </>
     );
   }
+
+  // Passes are applied the moment the last player locks in, so an undo is
+  // only possible while at least one other player is still choosing.
+  const waiting = gameState.players
+    .filter(p => p.seat !== gameState.mySeat && !p.passedCards)
+    .map(p => p.name);
+  const canUndo = waiting.length > 0;
 
   return (
     <>
@@ -65,14 +78,9 @@ export default function PassingPhase({
             <SeatingDiagram gameState={gameState} />
           </div>
           <p className="mt-6 mb-4 text-gray-300 text-3xl">
-            {(() => {
-              const waiting = gameState.players
-                .filter(p => p.seat !== gameState.mySeat && !p.passedCards)
-                .map(p => p.name);
-              return waiting.length > 0
-                ? `Waiting for ${waiting.join(', ')}...`
-                : 'Waiting for other players to pass cards...';
-            })()}
+            {waiting.length > 0
+              ? `Waiting for ${waiting.join(', ')}...`
+              : 'Waiting for other players to pass cards...'}
           </p>
           {passRecord && (
             <div className="flex justify-center gap-6 mb-4">
@@ -99,6 +107,14 @@ export default function PassingPhase({
             large
           />
           <div className="text-center text-3xl text-gray-400 mt-1">{playerName}</div>
+          {canUndo && (
+            <button
+              onClick={onUndoPass}
+              className="mt-4 py-2 px-8 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+            >
+              Undo Pass
+            </button>
+          )}
         </div>
       </div>
     </>

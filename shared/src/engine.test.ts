@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPasses, callSmallTichu, concede, passTurn, playBomb, playCards, setMahJongWish } from './engine.js';
+import { applyPasses, callSmallTichu, concede, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -84,6 +84,47 @@ describe('applyPasses — received card ordering', () => {
     // The two 2s lead the hand; the left player's (jade) precedes the right's (sword).
     expect(hand[0]).toEqual(c(2, 'jade'));
     expect(hand[1]).toEqual(c(2, 'sword'));
+  });
+});
+
+describe('undoPassCards', () => {
+  const pass = { left: c(3), partner: c(4), right: c(6) };
+
+  it('clears passedCards for a seat that has passed during the passing phase', () => {
+    const state = makeState({
+      phase: 'passing',
+      players: [
+        makePlayer(0, { hand: [c(3), c(4), c(6)], passedCards: false }),
+        makePlayer(1, { passedCards: false }),
+        makePlayer(2, { passedCards: false }),
+        makePlayer(3, { passedCards: false }),
+      ],
+    });
+    const passed = passCards(state, 0, pass);
+    expect(passed.players[0].passedCards).toBe(true);
+
+    const undone = undoPassCards(passed, 0);
+    expect(undone.players[0].passedCards).toBe(false);
+    // Hand is untouched: passes are only applied once everyone has passed.
+    expect(undone.players[0].hand).toEqual([c(3), c(4), c(6)]);
+    // Other seats are unaffected.
+    expect(undone.players[1].passedCards).toBe(false);
+  });
+
+  it('is a no-op for a seat that has not passed', () => {
+    const state = makeState({
+      phase: 'passing',
+      players: [
+        makePlayer(0, { passedCards: false }),
+        makePlayer(1), makePlayer(2), makePlayer(3),
+      ],
+    });
+    expect(undoPassCards(state, 0)).toBe(state);
+  });
+
+  it('is a no-op once the passing phase is over', () => {
+    const state = makeState({ phase: 'playing' });
+    expect(undoPassCards(state, 0)).toBe(state);
   });
 });
 
