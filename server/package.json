@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "import-elo": "tsx src/scripts/importElo.ts",
-    "audit-stats": "tsx src/scripts/auditStats.ts"
+    "audit-stats": "tsx src/scripts/auditStats.ts",
+    "repair-history": "tsx src/scripts/repairHistory.ts"
   },
   "dependencies": {
     "@tichu/shared": "*",

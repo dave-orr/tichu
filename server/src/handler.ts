@@ -17,7 +17,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
+import { recordPlayedWith, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards, sanitizeSettings,
@@ -1105,23 +1105,15 @@ function handleRoundResult(io: Server, room: Room, roundResult: RoundResult): vo
     console.error('Failed to save round log:', err)
   );
 
-  // Update round stats for each authenticated player
-  updateStatsForRound(room, roundResult).catch(err =>
-    console.error('Failed to update round stats:', err)
+  // Stats are derived from the round logs + game summaries at read time; the
+  // only per-user bookkeeping here is the invite list's "played with".
+  recordPlayedWith(room).catch(err =>
+    console.error('Failed to record played-with:', err)
   );
 
-  // Update team stats
+  // If game is over, write the summary and update Elo ratings
   const isGameEnd = state.phase === 'gameEnd';
-  updateTeamStats(room, roundResult, isGameEnd).catch(err =>
-    console.error('Failed to update team stats:', err)
-  );
-
-  // If game is over, also update game-level stats and Elo ratings
   if (isGameEnd) {
-    updateStatsForGameEnd(room, roundResult).catch(err =>
-      console.error('Failed to update game stats:', err)
-    );
-
     // Top-level game summary so players can browse their recent games; once
     // it's written, compute and broadcast the pairings' head-to-head record
     // (sequenced so the just-finished game is included in the count).

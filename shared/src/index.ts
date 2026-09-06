@@ -4,3 +4,4 @@ export * from './combinations.js';
 export * from './scoring.js';
 export * from './engine.js';
 export * from './stats.js';
+export * from './historyRepair.js';
