@@ -22,12 +22,16 @@ paths can't reach `endRound` with a Dragon trick pending. Needs a test.
 Over time this inflates write size, read cost (`fetchInvitableUsers` reads the whole
 list), and risks the 1 MiB Firestore document limit.
 
-### S4. Non-transactional, error-swallowing stat writes — LOW/MED [confirmed]
-**`server/src/stats.ts` + `handler.ts`** Four independent fire-and-forget writes (round
-log, per-user, per-team, game-end). Per-field `increment` is atomic, but cross-function
-consistency isn't — a partial failure permanently diverges per-user vs per-team
-aggregates, with no metric/retry/alert. Also `fetchInvitableUsers` comments
-"by last activity" but has no `orderBy` — results are arbitrary, not recent.
+### S4. Legacy counter writes are non-transactional and now unused by the UI — LOW [confirmed]
+**`server/src/stats.ts` + `handler.ts`** The stats page derives everything from the
+immutable game history (`games/*` + `games/*/rounds`, see `shared/src/stats.ts`), so the
+per-user and per-team `stats.*` counters written by `updateStatsForRound`,
+`updateStatsForGameEnd` and `updateTeamStats` no longer feed anything except
+`playedWith` (invites) and the Elo fields (written separately, in a transaction). The
+remaining fire-and-forget increments are dead weight that can still diverge on a dropped
+write; drop them (keeping `playedWith` and the `teams/*.playerUids` marker) rather than
+maintaining them. Also `fetchInvitableUsers` comments "by last activity" but has no
+`orderBy` — results are arbitrary, not recent.
 
 ## Client correctness / React
 

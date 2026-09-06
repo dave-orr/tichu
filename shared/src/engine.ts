@@ -195,6 +195,24 @@ export function passCards(
   return { ...state, players: newPlayers };
 }
 
+/**
+ * Retract a submitted pass so the player can pick different cards. Only
+ * possible while the round is still in the passing phase, i.e. before every
+ * seat has passed and the passes have been applied.
+ */
+export function undoPassCards(state: GameState, seat: Seat): GameState {
+  if (state.phase !== 'passing') return state;
+  if (!state.players[seat].passedCards) return state;
+
+  const newPlayers = toPlayers([...state.players]);
+  newPlayers[seat] = {
+    ...newPlayers[seat],
+    passedCards: false,
+  };
+
+  return { ...state, players: newPlayers };
+}
+
 /** Apply all card passes. Called when all 4 players have submitted passes. */
 export function applyPasses(
   state: GameState,

@@ -50,16 +50,6 @@ export type InvitablePlayer = {
   isAvailable: boolean;
 };
 
-export type PartnerStats = {
-  partnerUid: string;
-  partnerName: string;
-  partnerPhoto: string | null;
-  gamesPlayed: number;
-  gamesWon: number;
-  roundsPlayed: number;
-  teamElo: number | null; // pairing Elo rating (null if the pair has no rated games yet)
-};
-
 // ===== Elo =====
 
 /** Default rating for a player/pair with no rated games yet. */

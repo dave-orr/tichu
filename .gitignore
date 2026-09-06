@@ -9,5 +9,8 @@ dist/
 # Local Elo seeding file (may contain player emails); keep the example only
 server/elo-import.json
 
+# Stats audit output (contains uids/emails); see server/src/scripts/auditStats.ts
+server/stats-audit*.json
+
 # pm2 logs (see ecosystem.config.js)
 logs/

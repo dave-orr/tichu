@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound, UserStats, TeamStats } from '@tichu/shared';
 import { getSessionId, saveRoom, loadRoom, clearRoom } from '../utils/session.js';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
@@ -232,6 +232,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('pass-cards', { left, partner, right });
   }, []);
 
+  const undoPass = useCallback(() => {
+    socketRef.current?.emit('undo-pass');
+  }, []);
+
   const playCards = useCallback((cards: Card[]) => {
     socketRef.current?.emit('play-cards', { cards });
   }, []);
@@ -310,6 +314,14 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   const fetchPartnerStats = useCallback((): Promise<{ partners: PartnerStats[] }> => {
     return emitWithAuthRetry<{ partners: PartnerStats[]; needsAuth?: boolean }>('fetch-partner-stats');
   }, [emitWithAuthRetry]);
+
+  const fetchUserStats = useCallback((): Promise<{ stats: UserStats | null }> => {
+    return emitWithAuthRetry<{ stats: UserStats | null; needsAuth?: boolean }>('fetch-user-stats');
+  }, []);
+
+  const fetchTeamStats = useCallback((partnerUid: string): Promise<{ team: TeamStats | null }> => {
+    return emitWithAuthRetry<{ team: TeamStats | null; needsAuth?: boolean }>('fetch-team-stats', { partnerUid });
+  }, []);
 
   const fetchRecentGames = useCallback((): Promise<{ games: GameSummary[] }> => {
     return emitWithAuthRetry<{ games: GameSummary[]; needsAuth?: boolean }>('fetch-recent-games');
@@ -391,6 +403,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     callGrandTichu,
     callSmallTichu,
     passCards,
+    undoPass,
     playCards,
     passTurn: passTurnAction,
     bomb: bombAction,
@@ -408,6 +421,8 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     expiredInviteUids,
     fetchPlayers,
     fetchPartnerStats,
+    fetchUserStats,
+    fetchTeamStats,
     fetchRecentGames,
     fetchGameHistory,
     fetchRoomElos,

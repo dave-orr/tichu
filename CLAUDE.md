@@ -60,9 +60,10 @@ these files.
 - `shared/src/combinations.ts` — Combo identification (identifyCombo) and comparison (canBeat, isBomb)
 - `shared/src/scoring.ts` — Round scoring, card point values
 - `shared/src/deck.ts` — Deck creation, shuffle, sortHand
+- `shared/src/stats.ts` — Player / partner / pairing stats derived from game history (pure, tested)
 - `server/src/handler.ts` — All socket event handlers, broadcastState
 - `server/src/rooms.ts` — Room CRUD, game state management, seat swapping/shuffling
-- `server/src/stats.ts` — Firebase stats persistence
+- `server/src/stats.ts` — Round logs, game summaries, Elo, and history-derived stats queries (Firestore)
 - `client/src/pages/Game.tsx` — Main game UI (all phases: grandTichu, passing, playing)
 - `client/src/pages/Lobby.tsx` — Room creation, joining, waiting room with setup options
 - `client/src/hooks/useSocket.ts` — Socket connection, all emit wrappers, client state

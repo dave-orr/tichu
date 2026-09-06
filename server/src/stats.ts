@@ -2,6 +2,8 @@ import {
   GameState, Seat, getTeamForSeat, RoundResult, RoundLog, RoundLogPlayerEntry, PartnerStats,
   RoomElos, EloUpdate, ELO_INITIAL, eloExpected, eloKFactor,
   GameSummary, GameSummaryPlayer, GameHistoryRound, HeadToHead,
+  GameRecord, UserStats, TeamStats, PairingPlayer, EMPTY_STAT_TOTALS,
+  computePlayerStats, computePartnerSummaries, computePairingBreakdown,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room } from './rooms.js';
@@ -398,18 +400,10 @@ export async function fetchRecentGames(uid: string): Promise<GameSummary[]> {
   const db = firebaseAdmin.firestore();
   // array-contains alone needs no composite index; sort/slice in memory.
   const snap = await db.collection('games').where('playerUids', 'array-contains', uid).get();
-  const games = snap.docs
-    .map(d => d.data() as GameSummary & { finishedAt: number })
+  return snap.docs
+    .map(d => toSummary(d.data()))
     .sort((a, b) => b.finishedAt - a.finishedAt)
     .slice(0, 10);
-  return games.map(g => ({
-    gameId: g.gameId,
-    finishedAt: g.finishedAt,
-    players: g.players,
-    finalScores: g.finalScores,
-    winningTeam: g.winningTeam ?? null,
-    rounds: g.rounds ?? 0,
-  }));
 }
 
 /**
@@ -425,10 +419,7 @@ export async function fetchGameHistory(uid: string, gameId: string): Promise<Gam
   const playerUids: string[] = data?.playerUids ?? [];
   if (!data || !playerUids.includes(uid)) return null;
 
-  const roundsSnap = await db.collection('games').doc(gameId).collection('rounds').get();
-  const rounds = roundsSnap.docs
-    .map(d => d.data() as RoundLog)
-    .sort((a, b) => a.roundNumber - b.roundNumber);
+  const rounds = await loadRounds(db, gameId);
 
   return rounds.map(r => ({
     roundNumber: r.roundNumber,
@@ -657,59 +648,152 @@ export async function fetchInvitableUsers(
   return { allUsers, playedWithUids };
 }
 
+// ===== Derived stats (from game history) =====
+
+/**
+ * Round logs for a finished game never change, so cache them per process.
+ * The cache holds the *pending promise*, not just the result: opening the
+ * stats page fires several fetches at once, and storing results only would
+ * let every one of them miss on a cold cache and read the same docs in
+ * parallel. Bounded so a long-lived server can't grow without limit;
+ * entries are evicted oldest-first.
+ */
+const roundLogCache = new Map<string, Promise<RoundLog[]>>();
+const ROUND_LOG_CACHE_MAX = 2000;
+
+function loadRounds(db: FirebaseFirestore.Firestore, gameId: string): Promise<RoundLog[]> {
+  const cached = roundLogCache.get(gameId);
+  if (cached) return cached;
+  const pending = db.collection('games').doc(gameId).collection('rounds').get()
+    .then(snap => snap.docs
+      .map(d => d.data() as RoundLog)
+      .sort((a, b) => a.roundNumber - b.roundNumber));
+  // Don't cache a failure (transient Firestore error), or it would stick.
+  pending.catch(() => roundLogCache.delete(gameId));
+  if (roundLogCache.size >= ROUND_LOG_CACHE_MAX) {
+    const oldest = roundLogCache.keys().next().value;
+    if (oldest !== undefined) roundLogCache.delete(oldest);
+  }
+  roundLogCache.set(gameId, pending);
+  return pending;
+}
+
+function toSummary(data: FirebaseFirestore.DocumentData): GameSummary {
+  return {
+    gameId: data.gameId,
+    finishedAt: data.finishedAt ?? 0,
+    players: data.players ?? [],
+    finalScores: data.finalScores ?? [0, 0],
+    winningTeam: data.winningTeam ?? null,
+    rounds: data.rounds ?? 0,
+  };
+}
+
+/** Every finished game `uid` took part in, with round logs. */
+async function loadGameRecords(uid: string): Promise<GameRecord[]> {
+  if (!firebaseAdmin) return [];
+  const db = firebaseAdmin.firestore();
+  const snap = await db.collection('games').where('playerUids', 'array-contains', uid).get();
+  return Promise.all(snap.docs.map(async d => {
+    const summary = toSummary(d.data());
+    return { summary, rounds: await loadRounds(db, summary.gameId) };
+  }));
+}
+
+type EloFields = { elo: number; eloGames: number; eloPeak: number };
+
+function readElo(data: FirebaseFirestore.DocumentData | undefined): EloFields {
+  const stats = data?.stats ?? {};
+  const elo = typeof stats.elo === 'number' ? stats.elo : ELO_INITIAL;
+  return {
+    elo,
+    eloGames: typeof stats.eloGames === 'number' ? stats.eloGames : 0,
+    eloPeak: typeof stats.eloPeak === 'number' ? stats.eloPeak : elo,
+  };
+}
+
+async function loadDisplayInfo(uids: string[]): Promise<Map<string, PairingPlayer>> {
+  const info = new Map<string, PairingPlayer>();
+  if (!firebaseAdmin || uids.length === 0) return info;
+  const db = firebaseAdmin.firestore();
+  for (let i = 0; i < uids.length; i += 30) {
+    const batch = uids.slice(i, i + 30);
+    const docs = await db.getAll(...batch.map(u => db.collection('users').doc(u)));
+    for (const doc of docs) {
+      if (!doc.exists) continue;
+      const data = doc.data()!;
+      info.set(doc.id, { uid: doc.id, name: data.displayName || 'Player', photoURL: data.photoURL || null });
+    }
+  }
+  return info;
+}
+
+/**
+ * A user's stats as shown on the stats page: totals derived from their game
+ * history, plus the Elo fields (which are stateful and live on the user doc).
+ */
+export async function fetchUserStats(uid: string): Promise<UserStats> {
+  if (!firebaseAdmin) return { ...EMPTY_STAT_TOTALS, elo: ELO_INITIAL, eloGames: 0, eloPeak: ELO_INITIAL };
+  const db = firebaseAdmin.firestore();
+  const [records, userSnap] = await Promise.all([
+    loadGameRecords(uid),
+    db.collection('users').doc(uid).get(),
+  ]);
+  return { ...computePlayerStats(records, uid), ...readElo(userSnap.data()) };
+}
+
+const pairKey = (a: string, b: string) => [a, b].sort().join('_');
+
 export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
   if (!firebaseAdmin) return [];
   const db = firebaseAdmin.firestore();
 
-  const teamsSnap = await db.collection('teams')
-    .where('playerUids', 'array-contains', uid)
-    .get();
-
-  const rows: Array<{ partnerUid: string; gamesPlayed: number; gamesWon: number; roundsPlayed: number; teamElo: number | null }> = [];
-  for (const doc of teamsSnap.docs) {
-    const data = doc.data();
-    const playerUids: string[] = data.playerUids || [];
-    const partnerUid = playerUids.find(u => u !== uid);
-    if (!partnerUid) continue;
-    rows.push({
-      partnerUid,
-      gamesPlayed: data.stats?.gamesPlayed || 0,
-      gamesWon: data.stats?.gamesWon || 0,
-      roundsPlayed: data.stats?.roundsPlayed || 0,
-      teamElo: typeof data.stats?.elo === 'number' ? data.stats.elo : null,
-    });
-  }
-
+  const records = await loadGameRecords(uid);
+  const rows = computePartnerSummaries(records, uid);
   if (rows.length === 0) return [];
 
-  // Look up partner display info (batched, 30 per getAll)
-  const partnerInfo = new Map<string, { name: string; photo: string | null }>();
   const partnerUids = rows.map(r => r.partnerUid);
-  for (let i = 0; i < partnerUids.length; i += 30) {
-    const batch = partnerUids.slice(i, i + 30);
-    const refs = batch.map(u => db.collection('users').doc(u));
-    const docs = await db.getAll(...refs);
-    for (const doc of docs) {
-      if (!doc.exists) continue;
-      const data = doc.data()!;
-      partnerInfo.set(doc.id, {
-        name: data.displayName || 'Player',
-        photo: data.photoURL || null,
-      });
-    }
-  }
+  const [info, teamDocs] = await Promise.all([
+    loadDisplayInfo(partnerUids),
+    db.getAll(...partnerUids.map(p => db.collection('teams').doc(pairKey(uid, p)))),
+  ]);
+  const teamElo = new Map<string, EloFields | null>();
+  teamDocs.forEach((doc, i) => {
+    const rated = doc.exists && typeof doc.data()?.stats?.elo === 'number';
+    teamElo.set(partnerUids[i], rated ? readElo(doc.data()) : null);
+  });
 
-  return rows
-    .map(r => ({
-      partnerUid: r.partnerUid,
-      partnerName: partnerInfo.get(r.partnerUid)?.name || 'Player',
-      partnerPhoto: partnerInfo.get(r.partnerUid)?.photo || null,
-      gamesPlayed: r.gamesPlayed,
-      gamesWon: r.gamesWon,
-      roundsPlayed: r.roundsPlayed,
-      teamElo: r.teamElo,
-    }))
-    .sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.roundsPlayed - a.roundsPlayed);
+  return rows.map(r => {
+    const elo = teamElo.get(r.partnerUid) ?? null;
+    return {
+      ...r,
+      partnerName: info.get(r.partnerUid)?.name || 'Player',
+      partnerPhoto: info.get(r.partnerUid)?.photoURL || null,
+      teamElo: elo?.elo ?? null,
+      teamEloGames: elo?.eloGames ?? 0,
+      teamEloPeak: elo?.eloPeak ?? null,
+    };
+  });
+}
+
+/** Detailed stats for the pairing (uid, partnerUid). */
+export async function fetchTeamStats(uid: string, partnerUid: string): Promise<TeamStats> {
+  const breakdown = computePairingBreakdown(await loadGameRecords(uid), uid, partnerUid);
+  let elo: EloFields | null = null;
+  const info = await loadDisplayInfo([uid, partnerUid]);
+  if (firebaseAdmin) {
+    const doc = await firebaseAdmin.firestore().collection('teams').doc(pairKey(uid, partnerUid)).get();
+    if (doc.exists && typeof doc.data()?.stats?.elo === 'number') elo = readElo(doc.data());
+  }
+  const player = (u: string): PairingPlayer =>
+    info.get(u) ?? { uid: u, name: 'Player', photoURL: null };
+  return {
+    ...breakdown,
+    players: [player(uid), player(partnerUid)],
+    teamElo: elo?.elo ?? null,
+    teamEloGames: elo?.eloGames ?? 0,
+    teamEloPeak: elo?.eloPeak ?? null,
+  };
 }
 
 // Helper: build uid -> seat map from the room's persistent seat->uid map, so a

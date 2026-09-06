@@ -1,6 +1,6 @@
 import {
   GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound,
-  callGrandTichu, callSmallTichu, passCards as passCardsEngine,
+  callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, concede as concedeEngine,
   Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
@@ -659,6 +659,20 @@ export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean
     return true; // all passes applied
   }
   return false;
+}
+
+/**
+ * Retract a pending pass so the player can choose again. Returns false when
+ * there is nothing to undo (not in the passing phase, or the seat hasn't
+ * passed). Once all four passes are in they are applied immediately, so a
+ * pass can only be undone while at least one other seat is still deciding.
+ */
+export function handleUndoPass(room: Room, seat: Seat): boolean {
+  if (room.state.phase !== 'passing') return false;
+  if (!room.passes.has(seat)) return false;
+  room.passes.delete(seat);
+  room.state = undoPassCards(room.state, seat);
+  return true;
 }
 
 export function handlePlayCards(room: Room, seat: Seat, cards: Card[]): PlayResult {

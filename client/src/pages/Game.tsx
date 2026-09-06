@@ -114,6 +114,8 @@ export default function Game({ socket, auth }: Props) {
     setSelectedCards(new Set());
     setBombMode(false);
     setPassNextPlay(false);
+    // A fresh deal: last round's pass must not pre-fill this round's picks.
+    if (phase === 'grandTichuWindow') setPassRecord(null);
   }, [phase]);
 
   // Detect pending Mah Jong wish (Mah Jong played but wish not yet selected)
@@ -539,6 +541,7 @@ export default function Game({ socket, auth }: Props) {
         playerName={myPlayer.name}
         passRecord={passRecord}
         onPass={handlePassCards}
+        onUndoPass={socket.undoPass}
         gameEvents={gameEvents}
       />
     );
@@ -669,7 +672,9 @@ export default function Game({ socket, auth }: Props) {
         <UserStats
           stats={auth.profile.stats}
           myUid={auth.profile.uid}
+          fetchUserStats={socket.fetchUserStats}
           fetchPartnerStats={socket.fetchPartnerStats}
+          fetchTeamStats={socket.fetchTeamStats}
           fetchRecentGames={socket.fetchRecentGames}
           fetchGameHistory={socket.fetchGameHistory}
           onClose={() => setShowStatsModal(false)}

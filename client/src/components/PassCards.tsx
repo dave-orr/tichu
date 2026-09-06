@@ -3,22 +3,39 @@ import { Card as CardType, cardId, getLeftSeat, getPartnerSeat, getRightSeat, Se
 import CardComponent from './Card.js';
 import Hand from './Hand.js';
 
+type PassTarget = 'left' | 'partner' | 'right';
+
 type Props = {
   hand: CardType[];
   mySeat: Seat;
   playerNames: string[];
+  /** Pre-fill the slots (e.g. after undoing a pass) so the player can tweak
+      rather than start over. Cards no longer in hand are ignored. */
+  initialSelections?: Record<PassTarget, CardType | null>;
   onPass: (left: CardType, partner: CardType, right: CardType) => void;
 };
 
-type PassTarget = 'left' | 'partner' | 'right';
+const TARGETS: PassTarget[] = ['left', 'partner', 'right'];
 
-export default function PassCards({ hand, mySeat, playerNames, onPass }: Props) {
-  const [selections, setSelections] = useState<Record<PassTarget, CardType | null>>({
-    left: null,
-    partner: null,
-    right: null,
+export default function PassCards({ hand, mySeat, playerNames, initialSelections, onPass }: Props) {
+  const [selections, setSelections] = useState<Record<PassTarget, CardType | null>>(() => {
+    const handIds = new Set(hand.map(cardId));
+    const inHand = (card: CardType | null | undefined) =>
+      card && handIds.has(cardId(card)) ? card : null;
+    return {
+      left: inHand(initialSelections?.left),
+      partner: inHand(initialSelections?.partner),
+      right: inHand(initialSelections?.right),
+    };
   });
-  const [currentTarget, setCurrentTarget] = useState<PassTarget>('left');
+  const [currentTarget, setCurrentTarget] = useState<PassTarget>(() => {
+    const handIds = new Set(hand.map(cardId));
+    const filled = (t: PassTarget) => {
+      const card = initialSelections?.[t];
+      return !!card && handIds.has(cardId(card));
+    };
+    return TARGETS.find(t => !filled(t)) ?? 'left';
+  });
   const [dragOverTarget, setDragOverTarget] = useState<PassTarget | null>(null);
 
   const leftSeat = getLeftSeat(mySeat);
