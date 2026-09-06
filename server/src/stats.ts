@@ -652,25 +652,30 @@ export async function fetchInvitableUsers(
 
 /**
  * Round logs for a finished game never change, so cache them per process.
- * Bounded so a long-lived server can't grow without limit; entries are
- * evicted oldest-first.
+ * The cache holds the *pending promise*, not just the result: opening the
+ * stats page fires several fetches at once, and storing results only would
+ * let every one of them miss on a cold cache and read the same docs in
+ * parallel. Bounded so a long-lived server can't grow without limit;
+ * entries are evicted oldest-first.
  */
-const roundLogCache = new Map<string, RoundLog[]>();
+const roundLogCache = new Map<string, Promise<RoundLog[]>>();
 const ROUND_LOG_CACHE_MAX = 2000;
 
-async function loadRounds(db: FirebaseFirestore.Firestore, gameId: string): Promise<RoundLog[]> {
+function loadRounds(db: FirebaseFirestore.Firestore, gameId: string): Promise<RoundLog[]> {
   const cached = roundLogCache.get(gameId);
   if (cached) return cached;
-  const snap = await db.collection('games').doc(gameId).collection('rounds').get();
-  const rounds = snap.docs
-    .map(d => d.data() as RoundLog)
-    .sort((a, b) => a.roundNumber - b.roundNumber);
+  const pending = db.collection('games').doc(gameId).collection('rounds').get()
+    .then(snap => snap.docs
+      .map(d => d.data() as RoundLog)
+      .sort((a, b) => a.roundNumber - b.roundNumber));
+  // Don't cache a failure (transient Firestore error), or it would stick.
+  pending.catch(() => roundLogCache.delete(gameId));
   if (roundLogCache.size >= ROUND_LOG_CACHE_MAX) {
     const oldest = roundLogCache.keys().next().value;
     if (oldest !== undefined) roundLogCache.delete(oldest);
   }
-  roundLogCache.set(gameId, rounds);
-  return rounds;
+  roundLogCache.set(gameId, pending);
+  return pending;
 }
 
 function toSummary(data: FirebaseFirestore.DocumentData): GameSummary {
