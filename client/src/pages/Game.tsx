@@ -672,7 +672,9 @@ export default function Game({ socket, auth }: Props) {
         <UserStats
           stats={auth.profile.stats}
           myUid={auth.profile.uid}
+          fetchUserStats={socket.fetchUserStats}
           fetchPartnerStats={socket.fetchPartnerStats}
+          fetchTeamStats={socket.fetchTeamStats}
           fetchRecentGames={socket.fetchRecentGames}
           fetchGameHistory={socket.fetchGameHistory}
           onClose={() => setShowStatsModal(false)}

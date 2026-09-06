@@ -136,7 +136,9 @@ export default function Lobby({ socket, auth }: Props) {
           <UserStats
             stats={profile.stats}
             myUid={profile.uid}
+            fetchUserStats={socket.fetchUserStats}
             fetchPartnerStats={socket.fetchPartnerStats}
+            fetchTeamStats={socket.fetchTeamStats}
             fetchRecentGames={socket.fetchRecentGames}
             fetchGameHistory={socket.fetchGameHistory}
             onClose={() => setShowStats(false)}

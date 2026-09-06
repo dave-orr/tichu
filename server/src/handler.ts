@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
@@ -16,7 +16,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
+import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards,
@@ -581,6 +581,38 @@ export function setupHandlers(io: Server): void {
       }
     });
 
+    socket.on('fetch-user-stats', async (callback: (data: { stats: UserStats | null; needsAuth?: boolean }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ stats: null, needsAuth: true });
+        return;
+      }
+      try {
+        callback({ stats: await fetchUserStats(uid) });
+      } catch (err) {
+        console.error('Failed to fetch user stats:', err);
+        callback({ stats: null });
+      }
+    });
+
+    socket.on('fetch-team-stats', async ({ partnerUid }: { partnerUid: unknown }, callback: (data: { team: TeamStats | null; needsAuth?: boolean }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ team: null, needsAuth: true });
+        return;
+      }
+      if (typeof partnerUid !== 'string' || !partnerUid || partnerUid === uid) {
+        callback({ team: null });
+        return;
+      }
+      try {
+        callback({ team: await fetchTeamStats(uid, partnerUid) });
+      } catch (err) {
+        console.error('Failed to fetch team stats:', err);
+        callback({ team: null });
+      }
+    });
+
     socket.on('fetch-recent-games', async (callback: (data: { games: GameSummary[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
@@ -727,7 +759,7 @@ export function setupHandlers(io: Server): void {
               displayName: data.displayName || authUser.displayName || 'Player',
               email: data.email || authUser.email || '',
               photoURL: authUser.photoURL ?? data.photoURL ?? null,
-              stats: data.stats || {},
+              stats: await fetchUserStats(uid),
               preferences: {
                 preferredName: data.preferences?.preferredName || (authUser.displayName?.split(' ')[0]) || 'Player',
                 lastSettings: data.preferences?.lastSettings,
@@ -750,7 +782,7 @@ export function setupHandlers(io: Server): void {
           };
           await docRef.set(newProfile);
           callback({
-            profile: { uid, ...newProfile },
+            profile: { uid, ...newProfile, stats: await fetchUserStats(uid) },
           });
         }
       } catch (err) {

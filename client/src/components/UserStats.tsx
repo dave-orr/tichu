@@ -1,22 +1,36 @@
 import { useEffect, useState } from 'react';
-import type { PartnerStats, GameSummary, GameHistoryRound } from '@tichu/shared';
-import type { UserStats as UserStatsType } from '../hooks/useAuth.js';
+import type { PartnerStats, GameSummary, GameHistoryRound, TeamStats, UserStats as UserStatsType } from '@tichu/shared';
 import RecentGames from './RecentGames.js';
+import TeamStatsModal from './TeamStatsModal.js';
 
 type Props = {
+  /** Stats loaded with the profile; shown until a fresh copy arrives. */
   stats: UserStatsType;
   myUid: string;
+  fetchUserStats: () => Promise<{ stats: UserStatsType | null }>;
   fetchPartnerStats: () => Promise<{ partners: PartnerStats[] }>;
+  fetchTeamStats: (partnerUid: string) => Promise<{ team: TeamStats | null }>;
   fetchRecentGames: () => Promise<{ games: GameSummary[] }>;
   fetchGameHistory: (gameId: string) => Promise<{ rounds: GameHistoryRound[] }>;
   onClose: () => void;
 };
 
+const pct = (num: number, denom: number) => (denom > 0 ? Math.round((num / denom) * 100) : 0);
+/** "3/5 (60%)", or "0" when there is nothing to divide. */
+const ratio = (num: number, denom: number) => (denom > 0 ? `${num}/${denom} (${pct(num, denom)}%)` : '0');
+
 export default function UserStats({
-  stats, myUid, fetchPartnerStats, fetchRecentGames, fetchGameHistory, onClose,
+  stats: initialStats, myUid, fetchUserStats, fetchPartnerStats, fetchTeamStats, fetchRecentGames, fetchGameHistory, onClose,
 }: Props) {
+  const [freshStats, setFreshStats] = useState<UserStatsType | null>(null);
   const [partners, setPartners] = useState<PartnerStats[] | null>(null);
   const [recentGames, setRecentGames] = useState<GameSummary[] | null>(null);
+  const [selectedPartner, setSelectedPartner] = useState<PartnerStats | null>(null);
+
+  // The profile copy can be stale (it's loaded once per sign-in), so refetch on open.
+  useEffect(() => {
+    fetchUserStats().then(({ stats }) => { if (stats) setFreshStats(stats); }).catch(() => {});
+  }, [fetchUserStats]);
 
   useEffect(() => {
     fetchPartnerStats().then(({ partners }) => setPartners(partners));
@@ -26,31 +40,10 @@ export default function UserStats({
     fetchRecentGames().then(({ games }) => setRecentGames(games));
   }, [fetchRecentGames]);
 
-  const winRate = stats.gamesPlayed > 0
-    ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
-    : 0;
-  const tichuRate = stats.tichuCalls > 0
-    ? Math.round((stats.tichuSuccesses / stats.tichuCalls) * 100)
-    : 0;
-  const grandRate = stats.grandTichuCalls > 0
-    ? Math.round((stats.grandTichuSuccesses / stats.grandTichuCalls) * 100)
-    : 0;
-  const pct = (num: number, denom: number) =>
-    denom > 0 ? Math.round((num / denom) * 100) : 0;
-  const tichuCallFreq = pct(stats.tichuCalls, stats.roundsPlayed);
-  const grandCallFreq = pct(stats.grandTichuCalls, stats.roundsPlayed);
-  const tichuFreqAhead200 = pct(stats.tichuCallsWhenAhead200, stats.roundsWhenAhead200);
-  const tichuFreqBehind200 = pct(stats.tichuCallsWhenBehind200, stats.roundsWhenBehind200);
-  const grandFreqAhead200 = pct(stats.grandCallsWhenAhead200, stats.roundsWhenAhead200);
-  const grandFreqBehind200 = pct(stats.grandCallsWhenBehind200, stats.roundsWhenBehind200);
+  const stats = freshStats ?? initialStats;
+
   const avgPointDiff = stats.roundsPlayed > 0
     ? Math.round(stats.totalPointDifferential / stats.roundsPlayed)
-    : 0;
-  const closeGameRate = stats.closeGamesPlayed > 0
-    ? Math.round((stats.closeGameWins / stats.closeGamesPlayed) * 100)
-    : 0;
-  const comebackRate = stats.comebackOpportunities > 0
-    ? Math.round((stats.comebackWins / stats.comebackOpportunities) * 100)
     : 0;
 
   return (
@@ -91,24 +84,18 @@ export default function UserStats({
               </div>
               <div className="grid grid-cols-2 gap-3 text-2xl">
                 <StatRow label="Games Played" value={stats.gamesPlayed} />
-                <StatRow label="Games Won" value={`${stats.gamesWon} (${winRate}%)`} />
+                <StatRow label="Games Won" value={`${stats.gamesWon} (${pct(stats.gamesWon, stats.gamesPlayed)}%)`} />
                 <StatRow label="Rounds Played" value={stats.roundsPlayed} />
                 <StatRow label="First Out" value={stats.roundsWonFirstOut} />
-                <StatRow
-                  label="Tichu Calls"
-                  value={stats.tichuCalls > 0 ? `${stats.tichuSuccesses}/${stats.tichuCalls} (${tichuRate}%)` : '0'}
-                />
-                <StatRow
-                  label="Grand Tichu"
-                  value={stats.grandTichuCalls > 0 ? `${stats.grandTichuSuccesses}/${stats.grandTichuCalls} (${grandRate}%)` : '0'}
-                />
+                <StatRow label="Tichu Calls" value={ratio(stats.tichuSuccesses, stats.tichuCalls)} />
+                <StatRow label="Grand Tichu" value={ratio(stats.grandTichuSuccesses, stats.grandTichuCalls)} />
                 <StatRow
                   label="Tichu Call Rate"
-                  value={stats.roundsPlayed > 0 ? `${tichuCallFreq}%` : '—'}
+                  value={stats.roundsPlayed > 0 ? `${pct(stats.tichuCalls, stats.roundsPlayed)}%` : '—'}
                 />
                 <StatRow
                   label="Grand Call Rate"
-                  value={stats.roundsPlayed > 0 ? `${grandCallFreq}%` : '—'}
+                  value={stats.roundsPlayed > 0 ? `${pct(stats.grandTichuCalls, stats.roundsPlayed)}%` : '—'}
                 />
                 <StatRow label="Double Victories" value={stats.doubleVictories} />
               </div>
@@ -126,32 +113,22 @@ export default function UserStats({
                   />
                   <StatRow
                     label="Tichu Rate (ahead >200)"
-                    value={`${tichuFreqAhead200}% (${stats.tichuCallsWhenAhead200}/${stats.roundsWhenAhead200})`}
+                    value={`${pct(stats.tichuCallsWhenAhead200, stats.roundsWhenAhead200)}% (${stats.tichuCallsWhenAhead200}/${stats.roundsWhenAhead200})`}
                   />
                   <StatRow
                     label="Tichu Rate (behind >200)"
-                    value={`${tichuFreqBehind200}% (${stats.tichuCallsWhenBehind200}/${stats.roundsWhenBehind200})`}
+                    value={`${pct(stats.tichuCallsWhenBehind200, stats.roundsWhenBehind200)}% (${stats.tichuCallsWhenBehind200}/${stats.roundsWhenBehind200})`}
                   />
                   <StatRow
                     label="Grand Rate (ahead >200)"
-                    value={`${grandFreqAhead200}% (${stats.grandCallsWhenAhead200}/${stats.roundsWhenAhead200})`}
+                    value={`${pct(stats.grandCallsWhenAhead200, stats.roundsWhenAhead200)}% (${stats.grandCallsWhenAhead200}/${stats.roundsWhenAhead200})`}
                   />
                   <StatRow
                     label="Grand Rate (behind >200)"
-                    value={`${grandFreqBehind200}% (${stats.grandCallsWhenBehind200}/${stats.roundsWhenBehind200})`}
+                    value={`${pct(stats.grandCallsWhenBehind200, stats.roundsWhenBehind200)}% (${stats.grandCallsWhenBehind200}/${stats.roundsWhenBehind200})`}
                   />
-                  <StatRow
-                    label="Close Games"
-                    value={stats.closeGamesPlayed > 0
-                      ? `${stats.closeGameWins}/${stats.closeGamesPlayed} (${closeGameRate}%)`
-                      : '0'}
-                  />
-                  <StatRow
-                    label="Comebacks (down 300+)"
-                    value={stats.comebackOpportunities > 0
-                      ? `${stats.comebackWins}/${stats.comebackOpportunities} (${comebackRate}%)`
-                      : '0'}
-                  />
+                  <StatRow label="Close Games" value={ratio(stats.closeGameWins, stats.closeGamesPlayed)} />
+                  <StatRow label="Comebacks (down 300+)" value={ratio(stats.comebackWins, stats.comebackOpportunities)} />
                 </div>
               </div>
 
@@ -159,35 +136,43 @@ export default function UserStats({
                 <div className="border-t border-gray-700 mt-3 pt-3">
                   <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
                   <div className="space-y-1">
-                    {partners.map(p => {
-                      const rate = p.gamesPlayed > 0
-                        ? Math.round((p.gamesWon / p.gamesPlayed) * 100)
-                        : null;
-                      return (
-                        <div key={p.partnerUid} className="flex items-center justify-between gap-2 text-2xl">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {p.partnerPhoto ? (
-                              <img src={p.partnerPhoto} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
-                                {p.partnerName[0]}
-                              </div>
-                            )}
-                            <span className="truncate">{p.partnerName}</span>
+                    {partners.map(p => (
+                      <button
+                        key={p.partnerUid}
+                        onClick={() => setSelectedPartner(p)}
+                        title="Show partnership stats"
+                        className="w-full text-left flex items-center justify-between gap-3 text-2xl rounded-lg px-2 py-1 -mx-2 hover:bg-gray-700 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {p.partnerPhoto ? (
+                            <img src={p.partnerPhoto} alt="" className="w-8 h-8 rounded-full flex-shrink-0" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-2xl flex-shrink-0">
+                              {p.partnerName[0]}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate">{p.partnerName}</div>
+                            <div className="text-xl text-gray-400 truncate">
+                              Tichu {ratio(p.partnerTichuSuccesses, p.partnerTichuCalls)}
+                              {p.partnerGrandCalls > 0 && ` · Grand ${ratio(p.partnerGrandSuccesses, p.partnerGrandCalls)}`}
+                              {p.partnerRounds > 0 && ` · calls ${pct(p.partnerTichuCalls + p.partnerGrandCalls, p.partnerRounds)}% of rounds`}
+                            </div>
                           </div>
-                          <span className="font-semibold flex-shrink-0 flex items-center gap-2">
-                            {p.teamElo != null && (
-                              <span className="text-yellow-300/90">{p.teamElo}</span>
-                            )}
-                            <span>
-                              {p.gamesPlayed > 0
-                                ? `${p.gamesWon}/${p.gamesPlayed} (${rate}%)`
-                                : `${p.roundsPlayed} rd`}
-                            </span>
-                          </span>
                         </div>
-                      );
-                    })}
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-semibold">
+                            {p.gamesWon}–{p.gamesPlayed - p.gamesWon} ({pct(p.gamesWon, p.gamesPlayed)}%)
+                          </div>
+                          <div className="text-xl text-gray-400">
+                            {p.roundsPlayed} rounds
+                            {p.teamElo != null && (
+                              <> · <span className="text-yellow-300/90">{p.teamElo} Elo</span></>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -196,6 +181,17 @@ export default function UserStats({
             {/* Right column: recent games (separate card) */}
             <RecentGames games={recentGames} myUid={myUid} fetchGameHistory={fetchGameHistory} />
           </div>
+        )}
+
+        {selectedPartner && (
+          <TeamStatsModal
+            partnerUid={selectedPartner.partnerUid}
+            partnerName={selectedPartner.partnerName}
+            myUid={myUid}
+            fetchTeamStats={fetchTeamStats}
+            fetchGameHistory={fetchGameHistory}
+            onClose={() => setSelectedPartner(null)}
+          />
         )}
       </div>
     </div>

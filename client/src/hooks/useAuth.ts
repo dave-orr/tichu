@@ -6,7 +6,8 @@ import {
   User,
 } from 'firebase/auth';
 import { auth, googleProvider, firebaseConfigured } from '../firebase.js';
-import { ELO_INITIAL, type GameSettings } from '@tichu/shared';
+import { ELO_INITIAL, EMPTY_STAT_TOTALS, type GameSettings } from '@tichu/shared';
+import type { UserStats } from '@tichu/shared';
 
 export type UserProfile = {
   uid: string;
@@ -17,33 +18,7 @@ export type UserProfile = {
   preferences: UserPreferences;
 };
 
-export type UserStats = {
-  gamesPlayed: number;
-  gamesWon: number;
-  roundsPlayed: number;
-  roundsWonFirstOut: number;
-  tichuCalls: number;
-  tichuSuccesses: number;
-  grandTichuCalls: number;
-  grandTichuSuccesses: number;
-  doubleVictories: number;
-  totalPointDifferential: number;
-  bombsPlayed: number;
-  bombsFaced: number;
-  closeGameWins: number;
-  closeGamesPlayed: number;
-  comebackWins: number;
-  comebackOpportunities: number;
-  roundsWhenAhead200: number;
-  roundsWhenBehind200: number;
-  tichuCallsWhenAhead200: number;
-  tichuCallsWhenBehind200: number;
-  grandCallsWhenAhead200: number;
-  grandCallsWhenBehind200: number;
-  elo: number;
-  eloGames: number;
-  eloPeak: number;
-};
+export type { UserStats };
 
 export type UserPreferences = {
   preferredName: string;
@@ -52,28 +27,7 @@ export type UserPreferences = {
 };
 
 const DEFAULT_STATS: UserStats = {
-  gamesPlayed: 0,
-  gamesWon: 0,
-  roundsPlayed: 0,
-  roundsWonFirstOut: 0,
-  tichuCalls: 0,
-  tichuSuccesses: 0,
-  grandTichuCalls: 0,
-  grandTichuSuccesses: 0,
-  doubleVictories: 0,
-  totalPointDifferential: 0,
-  bombsPlayed: 0,
-  bombsFaced: 0,
-  closeGameWins: 0,
-  closeGamesPlayed: 0,
-  comebackWins: 0,
-  comebackOpportunities: 0,
-  roundsWhenAhead200: 0,
-  roundsWhenBehind200: 0,
-  tichuCallsWhenAhead200: 0,
-  tichuCallsWhenBehind200: 0,
-  grandCallsWhenAhead200: 0,
-  grandCallsWhenBehind200: 0,
+  ...EMPTY_STAT_TOTALS,
   elo: ELO_INITIAL,
   eloGames: 0,
   eloPeak: ELO_INITIAL,
