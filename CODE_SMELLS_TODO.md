@@ -13,16 +13,9 @@ Open correctness bugs and design smells. Security-specific items live in
 Over time this inflates write size, read cost (`fetchInvitableUsers` reads the whole
 list), and risks the 1 MiB Firestore document limit.
 
-### S4. Legacy counter writes are non-transactional and now unused by the UI — LOW [confirmed]
-**`server/src/stats.ts` + `handler.ts`** The stats page derives everything from the
-immutable game history (`games/*` + `games/*/rounds`, see `shared/src/stats.ts`), so the
-per-user and per-team `stats.*` counters written by `updateStatsForRound`,
-`updateStatsForGameEnd` and `updateTeamStats` no longer feed anything except
-`playedWith` (invites) and the Elo fields (written separately, in a transaction). The
-remaining fire-and-forget increments are dead weight that can still diverge on a dropped
-write; drop them (keeping `playedWith` and the `teams/*.playerUids` marker) rather than
-maintaining them. Also `fetchInvitableUsers` comments "by last activity" but has no
-`orderBy` — results are arbitrary, not recent.
+### S4. `fetchInvitableUsers` "recent users" fill is not recent — LOW
+**`server/src/stats.ts`** The comment says the remaining invite slots are filled "by last
+activity" but the query has no `orderBy`, so the results are arbitrary, not recent.
 
 ## Client correctness / React
 

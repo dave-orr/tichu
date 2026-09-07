@@ -7,10 +7,11 @@
  *
  * Read-only: never writes to Firestore.
  *
- * Usage (from the server/ directory, with server/.env populated):
+ * Usage (from the repo root, with server/.env populated; builds shared first):
  *   npm run audit-stats                    # human-readable report
  *   npm run audit-stats -- --json          # report as JSON (for sharing)
  *   npm run audit-stats -- --dump FILE     # also write the raw collections to FILE
+ * Or from server/: npm run audit-stats (needs shared/ already built).
  *
  * The dump and the report contain uids, emails and display names — keep
  * them out of git (server/stats-audit*.json is ignored).
