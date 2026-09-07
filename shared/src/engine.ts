@@ -312,6 +312,10 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   if (state.turnIndex !== seat) return { state };
   if (state.dragonGiveaway) return { state };
   if (state.mahJongWishPending) return { state }; // wait for wish to be set
+  // Once everyone else has passed the trick is won and only a bomb (playBomb)
+  // may interrupt the countdown. turnIndex still points at the last passer, so
+  // without this guard they could play on top of a trick they just conceded.
+  if (state.trickCountdown) return { state };
 
   const player = state.players[seat];
   if (player.isOut) return { state };
@@ -402,13 +406,38 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
 
   // Check if round ended (3 players out, or 1-2 finish)
   if (shouldRoundEnd(newOutCount, newPlayers)) {
-    return endRound(newState);
+    return endRoundOrAwaitDragon(newState);
   }
 
   return {
     state: newState,
     needMahJongWish: needMahJongWish,
   };
+}
+
+/**
+ * End the round, unless the play that ended it left the Dragon on top of the
+ * table. The Dragon's trick must always go to an opponent, so in that case
+ * ask for the giveaway first; giveDragonTrick then ends the round. A 1-2
+ * finish skips this: no card points are counted, so the choice is moot.
+ */
+function endRoundOrAwaitDragon(state: GameState): PlayResult {
+  const dragonOnTop = state.currentTrick?.cards.some(
+    c => c.type === 'special' && c.name === 'dragon'
+  );
+  if (dragonOnTop && state.lastPlayedBy != null && state.outCount >= 3) {
+    return {
+      state: {
+        ...state,
+        dragonGiveaway: true,
+        dragonGiveawayBy: state.lastPlayedBy,
+        passCount: 0,
+      },
+      trickWon: true,
+      needDragonChoice: true,
+    };
+  }
+  return endRound(state);
 }
 
 function playDog(state: GameState, seat: Seat): PlayResult {
@@ -460,6 +489,8 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
   if (state.turnIndex !== seat) return { state };
   if (state.currentTrick === null) return { state }; // Can't pass on lead
   if (state.mahJongWishPending) return { state }; // wait for wish to be set
+  if (state.dragonGiveaway) return { state }; // trick already awarded, awaiting giveaway
+  if (state.trickCountdown) return { state }; // everyone has passed; don't restart the countdown
 
   // Cannot pass if you have the wished card and can legally play it
   if (state.mahJongWish != null) {
@@ -687,6 +718,11 @@ function checkWishCompliance(state: GameState, seat: Seat, cards: Card[]): boole
 export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResult {
   if (state.phase !== 'playing') return { state };
   if (state.mahJongWishPending) return { state };
+  // The trick countdown is the window for bombing a won trick. Once it has
+  // been awarded and the Dragon giveaway is pending, the trick is closed;
+  // allowing a bomb here would put the bomb on top while dragonGiveaway stays
+  // set, wedging the table.
+  if (state.dragonGiveaway) return { state };
 
   const player = state.players[seat];
   if (player.isOut) return { state };
@@ -778,12 +814,13 @@ export function concede(state: GameState, seat: Seat): PlayResult {
   newPlayers[seat].isOut = true;
   newPlayers[seat].outOrder = nextOrder;
 
+  // Leave any in-progress trick on the table: endRound awards it to the last
+  // player to play so its points aren't dropped from the 100-point total.
   return endRound({
     ...state,
     players: newPlayers,
     outCount: 4,
-    currentTrick: null,
-    currentTrickPlays: [],
+    trickCountdown: null,
   }, seat);
 }
 
