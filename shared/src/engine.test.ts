@@ -615,3 +615,26 @@ describe('wish enforcement with Phoenix gap-fill straights', () => {
     expect(passTurn(state, 0).state).toBe(state);
   });
 });
+
+describe('a wish can force out a bomb', () => {
+  const eights = [c(8, 'jade'), c(8, 'sword'), c(8, 'pagoda'), c(8, 'star')];
+  const trickKing: Combo = { type: 'single', cards: [c(13)], rank: 13, length: 1 };
+  const state = () => makeState({
+    players: [makePlayer(0, { hand: [...eights, c(3)] }), makePlayer(1), makePlayer(2), makePlayer(3)],
+    currentTrick: trickKing,
+    currentTrickPlays: [{ seat: 3, cards: [c(13)] }],
+    lastPlayedBy: 3,
+    turnIndex: 0,
+    mahJongWish: 8,
+  });
+
+  it('refuses to let the holder pass when the bomb is the only play containing the wished rank', () => {
+    const s = state();
+    expect(passTurn(s, 0).state).toBe(s);
+  });
+
+  it('accepts the bomb through either play path and clears the wish', () => {
+    expect(playCards(state(), 0, eights).state.mahJongWish).toBeNull();
+    expect(playBomb(state(), 0, eights).state.mahJongWish).toBeNull();
+  });
+});
