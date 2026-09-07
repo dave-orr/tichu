@@ -535,14 +535,21 @@ function freeSeat(room: Room, seat: Seat): void {
   room.state.players[seat].name = '';
   room.state.players[seat].photoURL = null;
 
-  if (socketId && room.organizer === socketId) {
-    for (const [otherSeat, otherSocket] of room.seatPlayers) {
-      if (isApiPlayer(otherSocket)) continue;
-      room.organizer = otherSocket;
-      room.organizerSession = room.seatSessions.get(otherSeat) ?? '';
-      break;
-    }
-  }
+  if (socketId && room.organizer === socketId) handOffOrganizer(room);
+}
+
+/**
+ * Give the organizer role to another human in the room, preferring one with
+ * a live socket (a seat merely reserved during its grace window would leave
+ * the room without anyone able to act until they return).
+ */
+function handOffOrganizer(room: Room): void {
+  const humans = Array.from(room.seatPlayers).filter(([, sid]) => !isApiPlayer(sid));
+  const pick = humans.find(([, sid]) => room.playerSockets.has(sid)) ?? humans[0];
+  if (!pick) return;
+  const [seat, socketId] = pick;
+  room.organizer = socketId;
+  room.organizerSession = room.seatSessions.get(seat) ?? '';
 }
 
 /**
@@ -872,14 +879,7 @@ export function resetRoomForNewGame(room: Room): boolean {
   room.gameId = `${room.code}_${Date.now()}`;
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
   // If the organizer has gone, hand the role to someone still here.
-  if (!room.playerSockets.has(room.organizer)) {
-    for (const [seat, socketId] of room.seatPlayers) {
-      if (isApiPlayer(socketId)) continue;
-      room.organizer = socketId;
-      room.organizerSession = room.seatSessions.get(seat) ?? '';
-      break;
-    }
-  }
+  if (!room.playerSockets.has(room.organizer)) handOffOrganizer(room);
   return true;
 }
 

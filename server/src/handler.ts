@@ -233,6 +233,10 @@ export function setupHandlers(io: Server): void {
     // Elo, invites) to the account it was authenticated as.
     guarded(socket, 'sign-out', () => {
       clearSocketUid(socket.id);
+      // The seat's recorded uid is what stats/Elo are keyed on at game end;
+      // a signed-out player continues as a guest.
+      const found = getRoomBySocket(socket.id);
+      if (found) found.room.seatUids.delete(found.seat);
     });
 
     guarded(socket, 'leave-room', () => {

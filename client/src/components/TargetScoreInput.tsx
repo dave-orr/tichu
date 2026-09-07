@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const TARGET_SCORE_MIN = 100;
 export const TARGET_SCORE_MAX = 9999;
@@ -17,13 +17,15 @@ type Props = {
  */
 export default function TargetScoreInput({ value, onCommit, disabled, className }: Props) {
   const [draft, setDraft] = useState(String(value));
-  const [focused, setFocused] = useState(false);
+  const focusedRef = useRef(false);
 
   // Follow external changes (another organizer edit, a server round-trip)
-  // unless the user is mid-edit.
+  // unless the user is mid-edit. Keyed on `value` alone so committing (which
+  // sets the draft first and only changes `value` a round-trip later) doesn't
+  // flash the old number in between.
   useEffect(() => {
-    if (!focused) setDraft(String(value));
-  }, [value, focused]);
+    if (!focusedRef.current) setDraft(String(value));
+  }, [value]);
 
   const commit = () => {
     const parsed = Number(draft);
@@ -39,8 +41,8 @@ export default function TargetScoreInput({ value, onCommit, disabled, className 
       type="number"
       value={draft}
       onChange={e => setDraft(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => { setFocused(false); commit(); }}
+      onFocus={() => { focusedRef.current = true; }}
+      onBlur={() => { focusedRef.current = false; commit(); }}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
       disabled={disabled}
       min={TARGET_SCORE_MIN}

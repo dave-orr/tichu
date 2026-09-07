@@ -44,16 +44,22 @@ function mapSetReviver(_key: string, value: unknown): unknown {
 /** Schedule a debounced snapshot write for a room. No-op without Firebase. */
 export function persistRoom(room: Room): void {
   if (!firebaseAdmin) return;
+  const code = room.code;
   // Waiting rooms aren't worth restoring: they hold no game, and after a
   // restart their seats would be reserved by socket ids that no longer exist.
-  if (room.state.phase === 'waiting') return;
-  const code = room.code;
+  // A room can return to waiting via "play again", so drop any snapshot of
+  // the finished game rather than let it resurrect on the next restart.
+  if (room.state.phase === 'waiting') {
+    deletePersistedRoom(code);
+    return;
+  }
   const existing = debounceTimers.get(code);
   if (existing) clearTimeout(existing);
   const timer = setTimeout(() => {
     debounceTimers.delete(code);
-    // The room may have been torn down (or its code reused) while debouncing.
-    if (getRoom(code) !== room) return;
+    // The room may have been torn down (or its code reused, or reset to
+    // waiting) while debouncing.
+    if (getRoom(code) !== room || room.state.phase === 'waiting') return;
     const write = writeSnapshot(room)
       .catch(err => console.error(`[persist] failed to write room ${code}:`, err))
       .finally(() => {

@@ -320,14 +320,17 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
   // Emit an event with a callback; if the server signals needsAuth, force-refresh
   // the token, wait for the server to accept it, and retry once.
+  // `fallback` is what callers get when there is no socket or no ack arrives,
+  // so they always see the shape they expect rather than an empty object.
   const emitWithAuthRetry = useCallback(async <T extends { needsAuth?: boolean }>(
     event: string,
-    payload?: unknown,
+    payload: unknown,
+    fallback: T,
   ): Promise<T> => {
     const send = (): Promise<T> => new Promise(resolve => {
       const sock = socketRef.current;
-      if (!sock) return resolve({} as T);
-      const onAck = (err: Error | null, response?: T) => resolve(err ? ({} as T) : (response as T));
+      if (!sock) return resolve(fallback);
+      const onAck = (err: Error | null, response?: T) => resolve(err || !response ? fallback : response);
       if (payload === undefined) sock.timeout(ACK_TIMEOUT_MS).emit(event, onAck);
       else sock.timeout(ACK_TIMEOUT_MS).emit(event, payload, onAck);
     });
@@ -342,27 +345,27 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, []);
 
   const fetchPlayers = useCallback((): Promise<{ players: InvitablePlayer[] }> => {
-    return emitWithAuthRetry<{ players: InvitablePlayer[]; needsAuth?: boolean }>('fetch-players');
+    return emitWithAuthRetry<{ players: InvitablePlayer[]; needsAuth?: boolean }>('fetch-players', undefined, { players: [] });
   }, [emitWithAuthRetry]);
 
   const fetchPartnerStats = useCallback((): Promise<{ partners: PartnerStats[] }> => {
-    return emitWithAuthRetry<{ partners: PartnerStats[]; needsAuth?: boolean }>('fetch-partner-stats');
+    return emitWithAuthRetry<{ partners: PartnerStats[]; needsAuth?: boolean }>('fetch-partner-stats', undefined, { partners: [] });
   }, [emitWithAuthRetry]);
 
   const fetchUserStats = useCallback((): Promise<{ stats: UserStats | null }> => {
-    return emitWithAuthRetry<{ stats: UserStats | null; needsAuth?: boolean }>('fetch-user-stats');
+    return emitWithAuthRetry<{ stats: UserStats | null; needsAuth?: boolean }>('fetch-user-stats', undefined, { stats: null });
   }, []);
 
   const fetchTeamStats = useCallback((partnerUid: string): Promise<{ team: TeamStats | null }> => {
-    return emitWithAuthRetry<{ team: TeamStats | null; needsAuth?: boolean }>('fetch-team-stats', { partnerUid });
+    return emitWithAuthRetry<{ team: TeamStats | null; needsAuth?: boolean }>('fetch-team-stats', { partnerUid }, { team: null });
   }, []);
 
   const fetchRecentGames = useCallback((): Promise<{ games: GameSummary[] }> => {
-    return emitWithAuthRetry<{ games: GameSummary[]; needsAuth?: boolean }>('fetch-recent-games');
+    return emitWithAuthRetry<{ games: GameSummary[]; needsAuth?: boolean }>('fetch-recent-games', undefined, { games: [] });
   }, [emitWithAuthRetry]);
 
   const fetchGameHistory = useCallback((gameId: string): Promise<{ rounds: GameHistoryRound[] }> => {
-    return emitWithAuthRetry<{ rounds: GameHistoryRound[]; needsAuth?: boolean }>('fetch-game-history', { gameId });
+    return emitWithAuthRetry<{ rounds: GameHistoryRound[]; needsAuth?: boolean }>('fetch-game-history', { gameId }, { rounds: [] });
   }, [emitWithAuthRetry]);
 
   const fetchRoomElos = useCallback((): Promise<RoomElos> => {
@@ -384,7 +387,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, []);
 
   const loadProfile = useCallback((): Promise<{ profile: unknown } | { error: string }> => {
-    return emitWithAuthRetry<({ profile: unknown } | { error: string }) & { needsAuth?: boolean }>('load-profile');
+    return emitWithAuthRetry<({ profile: unknown } | { error: string }) & { needsAuth?: boolean }>('load-profile', undefined, { error: 'No response from server' });
   }, [emitWithAuthRetry]);
 
   const saveSettings = useCallback((settings: Partial<GameSettings>, randomPartners?: boolean) => {
