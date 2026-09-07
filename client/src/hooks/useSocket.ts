@@ -53,9 +53,16 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setConnectionState('connected');
       // Authenticate on every (re)connect. This closes a race: if the token
       // arrived while the socket was still connecting, the token-change effect
-      // below saw a disconnected socket and skipped its emit.
+      // below saw a disconnected socket and skipped its emit. The cached token
+      // may have expired while the tab was frozen or offline (the periodic
+      // refresh can't fire then), so prefer a freshly minted one when we can.
       if (tokenRef.current) {
         socket.emit('authenticate', { token: tokenRef.current });
+        refreshTokenRef.current?.().then(fresh => {
+          if (fresh && fresh !== tokenRef.current && socket.connected) {
+            socket.emit('authenticate', { token: fresh });
+          }
+        }).catch(() => { /* keep the cached token */ });
       }
       // On (re)connect — whether a dropped socket or a full page reload — try to
       // reclaim our seat using the persistent session token.
@@ -120,12 +127,18 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setRoomLost(false);
     });
 
-    socket.on('game-state', ({ state, aiOpenSeats, disconnectedSeats }: { state: ClientGameState; aiOpenSeats?: number[]; disconnectedSeats?: number[] }) => {
+    socket.on('game-state', ({ state, aiOpenSeats, disconnectedSeats, organizerSeat }: { state: ClientGameState; aiOpenSeats?: number[]; disconnectedSeats?: number[]; organizerSeat?: number | null }) => {
       setGameState(state);
       gameStateRef.current = state;
       setError(null);
       if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
       setDisconnectedSeats(disconnectedSeats ?? []);
+      // The organizer can change server-side (the creator left the waiting
+      // room), so take it from every broadcast rather than the join reply.
+      if (organizerSeat !== undefined) setIsOrganizer(organizerSeat === state.mySeat);
+      // The wish prompt is only meaningful while the server is waiting on it;
+      // if the round ended (concede) or the wish resolved elsewhere, drop it.
+      if (!state.mahJongWishPending) setNeedMahJongWish(false);
       // Clear round result / elo / head-to-head when the phase moves past roundEnd
       if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') {
         setRoundResult(null);
@@ -189,6 +202,17 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setPendingInvites([]);
     });
 
+    // Only remember a room once the server has actually seated us, so a failed
+    // join can't leave a bogus code behind that triggers a spurious rejoin
+    // (and a "session lost" modal) on every reconnect.
+    socket.on('room-joined', ({ roomCode, randomPartners }: { roomCode: string; randomPartners: boolean }) => {
+      setRoomCode(roomCode);
+      roomCodeRef.current = roomCode;
+      saveRoom(roomCode);
+      setIsOrganizer(false);
+      setRandomPartners(randomPartners);
+    });
+
     setConnectionState('connecting');
 
     return () => {
@@ -197,10 +221,18 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     };
   }, []);
 
-  // Send token to server when it changes (without reconnecting the socket)
+  // Send token to server when it changes (without reconnecting the socket).
+  // When it goes away (sign-out), tell the server so this socket stops being
+  // attributed to the old account for stats, Elo and invites.
+  const hadTokenRef = useRef(false);
   useEffect(() => {
-    if (idToken && socketRef.current?.connected) {
-      socketRef.current.emit('authenticate', { token: idToken });
+    const sock = socketRef.current;
+    if (idToken) {
+      hadTokenRef.current = true;
+      if (sock?.connected) sock.emit('authenticate', { token: idToken });
+    } else if (hadTokenRef.current) {
+      hadTokenRef.current = false;
+      sock?.emit('sign-out');
     }
   }, [idToken]);
 
@@ -209,11 +241,8 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, []);
 
   const joinRoom = useCallback((roomCode: string, playerName: string, photoURL?: string | null) => {
+    // roomCode is committed when the server answers with room-joined.
     socketRef.current?.emit('join-room', { roomCode, playerName, photoURL: photoURL ?? null, sessionId: sessionIdRef.current });
-    const code = roomCode.toUpperCase();
-    setRoomCode(code);
-    roomCodeRef.current = code;
-    saveRoom(code);
   }, []);
 
   const startGame = useCallback(() => {
@@ -285,6 +314,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('close-room');
   }, []);
 
+  // Acknowledged requests never hang forever: a rate-limited or dropped event
+  // produces no ack at all, which used to leave "Loading…" panels stuck.
+  const ACK_TIMEOUT_MS = 10000;
+
   // Emit an event with a callback; if the server signals needsAuth, force-refresh
   // the token, wait for the server to accept it, and retry once.
   const emitWithAuthRetry = useCallback(async <T extends { needsAuth?: boolean }>(
@@ -294,8 +327,9 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     const send = (): Promise<T> => new Promise(resolve => {
       const sock = socketRef.current;
       if (!sock) return resolve({} as T);
-      if (payload === undefined) sock.emit(event, resolve);
-      else sock.emit(event, payload, resolve);
+      const onAck = (err: Error | null, response?: T) => resolve(err ? ({} as T) : (response as T));
+      if (payload === undefined) sock.timeout(ACK_TIMEOUT_MS).emit(event, onAck);
+      else sock.timeout(ACK_TIMEOUT_MS).emit(event, payload, onAck);
     });
     const first = await send();
     if (!first.needsAuth || !refreshTokenRef.current) return first;
@@ -332,8 +366,11 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   }, [emitWithAuthRetry]);
 
   const fetchRoomElos = useCallback((): Promise<RoomElos> => {
+    const empty: RoomElos = { seatElos: [null, null, null, null], teamElos: [null, null] };
     return new Promise(resolve => {
-      socketRef.current?.emit('fetch-room-elos', resolve);
+      const sock = socketRef.current;
+      if (!sock) return resolve(empty);
+      sock.timeout(ACK_TIMEOUT_MS).emit('fetch-room-elos', (err: Error | null, res?: RoomElos) => resolve(err ? empty : (res as RoomElos)));
     });
   }, []);
 
@@ -366,7 +403,14 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('unmark-seat-ai', { seat });
   }, []);
 
+  const playAgain = useCallback(() => {
+    socketRef.current?.emit('play-again');
+  }, []);
+
   const resetRoom = useCallback(() => {
+    // Tell the server we're gone so the seat is freed (or opened to a
+    // substitute) and this socket stops receiving the old room's broadcasts.
+    socketRef.current?.emit('leave-room');
     setGameState(null);
     gameStateRef.current = null;
     setRoomCode(null);
@@ -432,6 +476,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     respondInvite,
     roomLost,
     resetRoom,
+    playAgain,
     aiOpenSeats,
     disconnectedSeats,
     markSeatAi,

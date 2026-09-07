@@ -1,3 +1,4 @@
+import TargetScoreInput from './TargetScoreInput.js';
 import { useState } from 'react';
 import type { GameSettings } from '@tichu/shared';
 
@@ -83,13 +84,9 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
           <span className="font-semibold">Target Score</span>
           <p className="text-2xl text-gray-400">Points needed to win the game</p>
         </div>
-        <input
-          type="number"
+        <TargetScoreInput
           value={targetScore}
-          onChange={e => setTargetScore(Math.max(100, Math.min(9999, Number(e.target.value) || 1000)))}
-          min={100}
-          max={9999}
-          step={50}
+          onCommit={setTargetScore}
           className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white"
         />
       </div>

@@ -13,6 +13,13 @@ import { getActivitySummary } from './rooms.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Last line of defence: an unhandled rejection from a stray async path must
+// not take every live game down with it. Socket handlers are individually
+// guarded (see handler.ts), so this should only ever log.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
 const app = express();
 app.use(cors());
 

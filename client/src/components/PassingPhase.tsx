@@ -84,8 +84,8 @@ export default function PassingPhase({
           </p>
           {passRecord && (
             <div className="flex justify-center gap-6 mb-4">
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p) => (
-                <div key={p.playerName} className="text-center">
+              {[passRecord.left, passRecord.partner, passRecord.right].map((p, i) => (
+                <div key={i} className="text-center">
                   <div className="text-2xl text-gray-400 mb-1">To {p.playerName}</div>
                   <CardComponent card={p.card} large />
                 </div>

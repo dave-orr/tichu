@@ -2,10 +2,11 @@ import { Server, Socket } from 'socket.io';
 import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
+  leaveRoom, clearSocketUid, setRoomChangedCallback,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handleUndoPass, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
-  startNextRound, swapSeats, Room, setSocketUid, getSocketUid,
+  startNextRound, resetRoomForNewGame, swapSeats, Room, setSocketUid, getSocketUid,
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom, closeRoom,
@@ -19,8 +20,35 @@ import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { updateStatsForRound, updateStatsForGameEnd, updateTeamStats, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
-  isValidPlayerName, isValidPassCards,
+  isValidPlayerName, isValidPassCards, sanitizeSettings,
 } from './validation.js';
+
+type Handler = (...args: any[]) => unknown; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/**
+ * Register a socket event handler that can't take the process down.
+ *
+ * Socket.IO dispatches listeners with no try/catch, and nothing catches
+ * unhandled rejections, so a single malformed event (`emit('play-cards')`
+ * with no payload → destructuring `undefined` throws; an async handler whose
+ * client omitted the ack → `callback is not a function`) would crash the
+ * server for every live game. A missing/null payload is normalised to `{}`
+ * so destructuring handlers reach their validators; anything that still
+ * throws or rejects is logged and dropped.
+ */
+function guarded(socket: Socket, event: string, fn: Handler): void {
+  socket.on(event, (...args: unknown[]) => {
+    if (args.length === 0 || args[0] == null) args[0] = {};
+    try {
+      const result = fn(...args);
+      if (result instanceof Promise) {
+        result.catch(err => console.error(`[socket] ${event} handler rejected:`, err));
+      }
+    } catch (err) {
+      console.error(`[socket] ${event} handler threw:`, err);
+    }
+  });
+}
 
 // Simple per-socket rate limiter: max `limit` events per `windowMs`.
 function createRateLimiter(windowMs: number, limit: number) {
@@ -103,19 +131,34 @@ function getIp(socket: Socket): string {
 export function setupHandlers(io: Server): void {
   // Delete a room's persisted snapshot whenever it is torn down.
   setRoomGoneCallback(deletePersistedRoom);
+  // Re-broadcast when a room changes on a timer rather than a socket event
+  // (a waiting-room seat freed after its grace period).
+  setRoomChangedCallback(room => broadcastState(io, room));
 
   // Restore any games that were live when the server last stopped, so players
   // can reconnect after a restart/redeploy. Best-effort, non-blocking.
   loadPersistedRooms()
     .then(restored => {
-      for (const room of restored) registerRestoredRoom(room);
-      if (restored.length > 0) {
-        console.log(`Restored ${restored.length} live room(s) from persistence`);
+      let count = 0;
+      for (const room of restored) {
+        if (!registerRestoredRoom(room)) continue;
+        count++;
+        // Timers don't survive a restart: a trick that was mid-countdown when
+        // the snapshot was taken would otherwise never be awarded.
+        if (room.state.trickCountdown) {
+          const timer = setTimeout(() => {
+            resolveTrickCountdown(io, room);
+          }, room.state.trickCountdown.durationMs ?? 3000);
+          setTrickCountdownTimer(room.code, timer);
+        }
+      }
+      if (count > 0) {
+        console.log(`Restored ${count} live room(s) from persistence`);
       }
     })
     .catch(err => console.error('Failed to restore persisted rooms:', err));
 
-  io.on('connection', async (socket: Socket) => {
+  io.on('connection', (socket: Socket) => {
     const ip = getIp(socket);
     const currentCount = connectionsPerIp.get(ip) ?? 0;
     if (currentCount >= MAX_CONNECTIONS_PER_IP) {
@@ -147,62 +190,99 @@ export function setupHandlers(io: Server): void {
       }
     }
 
-    // Verify Firebase token if provided
+    // Verify the handshake token if provided. This must not delay listener
+    // registration below: events that arrive while verification is pending
+    // (the client emits `authenticate` and `rejoin-room` immediately on
+    // connect) would be dropped with no listener, and a socket that dropped
+    // meanwhile would never run `disconnect`, leaking its per-IP slot.
     const token = socket.handshake.auth?.token;
-    if (token) {
-      const decoded = await verifyIdToken(token);
-      if (decoded) {
-        setSocketUid(socket.id, decoded.uid);
-        console.log(`Authenticated user: ${decoded.uid}`);
-        pushPendingInvites(decoded.uid);
-      }
+    if (typeof token === 'string' && token) {
+      verifyIdToken(token)
+        .then(decoded => {
+          if (!decoded || socket.disconnected) return;
+          setSocketUid(socket.id, decoded.uid);
+          console.log(`Authenticated user: ${decoded.uid}`);
+          pushPendingInvites(decoded.uid);
+        })
+        .catch(err => console.error('Handshake token verification failed:', err));
+    }
+
+    /**
+     * Detach this socket from whatever room it is in (deliberate leave), tell
+     * the others, and drop the Socket.IO room membership so a later room that
+     * reuses the code can't reach this socket.
+     */
+    function leaveCurrentRoom(): void {
+      const left = leaveRoom(socket.id);
+      if (!left) return;
+      socket.leave(left.room.code);
+      if (!left.destroyed) broadcastState(io, left.room);
     }
 
     // Handle late/refreshed authentication tokens without reconnecting
-    socket.on('authenticate', async ({ token: newToken }: { token: string }, ack?: (data: { ok: boolean }) => void) => {
-      const decoded = await verifyIdToken(newToken);
+    guarded(socket, 'authenticate', async ({ token: newToken }: { token: unknown }, ack?: (data: { ok: boolean }) => void) => {
+      const decoded = typeof newToken === 'string' && newToken ? await verifyIdToken(newToken) : null;
       if (decoded) {
         setSocketUid(socket.id, decoded.uid);
         pushPendingInvites(decoded.uid);
       }
-      ack?.({ ok: !!decoded });
+      if (typeof ack === 'function') ack({ ok: !!decoded });
     });
 
-    socket.on('create-room', ({ playerName, randomPartners, settings, photoURL, sessionId }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null; sessionId?: string }) => {
+    // The user signed out in this tab: stop attributing this socket (stats,
+    // Elo, invites) to the account it was authenticated as.
+    guarded(socket, 'sign-out', () => {
+      clearSocketUid(socket.id);
+    });
+
+    guarded(socket, 'leave-room', () => {
+      leaveCurrentRoom();
+    });
+
+    guarded(socket, 'create-room', ({ playerName, randomPartners, settings, photoURL, sessionId }: { playerName: string; randomPartners?: boolean; settings?: Partial<GameSettings>; photoURL?: string | null; sessionId?: string }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
       }
-      const room = createRoom(socket.id, playerName, randomPartners ?? false, settings, sessionId);
-      room.state.players[0].photoURL = photoURL ?? null;
+      leaveCurrentRoom();
+      const room = createRoom(socket.id, playerName, !!randomPartners, sanitizeSettings(settings), typeof sessionId === 'string' ? sessionId : undefined);
+      room.state.players[0].photoURL = typeof photoURL === 'string' ? photoURL : null;
       socket.join(room.code);
       socket.emit('room-created', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
     });
 
-    socket.on('join-room', ({ roomCode, playerName, photoURL, sessionId }: { roomCode: string; playerName: string; photoURL?: string | null; sessionId?: string }) => {
+    guarded(socket, 'join-room', ({ roomCode, playerName, photoURL, sessionId }: { roomCode: unknown; playerName: unknown; photoURL?: unknown; sessionId?: unknown }) => {
       if (!isValidPlayerName(playerName)) {
         socket.emit('error', { message: 'Invalid player name' });
         return;
       }
-      const result = joinRoom(roomCode, socket.id, playerName, sessionId);
+      if (typeof roomCode !== 'string') {
+        socket.emit('error', { message: 'Room not found' });
+        return;
+      }
+      leaveCurrentRoom();
+      const result = joinRoom(roomCode, socket.id, playerName, typeof sessionId === 'string' ? sessionId : undefined);
       if ('error' in result) {
         socket.emit('error', { message: result.error });
         return;
       }
       const { room, seat } = result;
-      room.state.players[seat].photoURL = photoURL ?? null;
+      room.state.players[seat].photoURL = typeof photoURL === 'string' ? photoURL : null;
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
+      // Confirm the seat before the state lands, so the client only remembers
+      // a room it is actually in.
+      socket.emit('room-joined', { roomCode: room.code, randomPartners: room.randomPartners });
       broadcastState(io, room);
       socket.emit('random-partners-updated', { randomPartners: room.randomPartners });
     });
 
     // Reconnect a returning player (refresh, crash, dropped connection) back to
     // their seat using their persistent client session token.
-    socket.on('rejoin-room', ({ roomCode, sessionId, playerName, photoURL }: { roomCode: string; sessionId: string; playerName?: string; photoURL?: string | null }) => {
-      const sess = sessionId ? sessionId.slice(0, 8) : 'none';
-      if (!roomCode || !sessionId) {
+    guarded(socket, 'rejoin-room', ({ roomCode, sessionId, playerName, photoURL }: { roomCode: unknown; sessionId: unknown; playerName?: unknown; photoURL?: unknown }) => {
+      const sess = typeof sessionId === 'string' && sessionId ? sessionId.slice(0, 8) : 'none';
+      if (typeof roomCode !== 'string' || !roomCode || typeof sessionId !== 'string' || !sessionId) {
         console.log(`[rejoin] ${socket.id} bad-request room=${roomCode ?? 'none'} session=${sess} -> room-lost`);
         socket.emit('room-lost');
         return;
@@ -211,13 +291,19 @@ export function setupHandlers(io: Server): void {
       if (!('error' in result)) {
         const { room, seat } = result;
         console.log(`[rejoin] ${socket.id} reconnected room=${roomCode} seat=${seat} session=${sess} phase=${room.state.phase}`);
-        if (photoURL !== undefined) room.state.players[seat].photoURL = photoURL;
+        if (typeof photoURL === 'string' || photoURL === null) room.state.players[seat].photoURL = photoURL;
         socket.join(room.code);
         socket.emit('room-rejoined', {
           roomCode: room.code,
           randomPartners: room.randomPartners,
           isOrganizer: room.organizer === socket.id,
         });
+        // The round-result event was emitted once when the round ended; a
+        // player reloading on the results screen needs it again or they have
+        // no "Next round" button and the table stalls for everyone.
+        if (room.lastRoundResult && (room.state.phase === 'roundEnd' || room.state.phase === 'gameEnd')) {
+          socket.emit('round-result', { result: room.lastRoundResult });
+        }
         broadcastState(io, room);
         return;
       }
@@ -225,11 +311,16 @@ export function setupHandlers(io: Server): void {
       // fall back to a fresh join; otherwise the session is truly lost.
       const room = getRoom(roomCode);
       const reason = room ? result.error : 'room-not-found';
-      if (room && room.state.phase === 'waiting' && isValidPlayerName(playerName ?? '')) {
-        const joined = joinRoom(roomCode, socket.id, playerName!, sessionId);
+      if (room && room.state.phase === 'waiting' && isValidPlayerName(playerName)) {
+        const joined = joinRoom(roomCode, socket.id, playerName, sessionId);
         if (!('error' in joined)) {
           console.log(`[rejoin] ${socket.id} fresh-join room=${roomCode} seat=${joined.seat} session=${sess} (was: ${reason})`);
-          joined.room.state.players[joined.seat].photoURL = photoURL ?? null;
+          joined.room.state.players[joined.seat].photoURL = typeof photoURL === 'string' ? photoURL : null;
+          // The creator whose seat was freed while they were away gets their
+          // organizer role back (unless it has since passed to someone else).
+          if (joined.room.organizerSession && joined.room.organizerSession === sessionId) {
+            joined.room.organizer = socket.id;
+          }
           socket.join(joined.room.code);
           io.to(joined.room.code).emit('player-joined', { playerName, seat: joined.seat });
           socket.emit('room-rejoined', {
@@ -245,14 +336,14 @@ export function setupHandlers(io: Server): void {
       socket.emit('room-lost');
     });
 
-    socket.on('check-room', ({ roomCode }: { roomCode: string }) => {
-      const room = getRoom(roomCode);
+    guarded(socket, 'check-room', ({ roomCode }: { roomCode: unknown }) => {
+      const room = typeof roomCode === 'string' ? getRoom(roomCode) : undefined;
       if (!room) {
         socket.emit('room-lost');
       }
     });
 
-    socket.on('start-game', () => {
+    guarded(socket, 'start-game', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
@@ -269,7 +360,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('call-grand-tichu', ({ call }: { call: boolean }) => {
+    guarded(socket, 'call-grand-tichu', ({ call }: { call: boolean }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -277,7 +368,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('call-small-tichu', () => {
+    guarded(socket, 'call-small-tichu', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -285,7 +376,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('pass-cards', (data: unknown) => {
+    guarded(socket, 'pass-cards', (data: unknown) => {
       if (!isValidPassCards(data)) {
         socket.emit('error', { message: 'Invalid card data' });
         return;
@@ -297,7 +388,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('undo-pass', () => {
+    guarded(socket, 'undo-pass', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -305,7 +396,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('play-cards', ({ cards }: { cards: unknown }) => {
+    guarded(socket, 'play-cards', ({ cards }: { cards: unknown }) => {
       if (!isValidCardArray(cards)) {
         socket.emit('error', { message: 'Invalid card data' });
         return;
@@ -317,7 +408,7 @@ export function setupHandlers(io: Server): void {
       processPlayResult(io, room, seat, result);
     });
 
-    socket.on('pass-turn', () => {
+    guarded(socket, 'pass-turn', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -325,12 +416,17 @@ export function setupHandlers(io: Server): void {
       processPlayResult(io, room, seat, result);
     });
 
-    socket.on('bomb-announce', () => {
+    guarded(socket, 'bomb-announce', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
       if (room.state.phase !== 'playing') return;
       if (room.state.bombWindow) return; // already open — nothing to broadcast
+      // A seat that is out or holds fewer than four cards has no bomb to play;
+      // don't let it stall every trick with a window it can never use. (Card
+      // counts are public, so this leaks nothing.)
+      const me = room.state.players[seat];
+      if (me.isOut || me.hand.length < 4) return;
 
       const retryMs = bombAnnounceRetryMs(room, seat);
       if (retryMs > 0) {
@@ -355,7 +451,7 @@ export function setupHandlers(io: Server): void {
       setBombWindowTimer(room.code, timer);
     });
 
-    socket.on('bomb-cancel', () => {
+    guarded(socket, 'bomb-cancel', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
@@ -366,7 +462,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('bomb', ({ cards }: { cards: unknown }) => {
+    guarded(socket, 'bomb', ({ cards }: { cards: unknown }) => {
       if (!isValidCardArray(cards)) {
         socket.emit('error', { message: 'Invalid card data' });
         return;
@@ -374,15 +470,17 @@ export function setupHandlers(io: Server): void {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      clearTrickCountdownTimer(room.code);
-      clearBombWindowTimer(room.code);
       const result = handleBomb(room, seat, cards);
-      // Clear bomb window in the result state before processing
+      // Only a bomb the engine accepted cancels the running trick countdown;
+      // clearing it for a rejected bomb would leave the trick un-awardable.
+      if (result.state !== room.state) clearTrickCountdownTimer(room.code);
+      // Either way the bomb window closes (the player has acted on it).
+      clearBombWindowTimer(room.code);
       const modifiedResult = { ...result, state: { ...result.state, bombWindow: false } };
       processPlayResult(io, room, seat, modifiedResult);
     });
 
-    socket.on('give-dragon-trick', ({ to }: { to: unknown }) => {
+    guarded(socket, 'give-dragon-trick', ({ to }: { to: unknown }) => {
       if (!isValidSeat(to)) {
         socket.emit('error', { message: 'Invalid seat' });
         return;
@@ -394,7 +492,7 @@ export function setupHandlers(io: Server): void {
       processPlayResult(io, room, seat, result);
     });
 
-    socket.on('mah-jong-wish', ({ rank }: { rank: unknown }) => {
+    guarded(socket, 'mah-jong-wish', ({ rank }: { rank: unknown }) => {
       if (rank !== null && !isValidNormalRank(rank)) {
         socket.emit('error', { message: 'Invalid rank' });
         return;
@@ -406,16 +504,25 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('concede', () => {
+    guarded(socket, 'concede', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      clearTrickCountdownTimer(room.code);
       const result = handleConcede(room, seat);
+      if (result.state !== room.state) clearTrickCountdownTimer(room.code);
       processPlayResult(io, room, seat, result);
     });
 
-    socket.on('next-round', () => {
+    // Any player on the game-over screen can reopen the table for a new game.
+    guarded(socket, 'play-again', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (!resetRoomForNewGame(room)) return;
+      broadcastState(io, room);
+    });
+
+    guarded(socket, 'next-round', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
@@ -430,7 +537,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('update-settings', ({ settings }: { settings: Partial<GameSettings> }) => {
+    guarded(socket, 'update-settings', ({ settings }: { settings: unknown }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
@@ -442,15 +549,11 @@ export function setupHandlers(io: Server): void {
         socket.emit('error', { message: 'Cannot change settings after game has started' });
         return;
       }
-      const sanitized = { ...settings };
-      if (sanitized.targetScore != null) {
-        sanitized.targetScore = Math.max(100, Math.min(9999, Math.round(sanitized.targetScore)));
-      }
-      room.state.settings = { ...room.state.settings, ...sanitized };
+      room.state.settings = { ...room.state.settings, ...sanitizeSettings(settings) };
       broadcastState(io, room);
     });
 
-    socket.on('update-random-partners', ({ randomPartners }: { randomPartners: boolean }) => {
+    guarded(socket, 'update-random-partners', ({ randomPartners }: { randomPartners: boolean }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
@@ -466,7 +569,7 @@ export function setupHandlers(io: Server): void {
       io.to(room.code).emit('random-partners-updated', { randomPartners: room.randomPartners });
     });
 
-    socket.on('swap-seats', ({ seatA, seatB }: { seatA: unknown; seatB: unknown }) => {
+    guarded(socket, 'swap-seats', ({ seatA, seatB }: { seatA: unknown; seatB: unknown }) => {
       if (!isValidSeat(seatA) || !isValidSeat(seatB)) {
         socket.emit('error', { message: 'Invalid seat' });
         return;
@@ -483,7 +586,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('close-room', () => {
+    guarded(socket, 'close-room', () => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room } = found;
@@ -494,12 +597,13 @@ export function setupHandlers(io: Server): void {
       // Tell everyone (including the organizer) to return to the start screen,
       // then tear the room down completely.
       io.to(room.code).emit('room-closed');
+      io.in(room.code).socketsLeave(room.code);
       closeRoom(room.code);
     });
 
     // ===== AI Seat Management =====
 
-    socket.on('mark-seat-ai', ({ seat }: { seat: unknown }) => {
+    guarded(socket, 'mark-seat-ai', ({ seat }: { seat: unknown }) => {
       if (!isValidSeat(seat)) {
         socket.emit('error', { message: 'Invalid seat' });
         return;
@@ -519,7 +623,7 @@ export function setupHandlers(io: Server): void {
       broadcastState(io, room);
     });
 
-    socket.on('unmark-seat-ai', ({ seat }: { seat: unknown }) => {
+    guarded(socket, 'unmark-seat-ai', ({ seat }: { seat: unknown }) => {
       if (!isValidSeat(seat)) {
         socket.emit('error', { message: 'Invalid seat' });
         return;
@@ -537,14 +641,22 @@ export function setupHandlers(io: Server): void {
 
     // ===== Invite System =====
 
-    socket.on('fetch-players', async (callback: (data: { players: InvitablePlayer[]; needsAuth?: boolean }) => void) => {
+    guarded(socket, 'fetch-players', async (callback: (data: { players: InvitablePlayer[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ players: [], needsAuth: true });
         return;
       }
 
-      const { allUsers, playedWithUids } = await fetchInvitableUsers(uid);
+      let allUsers: Awaited<ReturnType<typeof fetchInvitableUsers>>['allUsers'];
+      let playedWithUids: Awaited<ReturnType<typeof fetchInvitableUsers>>['playedWithUids'];
+      try {
+        ({ allUsers, playedWithUids } = await fetchInvitableUsers(uid));
+      } catch (err) {
+        console.error('Failed to fetch invitable users:', err);
+        callback({ players: [] });
+        return;
+      }
 
       const players: InvitablePlayer[] = allUsers.map(u => ({
         uid: u.uid,
@@ -566,7 +678,7 @@ export function setupHandlers(io: Server): void {
       callback({ players });
     });
 
-    socket.on('fetch-partner-stats', async (callback: (data: { partners: PartnerStats[]; needsAuth?: boolean }) => void) => {
+    guarded(socket, 'fetch-partner-stats', async (callback: (data: { partners: PartnerStats[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ partners: [], needsAuth: true });
@@ -581,7 +693,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('fetch-user-stats', async (callback: (data: { stats: UserStats | null; needsAuth?: boolean }) => void) => {
+    guarded(socket, 'fetch-user-stats', async (callback: (data: { stats: UserStats | null; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ stats: null, needsAuth: true });
@@ -595,7 +707,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('fetch-team-stats', async ({ partnerUid }: { partnerUid: unknown }, callback: (data: { team: TeamStats | null; needsAuth?: boolean }) => void) => {
+    guarded(socket, 'fetch-team-stats', async ({ partnerUid }: { partnerUid: unknown }, callback: (data: { team: TeamStats | null; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ team: null, needsAuth: true });
@@ -613,7 +725,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('fetch-recent-games', async (callback: (data: { games: GameSummary[]; needsAuth?: boolean }) => void) => {
+    guarded(socket, 'fetch-recent-games', async (callback: (data: { games: GameSummary[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ games: [], needsAuth: true });
@@ -627,7 +739,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('fetch-game-history', async ({ gameId }: { gameId: string }, callback: (data: { rounds: GameHistoryRound[]; needsAuth?: boolean }) => void) => {
+    guarded(socket, 'fetch-game-history', async ({ gameId }: { gameId: string }, callback: (data: { rounds: GameHistoryRound[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ rounds: [], needsAuth: true });
@@ -642,7 +754,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('fetch-room-elos', async (callback: (data: RoomElos) => void) => {
+    guarded(socket, 'fetch-room-elos', async (callback: (data: RoomElos) => void) => {
       const empty: RoomElos = { seatElos: [null, null, null, null], teamElos: [null, null] };
       const found = getRoomBySocket(socket.id);
       if (!found) {
@@ -657,7 +769,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('send-invite', ({ targetUid }: { targetUid: string }) => {
+    guarded(socket, 'send-invite', ({ targetUid }: { targetUid: string }) => {
       const fromUid = getSocketUid(socket.id);
       if (!fromUid) return;
 
@@ -679,7 +791,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('respond-invite', ({ inviteId, accept, playerName, photoURL, sessionId }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null; sessionId?: string }) => {
+    guarded(socket, 'respond-invite', ({ inviteId, accept, playerName, photoURL, sessionId }: { inviteId: string; accept: boolean; playerName?: string; photoURL?: string | null; sessionId?: string }) => {
       const invite = getInvite(inviteId);
       if (!invite) {
         socket.emit('error', { message: 'Invite expired or not found' });
@@ -698,14 +810,15 @@ export function setupHandlers(io: Server): void {
         return;
       }
 
-      const result = joinRoom(invite.roomCode, socket.id, playerName, sessionId);
+      leaveCurrentRoom();
+      const result = joinRoom(invite.roomCode, socket.id, playerName, typeof sessionId === 'string' ? sessionId : undefined);
       if ('error' in result) {
         socket.emit('error', { message: result.error });
         return;
       }
 
       const { room, seat } = result;
-      room.state.players[seat].photoURL = photoURL ?? null;
+      room.state.players[seat].photoURL = typeof photoURL === 'string' ? photoURL : null;
       socket.join(room.code);
       io.to(room.code).emit('player-joined', { playerName, seat });
       broadcastState(io, room);
@@ -718,7 +831,7 @@ export function setupHandlers(io: Server): void {
 
     // ===== User Profile (via Admin SDK) =====
 
-    socket.on('load-profile', async (callback: (data: ({ profile: unknown } | { error: string }) & { needsAuth?: boolean }) => void) => {
+    guarded(socket, 'load-profile', async (callback: (data: ({ profile: unknown } | { error: string }) & { needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
         callback({ error: 'Not authenticated', needsAuth: true });
@@ -747,10 +860,11 @@ export function setupHandlers(io: Server): void {
         if (docSnap.exists) {
           const data = docSnap.data()!;
           // Update display info on each login
+          // Firestore rejects `undefined` values, so fall through to null.
           await docRef.set({
-            displayName: authUser.displayName || data.displayName,
-            email: authUser.email || data.email,
-            photoURL: authUser.photoURL ?? data.photoURL,
+            displayName: authUser.displayName || data.displayName || null,
+            email: authUser.email || data.email || null,
+            photoURL: authUser.photoURL ?? data.photoURL ?? null,
           }, { merge: true });
 
           callback({
@@ -791,14 +905,14 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('save-settings', async ({ settings, randomPartners }: { settings: Partial<GameSettings>; randomPartners?: boolean }) => {
+    guarded(socket, 'save-settings', async ({ settings, randomPartners }: { settings: unknown; randomPartners?: unknown }) => {
       const uid = getSocketUid(socket.id);
       if (!uid || !firebaseAdmin) return;
       try {
         const db = firebaseAdmin.firestore();
         const docRef = db.collection('users').doc(uid);
-        const prefs: Record<string, unknown> = { lastSettings: settings };
-        if (randomPartners !== undefined) {
+        const prefs: Record<string, unknown> = { lastSettings: sanitizeSettings(settings) };
+        if (typeof randomPartners === 'boolean') {
           prefs.lastRandomPartners = randomPartners;
         }
         await docRef.set({ preferences: prefs }, { merge: true });
@@ -807,7 +921,7 @@ export function setupHandlers(io: Server): void {
       }
     });
 
-    socket.on('disconnect', () => {
+    guarded(socket, 'disconnect', () => {
       console.log(`Player disconnected: ${socket.id}`);
       const found = getRoomBySocket(socket.id);
       removePlayer(socket.id);
@@ -842,6 +956,10 @@ export function setSseNotifyCallback(cb: (roomCode: string, seat: Seat, event: s
 export function broadcastState(io: Server, room: Room): void {
   const aiOpenSeats = Array.from(room.aiOpenSeats);
   const disconnectedSeats = getDisconnectedSeats(room);
+  // The organizer can change without a socket event (the creator's waiting-
+  // room seat expired and the role passed on), so every broadcast says who
+  // holds it instead of relying on the one-time room-created/rejoined reply.
+  const organizerSeat = room.playerSockets.get(room.organizer) ?? null;
   for (const [socketId, seat] of room.playerSockets) {
     if (isApiPlayer(socketId)) continue;
     // Self-heal the persistent seat->uid map from live, authenticated sockets so
@@ -850,7 +968,7 @@ export function broadcastState(io: Server, room: Room): void {
     const uid = getSocketUid(socketId);
     if (uid) room.seatUids.set(seat, uid);
     const clientState = toClientState(room.state, seat);
-    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats });
+    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats, organizerSeat });
   }
   sseBroadcastCallback?.(room);
   // Snapshot the room (debounced) so it survives a server restart.
@@ -890,6 +1008,7 @@ export function processPlayResult(io: Server, room: Room, seat: Seat, result: Pl
     return;
   }
   if (result.roundResult) {
+    room.lastRoundResult = result.roundResult;
     io.to(room.code).emit('round-result', { result: result.roundResult });
     sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
     handleRoundResult(io, room, result.roundResult);
@@ -937,6 +1056,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
     }
 
     if (result.roundResult) {
+      room.lastRoundResult = result.roundResult;
       io.to(room.code).emit('round-result', { result: result.roundResult });
       sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
       handleRoundResult(io, room, result.roundResult);

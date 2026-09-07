@@ -4,6 +4,7 @@ type Props = {
   result: RoundResult;
   players: ClientPlayer[];
   onNextRound: () => void;
+  onPlayAgain: () => void;
   onLeave: () => void;
   isGameOver: boolean;
   mySeat: Seat;
@@ -71,7 +72,7 @@ function deltaColor(delta: number): string {
   return delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400';
 }
 
-export default function RoundResults({ result, players, onNextRound, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate, headToHead, onShowStats }: Props) {
+export default function RoundResults({ result, players, onNextRound, onPlayAgain, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate, headToHead, onShowStats }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
 
@@ -387,10 +388,10 @@ export default function RoundResults({ result, players, onNextRound, onLeave, is
 
             <div className="mt-4 flex justify-center gap-3">
               <button
-                onClick={() => window.location.reload()}
+                onClick={onPlayAgain}
                 className="py-3 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
               >
-                New Game
+                Play Again
               </button>
               <button
                 onClick={onLeave}

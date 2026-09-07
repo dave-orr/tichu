@@ -349,8 +349,9 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   // Mah Jong wish enforcement — applies both when following (currentTrick set)
   // and when leading a new trick (currentTrick null): the wish persists across
   // tricks until fulfilled, so a player who holds the wished rank must play it
-  // whenever they can make a legal play that includes it.
-  if (state.mahJongWish != null) {
+  // whenever they can make a legal play that includes it. Bombs are exempt,
+  // matching playBomb (a bomb may be thrown at any moment, on turn or not).
+  if (state.mahJongWish != null && !isBomb(combo)) {
     if (!checkWishCompliance(state, seat, cards)) {
       return { state }; // Must play the wished rank if possible
     }

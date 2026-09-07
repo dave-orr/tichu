@@ -1,4 +1,5 @@
-import type { Card, Seat, NormalRank } from '@tichu/shared';
+import type { Card, Seat, NormalRank, GameSettings } from '@tichu/shared';
+import { cardId } from '@tichu/shared';
 
 const VALID_SUITS = new Set(['jade', 'sword', 'pagoda', 'star']);
 const VALID_SPECIAL_NAMES = new Set(['mahjong', 'dog', 'phoenix', 'dragon']);
@@ -22,7 +23,10 @@ export function isValidCard(card: unknown): card is Card {
 }
 
 export function isValidCardArray(cards: unknown): cards is Card[] {
-  return Array.isArray(cards) && cards.length > 0 && cards.length <= 14 && cards.every(isValidCard);
+  if (!Array.isArray(cards) || cards.length === 0 || cards.length > 14) return false;
+  if (!cards.every(isValidCard)) return false;
+  // A play may not name the same card twice (the engine re-checks this too).
+  return new Set(cards.map(cardId)).size === cards.length;
 }
 
 export function isValidSeat(seat: unknown): seat is Seat {
@@ -46,4 +50,28 @@ export function isValidPassCards(pass: unknown): pass is { left: Card; partner: 
   if (pass == null || typeof pass !== 'object') return false;
   const p = pass as Record<string, unknown>;
   return isValidCard(p.left) && isValidCard(p.partner) && isValidCard(p.right);
+}
+
+const TARGET_SCORE_MIN = 100;
+const TARGET_SCORE_MAX = 9999;
+const BOOLEAN_SETTINGS = ['countPoints', 'cardsSeen', 'showPassedCards', 'clockwise'] as const;
+
+/**
+ * Reduce an untrusted settings object to the known keys with well-typed
+ * values. Unknown keys are dropped, booleans must be real booleans, and the
+ * target score must be a finite number (clamped to the allowed range) —
+ * `Math.round("abc")` is NaN, which would otherwise make a game never end,
+ * while 0 or a negative score ends it after the first round.
+ */
+export function sanitizeSettings(input: unknown): Partial<GameSettings> {
+  const out: Partial<GameSettings> = {};
+  if (input == null || typeof input !== 'object') return out;
+  const raw = input as Record<string, unknown>;
+  for (const key of BOOLEAN_SETTINGS) {
+    if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
+  }
+  if (typeof raw.targetScore === 'number' && Number.isFinite(raw.targetScore)) {
+    out.targetScore = Math.max(TARGET_SCORE_MIN, Math.min(TARGET_SCORE_MAX, Math.round(raw.targetScore)));
+  }
+  return out;
 }

@@ -1,5 +1,5 @@
 import { firebaseAdmin } from './firebase.js';
-import type { Room } from './rooms.js';
+import { getRoom, type Room } from './rooms.js';
 
 /**
  * Live-game durability: snapshot active rooms to Firestore so games survive a
@@ -21,6 +21,10 @@ const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PERSIST_DEBOUNCE_MS = 1500;
 
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Snapshot writes currently in flight, so a delete can be sequenced after
+// them instead of racing (a `set` landing after the `delete` would leave a
+// zombie snapshot that gets resurrected on the next restart).
+const inFlightWrites = new Map<string, Promise<void>>();
 
 function mapSetReplacer(_key: string, value: unknown): unknown {
   if (value instanceof Map) return { __t: 'Map', v: Array.from(value.entries()) };
@@ -40,14 +44,22 @@ function mapSetReviver(_key: string, value: unknown): unknown {
 /** Schedule a debounced snapshot write for a room. No-op without Firebase. */
 export function persistRoom(room: Room): void {
   if (!firebaseAdmin) return;
+  // Waiting rooms aren't worth restoring: they hold no game, and after a
+  // restart their seats would be reserved by socket ids that no longer exist.
+  if (room.state.phase === 'waiting') return;
   const code = room.code;
   const existing = debounceTimers.get(code);
   if (existing) clearTimeout(existing);
   const timer = setTimeout(() => {
     debounceTimers.delete(code);
-    writeSnapshot(room).catch(err =>
-      console.error(`[persist] failed to write room ${code}:`, err)
-    );
+    // The room may have been torn down (or its code reused) while debouncing.
+    if (getRoom(code) !== room) return;
+    const write = writeSnapshot(room)
+      .catch(err => console.error(`[persist] failed to write room ${code}:`, err))
+      .finally(() => {
+        if (inFlightWrites.get(code) === write) inFlightWrites.delete(code);
+      });
+    inFlightWrites.set(code, write);
   }, PERSIST_DEBOUNCE_MS);
   debounceTimers.set(code, timer);
 }
@@ -73,7 +85,9 @@ export function deletePersistedRoom(code: string): void {
     debounceTimers.delete(code);
   }
   if (!firebaseAdmin) return;
-  firebaseAdmin.firestore().collection(COLLECTION).doc(code).delete().catch(err =>
+  const db = firebaseAdmin.firestore();
+  const pending = inFlightWrites.get(code) ?? Promise.resolve();
+  pending.then(() => db.collection(COLLECTION).doc(code).delete()).catch(err =>
     console.error(`[persist] failed to delete room ${code}:`, err)
   );
 }

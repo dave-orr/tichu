@@ -64,14 +64,18 @@ export function useEventLog(
         }
       }
 
+      // Dog: it never sits on the table (the lead passes straight to the
+      // partner), so it only shows up in playedCards.
+      const lastPlayed = gameState.playedCards[gameState.playedCards.length - 1];
+      if (gameState.playedCards.length > prev.playedCards.length
+        && lastPlayed?.type === 'special' && lastPlayed.name === 'dog') {
+        newEntries.push(`${names[prev.turnIndex]} played Dog → pass to partner`);
+      }
+
       // Cards played
       if (gameState.currentTrickPlays.length > prev.currentTrickPlays.length) {
         const newPlay = gameState.currentTrickPlays[gameState.currentTrickPlays.length - 1].cards;
-        const isDog = newPlay.length === 1 && newPlay[0].type === 'special' && newPlay[0].name === 'dog';
-        if (isDog) {
-          const playerIdx = prev.turnIndex;
-          newEntries.push(`${names[playerIdx]} played Dog → pass to partner`);
-        } else if (gameState.lastPlayedBy !== null && gameState.currentTrick) {
+        if (gameState.lastPlayedBy !== null && gameState.currentTrick) {
           const playerName = names[gameState.lastPlayedBy];
           const combo = gameState.currentTrick;
           newEntries.push(`${playerName} played ${comboName(combo)}: ${describeCards(newPlay)}`);
@@ -80,12 +84,13 @@ export function useEventLog(
 
       // Trick won (currentTrickPlays went from non-empty to empty)
       if (prev.currentTrickPlays.length > 0 && gameState.currentTrickPlays.length === 0) {
-        // Someone won the trick. The new leader is turnIndex.
-        // But if dragon giveaway just happened, check for that
+        // But if dragon giveaway just happened, that's logged below instead.
         if (prev.dragonGiveaway && !gameState.dragonGiveaway) {
           // Dragon was given away — we'll log that below
         } else {
-          const winner = gameState.turnIndex;
+          // The winner is whoever the countdown named; turnIndex is only the
+          // next leader, which differs when the winner has already gone out.
+          const winner = prev.trickCountdown?.winner ?? prev.lastPlayedBy ?? gameState.turnIndex;
           newEntries.push(`${names[winner]} won the trick`);
         }
       }

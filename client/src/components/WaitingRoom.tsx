@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Seat, ClientGameState, InvitablePlayer, RoomElos } from '@tichu/shared';
 import InvitePanel from './InvitePanel.js';
+import TargetScoreInput from './TargetScoreInput.js';
 
 const SEAT_NAMES = ['North', 'East', 'South', 'West'];
 
@@ -17,6 +18,7 @@ type Props = {
   onUpdateRandomPartners: (randomPartners: boolean) => void;
   onStartGame: () => void;
   onCancelRoom: () => void;
+  onLeaveRoom: () => void;
   onMarkSeatAi: (seat: Seat) => void;
   onUnmarkSeatAi: (seat: Seat) => void;
   fetchPlayers: () => Promise<{ players: InvitablePlayer[] }>;
@@ -28,7 +30,7 @@ type Props = {
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
   aiOpenSeats, disconnectedSeats, onSwapSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
-  onCancelRoom, onMarkSeatAi, onUnmarkSeatAi,
+  onCancelRoom, onLeaveRoom, onMarkSeatAi, onUnmarkSeatAi,
   fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
 }: Props) {
   const [swapFrom, setSwapFrom] = useState<Seat | null>(null);
@@ -189,12 +191,19 @@ export default function WaitingRoom({
                 Invite Players
               </button>
             )}
-            {isOrganizer && (
+            {isOrganizer ? (
               <button
                 onClick={() => setShowCancelConfirm(true)}
                 className="px-3 py-2 text-gray-400 hover:text-red-400 transition-colors"
               >
                 Cancel room
+              </button>
+            ) : (
+              <button
+                onClick={onLeaveRoom}
+                className="px-3 py-2 text-gray-400 hover:text-red-400 transition-colors"
+              >
+                Leave room
               </button>
             )}
           </div>
@@ -341,14 +350,10 @@ export default function WaitingRoom({
                 <span className="text-xl font-semibold">Target Score</span>
                 <p className="hidden lg:block text-base text-gray-400">Points needed to win</p>
               </div>
-              <input
-                type="number"
+              <TargetScoreInput
                 value={gameState.settings.targetScore}
-                onChange={e => isOrganizer && onUpdateSettings({ targetScore: Math.max(100, Math.min(9999, Number(e.target.value) || 1000)) })}
+                onCommit={v => isOrganizer && onUpdateSettings({ targetScore: v })}
                 disabled={!isOrganizer}
-                min={100}
-                max={9999}
-                step={50}
                 className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white text-xl disabled:opacity-50"
               />
             </div>

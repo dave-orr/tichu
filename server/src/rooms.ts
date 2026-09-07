@@ -36,7 +36,20 @@ export type Room = {
   accumulator: RoundAccumulator;
   aiOpenSeats: Set<Seat>;           // seats marked as open for AI players
   bombAnnounceThrottle: Map<Seat, BombThrottle>; // per-seat bomb-announce rate state
+  // Result of the round that just ended, re-sent to anyone who (re)joins while
+  // the table is on the roundEnd/gameEnd screen (the round-result event itself
+  // is only emitted once, at the moment the round ends).
+  lastRoundResult: RoundResult | null;
 };
+
+/** Live human sockets in a room (API/AI players are excluded). */
+export function humanSocketCount(room: Room): number {
+  let n = 0;
+  for (const socketId of room.playerSockets.keys()) {
+    if (!isApiPlayer(socketId)) n++;
+  }
+  return n;
+}
 
 /**
  * Seats occupied by a human who currently has no live socket connection.
@@ -63,6 +76,9 @@ const trickCountdownTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const bombWindowTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function setTrickCountdownTimer(roomCode: string, timer: ReturnType<typeof setTimeout>): void {
+  // Never let a previous timer leak: an orphaned one could fire after the room
+  // is gone (and resurrect its snapshot via broadcastState → persistRoom).
+  clearTrickCountdownTimer(roomCode);
   trickCountdownTimers.set(roomCode, timer);
 }
 
@@ -97,8 +113,25 @@ const socketUids = new Map<string, string>();
 const uidSockets = new Map<string, string>();
 
 export function setSocketUid(socketId: string, uid: string): void {
+  // Re-authenticating as someone else must not leave the old uid pointing at
+  // this socket (invites for that uid would reach the wrong person).
+  const previous = socketUids.get(socketId);
+  if (previous && previous !== uid && uidSockets.get(previous) === socketId) {
+    uidSockets.delete(previous);
+  }
   socketUids.set(socketId, uid);
   uidSockets.set(uid, socketId);
+}
+
+/**
+ * Forget a socket's authentication (sign-out, or the socket went away). The
+ * uid → socket entry is only removed when it still points at this socket, so
+ * closing one of two tabs doesn't mark the account offline.
+ */
+export function clearSocketUid(socketId: string): void {
+  const uid = socketUids.get(socketId);
+  socketUids.delete(socketId);
+  if (uid && uidSockets.get(uid) === socketId) uidSockets.delete(uid);
 }
 
 export function getSocketUid(socketId: string): string | null {
@@ -242,6 +275,7 @@ function generateRoomCode(): string {
 
 export function createRoom(socketId: string, playerName: string, randomPartners: boolean, settings?: Partial<GameSettings>, sessionId?: string): Room {
   const code = generateRoomCode();
+  // `settings` must already be sanitized (see validation.ts sanitizeSettings).
   const gameSettings: GameSettings = { ...DEFAULT_SETTINGS, ...settings };
   const state = createInitialState(gameSettings);
   state.players[0].id = socketId;
@@ -263,6 +297,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     accumulator: createAccumulator(gameId, [0, 0]),
     aiOpenSeats: new Set(),
     bombAnnounceThrottle: new Map(),
+    lastRoundResult: null,
   };
 
   rooms.set(code, room);
@@ -279,9 +314,9 @@ export function joinRoom(
 
   let seat: Seat | null = null;
   if (room.state.phase === 'waiting') {
-    // Find first empty seat
+    // Find the first empty seat that isn't reserved for an AI player.
     for (let i = 0; i < 4; i++) {
-      if (!room.seatPlayers.has(i as Seat)) {
+      if (!room.seatPlayers.has(i as Seat) && !room.aiOpenSeats.has(i as Seat)) {
         seat = i as Seat;
         break;
       }
@@ -425,17 +460,32 @@ export function closeRoom(code: string): void {
  * via seatSessions for reconnection) and an abandoned-cleanup timer is armed so
  * a game nobody returns to is eventually dropped.
  */
-export function registerRestoredRoom(room: Room): void {
-  room.playerSockets = new Map();
-  // Older snapshots predate seatUids; the seat->uid map (when present) is the
-  // whole point of persisting it — it lets a game that ends right after a
-  // restart still rate everyone before they've re-established live sockets.
+export function registerRestoredRoom(room: Room): boolean {
+  // Waiting rooms are never snapshotted (see persistence.ts), and an old one
+  // would come back with dead socket ids reserving every seat. Drop it.
+  if (room.state.phase === 'waiting') return false;
+  // Human sockets are gone; API players keep their synthetic ids so their SSE
+  // streams pick the game back up once they reconnect.
+  room.playerSockets = new Map(
+    Array.from(room.playerSockets).filter(([socketId]) => isApiPlayer(socketId))
+  );
+  // Backfill fields that older snapshots may predate. The seat->uid map is the
+  // whole point of persisting: it lets a game that ends right after a restart
+  // still rate everyone before they've re-established live sockets.
   if (!room.seatUids) room.seatUids = new Map();
+  if (!room.aiOpenSeats) room.aiOpenSeats = new Set();
+  if (!room.bombAnnounceThrottle) room.bombAnnounceThrottle = new Map();
+  if (!room.passes) room.passes = new Map();
+  if (room.lastRoundResult === undefined) room.lastRoundResult = null;
+  // No bomb-window timer survives a restart, so don't restore an open window
+  // that nothing would ever close. (The trick countdown, if any, is re-armed
+  // by the handler layer, which owns the timers.)
+  if (room.state.bombWindow) room.state = { ...room.state, bombWindow: false };
   rooms.set(room.code, room);
   const timer = setTimeout(() => {
     roomCleanupTimers.delete(room.code);
     const r = rooms.get(room.code);
-    if (r && r.playerSockets.size === 0) {
+    if (r && humanSocketCount(r) === 0) {
       clearTrickCountdownTimer(room.code);
       clearBombWindowTimer(room.code);
       destroyRoom(room.code);
@@ -443,6 +493,14 @@ export function registerRestoredRoom(room: Room): void {
     }
   }, ABANDONED_ROOM_TIMEOUT_MS);
   roomCleanupTimers.set(room.code, timer);
+  return true;
+}
+
+// Optional hook invoked when a room changes outside of a socket event (a
+// waiting-room seat freed by a grace timer) so the handler can re-broadcast.
+let onRoomChanged: ((room: Room) => void) | null = null;
+export function setRoomChangedCallback(cb: (room: Room) => void): void {
+  onRoomChanged = cb;
 }
 
 
@@ -459,7 +517,11 @@ export function clearSeatGraceTimer(code: string, seat: Seat): void {
   }
 }
 
-/** Vacate a seat entirely (used when a waiting-room grace period expires). */
+/**
+ * Vacate a waiting-room seat entirely (grace period expired, or the player
+ * left on purpose). If the seat belonged to the organizer, the role passes to
+ * another seated human so the room can still be started/configured.
+ */
 function freeSeat(room: Room, seat: Seat): void {
   const socketId = room.seatPlayers.get(seat);
   if (socketId) {
@@ -472,13 +534,43 @@ function freeSeat(room: Room, seat: Seat): void {
   room.state.players[seat].id = '';
   room.state.players[seat].name = '';
   room.state.players[seat].photoURL = null;
+
+  if (socketId && room.organizer === socketId) {
+    for (const [otherSeat, otherSocket] of room.seatPlayers) {
+      if (isApiPlayer(otherSocket)) continue;
+      room.organizer = otherSocket;
+      room.organizerSession = room.seatSessions.get(otherSeat) ?? '';
+      break;
+    }
+  }
 }
 
+/**
+ * A socket dropped (disconnect): forget its auth and detach it from its room,
+ * keeping the seat reserved for a reconnect.
+ */
 export function removePlayer(socketId: string): void {
-  const uid = socketUids.get(socketId);
-  if (uid) uidSockets.delete(uid);
-  socketUids.delete(socketId);
+  clearSocketUid(socketId);
+  detachSocket(socketId, false);
+}
 
+/**
+ * A player deliberately left their room ("Back to Lobby", joining another
+ * room, leaving the waiting room). Unlike a disconnect, the seat is not held
+ * for them: in the waiting room it is freed at once, and mid-game the session
+ * key is dropped so the seat reads as open for a substitute and the leaver's
+ * next page load doesn't auto-rejoin. Returns the room left, if any, so the
+ * caller can re-broadcast to whoever remains (null if the room was destroyed).
+ */
+export function leaveRoom(socketId: string): { room: Room; seat: Seat; destroyed: boolean } | null {
+  const found = getRoomBySocket(socketId);
+  if (!found) return null;
+  const { room, seat } = found;
+  detachSocket(socketId, true);
+  return { room, seat, destroyed: !rooms.has(room.code) };
+}
+
+function detachSocket(socketId: string, deliberate: boolean): void {
   const code = socketRooms.get(socketId);
   if (!code) return;
   socketRooms.delete(socketId);
@@ -491,11 +583,18 @@ export function removePlayer(socketId: string): void {
 
   room.playerSockets.delete(socketId);
 
-  // Keep seatPlayers/seatSessions so the seat stays reserved for reconnect.
-  // In the waiting room, hold the seat for a short grace period, then free it
-  // (and delete the room if it becomes empty) so it doesn't block others.
   if (room.state.phase === 'waiting') {
     clearSeatGraceTimer(code, seat);
+    if (deliberate) {
+      freeSeat(room, seat);
+      if (humanSocketCount(room) === 0) {
+        clearInvitesForRoom(code);
+        destroyRoom(code);
+      }
+      return;
+    }
+    // Keep seatPlayers/seatSessions so the seat stays reserved for reconnect,
+    // but only for a short grace period so it doesn't block others for good.
     const timer = setTimeout(() => {
       seatGraceTimers.delete(seatGraceKey(code, seat));
       const r = rooms.get(code);
@@ -506,21 +605,37 @@ export function removePlayer(socketId: string): void {
       // Bail if the player already reconnected to this seat.
       if (new Set(r.playerSockets.values()).has(seat)) return;
       freeSeat(r, seat);
-      if (r.playerSockets.size === 0) {
+      if (humanSocketCount(r) === 0) {
         clearInvitesForRoom(code);
         destroyRoom(code);
+      } else {
+        onRoomChanged?.(r);
       }
     }, WAITING_GRACE_MS);
     seatGraceTimers.set(seatGraceKey(code, seat), timer);
     return;
   }
 
+  if (deliberate) {
+    // The seat is no longer theirs to reclaim; a substitute may take it.
+    room.seatSessions.delete(seat);
+    if (room.organizer === socketId) room.organizerSession = '';
+    // A finished game with nobody left in it has nothing to wait for.
+    if (room.state.phase === 'gameEnd' && humanSocketCount(room) === 0) {
+      clearTrickCountdownTimer(code);
+      clearBombWindowTimer(code);
+      clearInvitesForRoom(code);
+      destroyRoom(code);
+      return;
+    }
+  }
+
   // For in-progress games, schedule cleanup if all players disconnected
-  if (room.playerSockets.size === 0) {
+  if (humanSocketCount(room) === 0) {
     const timer = setTimeout(() => {
       roomCleanupTimers.delete(code);
       const r = rooms.get(code);
-      if (r && r.playerSockets.size === 0) {
+      if (r && humanSocketCount(r) === 0) {
         clearTrickCountdownTimer(code);
         clearBombWindowTimer(code);
         destroyRoom(code);
@@ -546,6 +661,8 @@ export function startGame(room: Room): void {
   room.gameId = `${room.code}_${Date.now()}`;
   room.state = startNewRound(room.state);
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
+  room.passes.clear();
+  room.lastRoundResult = null;
 }
 
 /** Randomly assign players to seats */
@@ -641,8 +758,13 @@ export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean
     return false;
   }
 
+  // Only record a pass the engine accepted: a pass sent outside the passing
+  // phase (or a repeat) must not linger in `room.passes` and be applied to a
+  // later round's hands.
+  const next = passCardsEngine(room.state, seat, pass);
+  if (next === room.state) return false;
+  room.state = next;
   room.passes.set(seat, pass);
-  room.state = passCardsEngine(room.state, seat, pass);
 
   // Check if all 4 players have passed
   if (room.passes.size === 4) {
@@ -719,11 +841,55 @@ export function applyPlayResult(room: Room, result: PlayResult): void {
   room.state = result.state;
 }
 
+/**
+ * "Play again" from the game-over screen: put the room back in the waiting
+ * phase with the same people (and settings) so a new game can be started
+ * without everyone re-creating and re-joining a room. Seats whose player has
+ * already left (no live socket) are freed so they don't block the new game.
+ */
+export function resetRoomForNewGame(room: Room): boolean {
+  if (room.state.phase !== 'gameEnd') return false;
+  clearTrickCountdownTimer(room.code);
+  clearBombWindowTimer(room.code);
+  const connectedSeats = new Set(room.playerSockets.values());
+  const fresh = createInitialState(room.state.settings);
+  for (const p of room.state.players) {
+    const live = connectedSeats.has(p.seat);
+    if (!live) {
+      room.seatPlayers.delete(p.seat);
+      room.seatSessions.delete(p.seat);
+      room.seatUids.delete(p.seat);
+      continue;
+    }
+    fresh.players[p.seat].id = p.id;
+    fresh.players[p.seat].name = p.name;
+    fresh.players[p.seat].photoURL = p.photoURL;
+    fresh.players[p.seat].isAi = p.isAi;
+  }
+  room.state = fresh;
+  room.passes.clear();
+  room.lastRoundResult = null;
+  room.gameId = `${room.code}_${Date.now()}`;
+  room.accumulator = createAccumulator(room.gameId, [0, 0]);
+  // If the organizer has gone, hand the role to someone still here.
+  if (!room.playerSockets.has(room.organizer)) {
+    for (const [seat, socketId] of room.seatPlayers) {
+      if (isApiPlayer(socketId)) continue;
+      room.organizer = socketId;
+      room.organizerSession = room.seatSessions.get(seat) ?? '';
+      break;
+    }
+  }
+  return true;
+}
+
 export function startNextRound(room: Room): void {
   const scores: [number, number] = [room.state.teams[0].score, room.state.teams[1].score];
   const prevWasDown300 = room.accumulator.wasDown300;
   room.state = startNewRound(room.state);
   room.accumulator = createAccumulator(room.gameId, scores, prevWasDown300);
+  room.passes.clear();
+  room.lastRoundResult = null;
 }
 
 // ===== AI Player API =====
@@ -748,14 +914,14 @@ export function addApiPlayer(
 ): { seat: Seat } | { error: string } {
   if (room.state.phase !== 'waiting') return { error: 'Game already in progress' };
 
-  // Find an AI-open seat
+  // Find an AI-open seat that nobody is sitting in.
+  const isFree = (s: Seat) => room.aiOpenSeats.has(s) && !room.seatPlayers.has(s);
   let seat: Seat | null = null;
-  if (preferredSeat !== undefined && room.aiOpenSeats.has(preferredSeat)) {
+  if (preferredSeat !== undefined && isFree(preferredSeat)) {
     seat = preferredSeat;
   } else {
     for (const s of room.aiOpenSeats) {
-      seat = s;
-      break;
+      if (isFree(s)) { seat = s; break; }
     }
   }
   if (seat === null) return { error: 'No open AI seats' };
@@ -819,10 +985,9 @@ export function getActivitySummary(): {
 export function findRoomWithOpenAiSeat(): { room: Room; seat: Seat } | null {
   for (const room of rooms.values()) {
     if (room.state.phase !== 'waiting') continue;
-    if (room.aiOpenSeats.size === 0) continue;
-    // Pick the first AI-open seat
-    const seat = room.aiOpenSeats.values().next().value;
-    if (seat !== undefined) return { room, seat };
+    for (const seat of room.aiOpenSeats) {
+      if (!room.seatPlayers.has(seat)) return { room, seat };
+    }
   }
   return null;
 }
