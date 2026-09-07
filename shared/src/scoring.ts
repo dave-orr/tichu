@@ -1,4 +1,4 @@
-import { Card, GameState, Player, RoundResult, Seat, getTeamForSeat } from './types.js';
+import { Card, GameState, RoundResult, Seat, getTeamForSeat } from './types.js';
 
 /** Get the point value of a single card */
 export function cardPoints(card: Card): number {

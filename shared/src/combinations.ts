@@ -1,4 +1,4 @@
-import { Card, Combo, ComboType, NormalCard, NormalRank, Suit, cardId } from './types.js';
+import { Card, Combo, NormalCard, NormalRank, cardId } from './types.js';
 
 /**
  * Get the single-card rank for comparison when playing singles.
@@ -59,6 +59,12 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
   const ranks: number[] = normalCards.map(c => c.rank);
   if (mahjong) ranks.push(1);
   ranks.sort((a, b) => a - b);
+
+  // The Mah Jong is a 1 only for straights; there is no "pair of 1s" for the
+  // Phoenix to complete, nor a 1-1 step in stairs or the pair of a full house.
+  if (mahjong) {
+    return tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks);
+  }
 
   // Try detecting each combo type (bombs first so they take priority over straights)
   const result =
@@ -162,12 +168,8 @@ function tryFullHouse(
     }
   }
   if (freqEntries.length === 1 && freqEntries[0][1] === 4) {
-    // 4 of same rank + phoenix: phoenix acts as any rank to form pair
-    // This is a full house only if phoenix represents a different rank
-    if (phoenixAs != null && phoenixAs !== freqEntries[0][0]) {
-      // Actually this would be triple + pair from same rank set... not valid normal full house
-    }
-    // Can't really make a valid full house from 4-of-a-kind + phoenix
+    // 4 of same rank + phoenix: a bomb can't include the Phoenix, and a full
+    // house needs two distinct ranks, so this is never a valid play.
     return null;
   }
   return null;
@@ -636,31 +638,32 @@ function addStraights(
     }
   }
 
-  // With phoenix: try filling one gap
+  // With phoenix: every window of consecutive ranks that is missing exactly
+  // one rank (the Phoenix fills a gap, or extends the run at either end). The
+  // Phoenix cannot stand in for the Mah Jong, so the missing rank must be >= 2.
   if (hasPhoenix) {
-    for (let start = 0; start < sortedRanks.length; start++) {
-      for (let end = start + minLen - 2; end < sortedRanks.length; end++) {
-        const seq = sortedRanks.slice(start, end + 1);
-        if (seq.length < minLen - 1) continue;
+    const phoenix: Card = { type: 'special', name: 'phoenix' };
+    for (let lo = 1; lo <= 14; lo++) {
+      for (let hi = lo + minLen - 1; hi <= 14; hi++) {
+        const missing: number[] = [];
+        for (let r = lo; r <= hi; r++) {
+          if (!availableRanks.has(r)) missing.push(r);
+        }
+        if (missing.length !== 1 || missing[0] === 1) continue;
 
-        // Check if consecutive (phoenix extends)
-        if (isConsecutive(seq)) {
-          const phoenix: Card = { type: 'special', name: 'phoenix' };
-          const comboCards: Card[] = [phoenix];
-          for (const r of seq) {
-            if (r === 1 && hasMahjong) {
-              comboCards.push({ type: 'special', name: 'mahjong' });
-            } else {
-              const card = normalCards.find(c => c.rank === r);
-              if (card) comboCards.push(card);
-            }
+        const comboCards: Card[] = [phoenix];
+        for (let r = lo; r <= hi; r++) {
+          if (r === missing[0]) continue;
+          if (r === 1) {
+            comboCards.push({ type: 'special', name: 'mahjong' });
+          } else {
+            const card = normalCards.find(c => c.rank === r);
+            if (card) comboCards.push(card);
           }
-          if (comboCards.length >= minLen) {
-            const combo = identifyCombo(comboCards);
-            if (combo && (!current || canBeat(current, combo))) {
-              results.push(combo);
-            }
-          }
+        }
+        const combo = identifyCombo(comboCards);
+        if (combo && (!current || canBeat(current, combo))) {
+          results.push(combo);
         }
       }
     }

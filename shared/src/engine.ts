@@ -1,9 +1,9 @@
-import { identifyCombo, canBeat, isBomb, singleCardRank, findPlayableCombos } from './combinations.js';
+import { identifyCombo, canBeat, isBomb, findPlayableCombos } from './combinations.js';
 import { createDeck, shuffle, sortHand } from './deck.js';
-import { scoreRound, isGameOver, getWinner, sumPoints } from './scoring.js';
+import { scoreRound, isGameOver, sumPoints } from './scoring.js';
 import {
-  Card, ClientGameState, ClientPlayer, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Phase, Player, ReceivedCard, RoundHistoryEntry, RoundResult, Seat,
-  Team, cardsEqual, cardId, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
+  Card, ClientGameState, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Player, ReceivedCard, RoundHistoryEntry, RoundResult, Seat,
+  Team, cardId, cardsEqual, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
 // ===== State Creation =====
@@ -320,14 +320,15 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   const player = state.players[seat];
   if (player.isOut) return { state };
 
-  // Validate cards are in player's hand
-  if (!cards.every(c => player.hand.some(h => cardsEqual(h, c)))) {
-    return { state };
-  }
+  if (!holdsDistinctCards(player.hand, cards)) return { state };
 
-  // Check for Dog
+  // Check for Dog. Leading the Dog is still subject to an open Mah Jong wish:
+  // a leader who can play the wished rank must do so rather than dodge it.
   const isDogPlay = cards.length === 1 && cards[0].type === 'special' && cards[0].name === 'dog';
   if (isDogPlay) {
+    if (state.mahJongWish != null && !checkWishCompliance(state, seat, cards)) {
+      return { state };
+    }
     return playDog(state, seat);
   }
 
@@ -377,7 +378,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   }
 
   // Check if player needs to make a Mah Jong wish
-  const needMahJongWish = cards.some(c => c.type === 'special' && c.name === 'mahjong') && state.mahJongWish == null;
+  const needMahJongWish = cards.some(c => c.type === 'special' && c.name === 'mahjong');
 
   // Check if player is out
   let newOutCount = state.outCount;
@@ -727,10 +728,12 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
   const player = state.players[seat];
   if (player.isOut) return { state };
 
-  // Validate cards are in hand
-  if (!cards.every(c => player.hand.some(h => cardsEqual(h, c)))) {
-    return { state };
-  }
+  if (!holdsDistinctCards(player.hand, cards)) return { state };
+
+  // A bomb may interrupt any trick out of turn, but an empty table belongs to
+  // whoever holds the lead (e.g. the partner just handed it by the Dog): only
+  // the leader may open with a bomb.
+  if (state.currentTrick === null && state.turnIndex !== seat) return { state };
 
   const combo = identifyCombo(cards);
   if (!combo || !isBomb(combo)) return { state };
@@ -827,14 +830,22 @@ export function concede(state: GameState, seat: Seat): PlayResult {
 // ===== Round End =====
 
 function endRound(state: GameState, concededBy?: Seat): PlayResult {
-  // Award any in-progress trick to lastPlayedBy so those points aren't lost
+  // Award any in-progress trick to lastPlayedBy so those points aren't lost.
+  // If the Dragon is on top it can never stay with its owner's team; the
+  // interactive paths ask for the giveaway first (endRoundOrAwaitDragon), and
+  // the remaining path (concede) hands it to an opponent here. Which opponent
+  // doesn't matter: the two share a team, and concede seats the conceder last.
   let scoringState = state;
   if (state.currentTrickPlays.length > 0 && state.lastPlayedBy != null) {
     const newPlayers = toPlayers(state.players.map(p => ({
       ...p,
       tricksWon: [...p.tricksWon],
     })));
-    newPlayers[state.lastPlayedBy].tricksWon.push(state.currentTrickPlays.flatMap(p => p.cards));
+    const dragonOnTop = state.currentTrick?.cards.some(
+      c => c.type === 'special' && c.name === 'dragon'
+    );
+    const receiver = dragonOnTop ? getRightSeat(state.lastPlayedBy) : state.lastPlayedBy;
+    newPlayers[receiver].tricksWon.push(state.currentTrickPlays.flatMap(p => p.cards));
     scoringState = { ...state, players: newPlayers, currentTrick: null, currentTrickPlays: [] };
   }
 
@@ -879,6 +890,17 @@ function endRound(state: GameState, concededBy?: Seat): PlayResult {
 }
 
 // ===== Helpers =====
+
+/**
+ * True when every card is held and no card is listed twice. A repeated card
+ * object would otherwise pass a per-card membership check and be identified
+ * as a pair or bomb while only one copy leaves the hand.
+ */
+function holdsDistinctCards(hand: Card[], cards: Card[]): boolean {
+  const ids = new Set(cards.map(cardId));
+  if (ids.size !== cards.length) return false;
+  return cards.every(c => hand.some(h => cardsEqual(h, c)));
+}
 
 function removeCard(hand: Card[], card: Card): void {
   const idx = hand.findIndex(c => cardsEqual(c, card));

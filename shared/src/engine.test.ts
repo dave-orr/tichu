@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPasses, callSmallTichu, concede, giveDragonTrick, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
+import { applyPasses, callSmallTichu, canPlayWishedRankFromHand, concede, giveDragonTrick, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -540,5 +540,78 @@ describe('concede keeps the in-progress trick in the scoring', () => {
     expect(result.roundEnded).toBe(true);
     const total = result.roundResult!.teamScores[0] + result.roundResult!.teamScores[1];
     expect(total).toBe(100);
+  });
+});
+
+const mahjong: Card = { type: 'special', name: 'mahjong' };
+const dog: Card = { type: 'special', name: 'dog' };
+
+describe('duplicate card objects in a play', () => {
+  it('rejects the same card listed twice as a pair', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [c(13, 'sword'), c(2)] }), makePlayer(1), makePlayer(2), makePlayer(3)] });
+    expect(playCards(state, 0, [c(13, 'sword'), c(13, 'sword')]).state).toBe(state);
+  });
+  it('rejects one card repeated four times as a bomb', () => {
+    const state = makeState({
+      players: [makePlayer(0, { hand: [c(13, 'sword'), c(2)] }), makePlayer(1), makePlayer(2), makePlayer(3)],
+      currentTrick: trickSeven, currentTrickPlays: [{ seat: 1, cards: [c(7)] }], lastPlayedBy: 1, turnIndex: 2,
+    });
+    expect(playBomb(state, 0, [c(13, 'sword'), c(13, 'sword'), c(13, 'sword'), c(13, 'sword')]).state).toBe(state);
+  });
+});
+
+describe('bombs on an empty table', () => {
+  const bomb = [c(8, 'jade'), c(8, 'sword'), c(8, 'pagoda'), c(8, 'star')];
+  it('may not be played out of turn when nobody has led', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [c(2)] }), makePlayer(1, { hand: bomb }), makePlayer(2), makePlayer(3)], turnIndex: 0 });
+    expect(playBomb(state, 1, bomb).state).toBe(state);
+  });
+  it('may be led by the player whose lead it is', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [c(2)] }), makePlayer(1, { hand: bomb }), makePlayer(2), makePlayer(3)], turnIndex: 1 });
+    expect(playBomb(state, 1, bomb).state.lastPlayedBy).toBe(1);
+  });
+});
+
+describe('Dog under an open Mah Jong wish', () => {
+  it('cannot be led to dodge a wish the leader could satisfy', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [dog, c(5), c(9)] }), makePlayer(1), makePlayer(2), makePlayer(3)], mahJongWish: 5 });
+    expect(playCards(state, 0, [dog]).state).toBe(state);
+    expect(playCards(state, 0, [c(5)]).state.mahJongWish).toBeNull();
+  });
+  it('may be led when the leader does not hold the wished rank', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [dog, c(9)] }), makePlayer(1), makePlayer(2), makePlayer(3)], mahJongWish: 5 });
+    expect(playCards(state, 0, [dog]).state.turnIndex).toBe(2);
+  });
+});
+
+describe('concede with the Dragon on the table', () => {
+  it('gives the Dragon trick to the opponents of whoever played it', () => {
+    const state = makeState({
+      players: [
+        makePlayer(0, { hand: [c(3)] }),
+        makePlayer(1, { hand: [c(4), c(2)] }),
+        makePlayer(2, { hand: [], isOut: true, outOrder: 1 }),
+        makePlayer(3, { hand: [c(6)] }),
+      ],
+      outCount: 1,
+      currentTrick: trickDragon,
+      currentTrickPlays: [{ seat: 3, cards: [c(10)] }, { seat: 2, cards: [dragon] }],
+      lastPlayedBy: 2,
+      turnIndex: 3,
+    });
+    const result = concede(state, 0);
+    // Seat 2 (team 0) played the Dragon; the 35 points must land with team 1.
+    expect(result.roundResult!.teamScores[1]).toBe(35);
+    expect(result.roundResult!.teamScores[0]).toBe(0);
+  });
+});
+
+describe('wish enforcement with Phoenix gap-fill straights', () => {
+  it('recognises a straight where the Phoenix fills a gap next to the wished rank', () => {
+    const trick: Combo = { type: 'straight', cards: [c(3), c(4), c(5), c(6), c(7)], rank: 7, length: 5 };
+    const hand = [c(5, 'star'), c(6, 'star'), c(8), c(9), phoenix, c(2)];
+    expect(canPlayWishedRankFromHand(hand, 8, trick)).toBe(true);
+    const state = makeState({ players: [makePlayer(0, { hand }), makePlayer(1), makePlayer(2), makePlayer(3)], currentTrick: trick, currentTrickPlays: [{ seat: 3, cards: trick.cards }], lastPlayedBy: 3, mahJongWish: 8 });
+    expect(passTurn(state, 0).state).toBe(state);
   });
 });
