@@ -18,10 +18,6 @@ Findings from a security review of the Tichu codebase.
 - **Location:** `server/src/index.ts:16-18`
 - `ALLOWED_ORIGINS` is parsed from a comma-separated env var with no format validation. Default falls back to localhost origins. If the env var is unset in production, the default is overly permissive.
 
-### No Socket.IO max payload size
-- **Location:** `server/src/index.ts` (Socket.IO server config)
-- No `maxHttpBufferSize` configured. A client could send very large payloads to exhaust server memory.
-
 ### Room code space is small
 - **Location:** `server/src/rooms.ts:32-41`
 - 4-character codes from a 32-char alphabet = ~1M possible codes. Collision checking prevents duplicates, but the space is small enough that an attacker could enumerate active rooms.
@@ -57,23 +53,11 @@ Tagged [confirmed] (traced) or [suspected] (needs repro).
 
 ### Medium
 
-#### `reconnectToRoom` trusts client-supplied player name as the only identity proof [suspected — verify reachability]
-- **Location:** `server/src/rooms.ts:242-276`
-- Reconnection matches a seat purely by `playerName` string equality, then rebinds that seat's socket to the caller — no token/uid check. Anyone who knows the room code and a display name can hijack that seat and see its hand via per-seat broadcast. No socket handler in `handler.ts` appears to call `reconnectToRoom`, so it may be dead/partially-wired — confirm before relying on it, but as written it's a hand-takeover primitive.
-
 #### Stat farming via human + AI games [confirmed]
 - **Location:** `server/src/stats.ts` (all writers) + `handler.ts:712`
 - Stats are persisted for any game reaching `gameEnd`, with no minimum-real-players check or completed-game rate limit. A single authenticated human paired with unauthenticated AI players (`api.ts`) can repeatedly start and win games to inflate `gamesWon`/`tichuSuccesses`/etc. (Does NOT require forging a UID — UIDs come only from verified tokens, which is correct — the gameable surface is the outcomes themselves.)
 
 ### Low
-
-#### `update-settings` accepts arbitrary setting shapes [confirmed]
-- **Location:** `server/src/handler.ts:289-307`
-- Only `targetScore` is clamped; the rest of `settings` is spread into `room.state.settings` and broadcast/consumed by the engine without structural validation. Garbage/unexpected keys and non-boolean values for booleans are accepted. Waiting-phase + organizer-only limits impact, but it's untrusted client data into shared game state.
-
-#### `save-settings` writes unvalidated client object to Firestore [confirmed]
-- **Location:** `server/src/handler.ts:545-559`
-- `settings` is stored verbatim under `preferences.lastSettings` with no schema/size check beyond the 10KB socket cap. An authenticated user can persist arbitrary structured data to their own user doc.
 
 #### `photoURL` is rendered as an `<img src>` from an attacker-controllable profile field [confirmed]
 - **Location:** client avatars (`ScoreBoard.tsx:11`, `RoundResults.tsx:29/31`, `InvitePanel.tsx:60`); also broadcast to other players

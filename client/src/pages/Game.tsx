@@ -122,7 +122,10 @@ export default function Game({ socket, auth }: Props) {
   const pendingWish = gameState?.phase === 'playing' && gameState.mahJongWishPending;
 
   // Play chime when it becomes our turn (but not while wish is pending)
-  const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
+  // turnIndex stays on the last passer during the trick countdown and on the
+  // giver during a Dragon giveaway, but neither is a turn anyone can act on.
+  const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat
+    && !gameState?.trickCountdown && !gameState?.dragonGiveaway;
   useEffect(() => {
     if (isMyTurnNow && !prevTurnRef.current && !pendingWish) {
       playTurnChime();
@@ -132,12 +135,8 @@ export default function Game({ socket, auth }: Props) {
 
   // Urgency nudge — blue glow on action buttons after 5s, flashing after 30s
   const dragonGiveawayForMe = !!(gameState?.dragonGiveaway && gameState?.dragonGiveawayBy === gameState?.mySeat);
-  const myTurnAwaitingAction = !!isMyTurnNow
-    && !pendingWish
-    && !needMahJongWish
-    && !gameState?.bombWindow
-    && !gameState?.trickCountdown
-    && !dragonGiveawayForMe;
+  const myTurnAwaitingAction = (!!isMyTurnNow && !pendingWish && !needMahJongWish && !gameState?.bombWindow)
+    || dragonGiveawayForMe;
   const [turnElapsedMs, setTurnElapsedMs] = useState(0);
   useEffect(() => {
     if (!myTurnAwaitingAction) {
@@ -212,7 +211,7 @@ export default function Game({ socket, auth }: Props) {
   // unconditionally (Rules of Hooks). The early return comes after them.
   const currentTrick = gameState?.currentTrick ?? null;
   const myHand = gameState?.myHand ?? [];
-  const isMyTurn = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat;
+  const isMyTurn = isMyTurnNow;
   const selectedCardList = myHand.filter(c => selectedCards.has(cardId(c)));
   const mustPlayWish = gameState
     ? canPlayWishedRankFromHand(myHand, gameState.mahJongWish, currentTrick)
@@ -246,23 +245,44 @@ export default function Game({ socket, auth }: Props) {
 
   const canPlay = useMemo(() => {
     if (!isMyTurn || !selectedCombo) return false;
-    if (currentTrick === null) return true; // leading
-    return canBeat(currentTrick, selectedCombo);
-  }, [isMyTurn, selectedCombo, currentTrick]);
+    if (currentTrick !== null && !canBeat(currentTrick, selectedCombo)) return false;
+    // Mirror the engine's wish rule: if we can make a legal play containing
+    // the wished rank, only such a play (or a bomb) is accepted.
+    if (mustPlayWish && !isBomb(selectedCombo)) {
+      const wish = gameState?.mahJongWish;
+      if (!selectedCombo.cards.some(c => c.type === 'normal' && c.rank === wish)) return false;
+    }
+    return true;
+  }, [isMyTurn, selectedCombo, currentTrick, mustPlayWish, gameState?.mahJongWish]);
 
   const canBombNow = useMemo(() => {
     if (phase !== 'playing' || selectedCardList.length < 4) return false;
+    // The engine refuses bombs while a wish is being chosen or a Dragon trick
+    // is awaiting its giveaway.
+    if (gameState?.mahJongWishPending || gameState?.dragonGiveaway) return false;
     const combo = identifyCombo(selectedCardList);
     if (!combo || !isBomb(combo)) return false;
     if (currentTrick && !canBeat(currentTrick, combo)) return false;
     return true;
-  }, [phase, selectedCardList, currentTrick]);
+  }, [phase, selectedCardList, currentTrick, gameState?.mahJongWishPending, gameState?.dragonGiveaway]);
+
+  // Cards passed to us, grouped by who they came from (relative to my seat:
+  // right = +1, partner = +2, left = +3) for the incoming diamond beside the hand.
+  const myReceivedCards = gameState?.myReceivedCards;
+  const mySeatForReceived = gameState?.mySeat;
+  const receivedByRel = useMemo(() => {
+    const find = (rel: number) =>
+      myReceivedCards?.find(rc => mySeatForReceived !== undefined && (rc.fromSeat - mySeatForReceived + 4) % 4 === rel);
+    return { partner: find(2), left: find(3), right: find(1) };
+  }, [myReceivedCards, mySeatForReceived]);
 
   // Trick sweep — when the trick clears after a countdown, briefly keep
   // rendering the cleared plays while they fly toward the winner's seat,
   // instead of having them blink out. useLayoutEffect so the sweep state is
   // set before the empty-trick frame paints (no flicker).
   const [sweep, setSweep] = useState<{ plays: Record<Seat, CardType[]>; winner: Seat; combo: Combo | null } | null>(null);
+  const sweepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (sweepTimerRef.current) clearTimeout(sweepTimerRef.current); }, []);
   const lastTrickRef = useRef<{ plays: { seat: Seat; cards: CardType[] }[]; combo: Combo | null; winner: Seat | null }>({ plays: [], combo: null, winner: null });
   useLayoutEffect(() => {
     if (!gameState || gameState.phase !== 'playing') {
@@ -275,7 +295,8 @@ export default function Game({ socket, auth }: Props) {
       const bySeat: Record<Seat, CardType[]> = { 0: [], 1: [], 2: [], 3: [] };
       for (const p of last.plays) bySeat[p.seat] = p.cards;
       setSweep({ plays: bySeat, winner: last.winner, combo: last.combo });
-      setTimeout(() => setSweep(null), 700);
+      if (sweepTimerRef.current) clearTimeout(sweepTimerRef.current);
+      sweepTimerRef.current = setTimeout(() => setSweep(null), 700);
       last.winner = null;
     }
     last.plays = [...gameState.currentTrickPlays];
@@ -355,14 +376,6 @@ export default function Game({ socket, auth }: Props) {
     if (someoneOutFirst) return 'failed';
     return 'pending';
   };
-
-  // Cards passed to us, grouped by who they came from (relative to my seat:
-  // right = +1, partner = +2, left = +3) for the incoming diamond beside the hand.
-  const receivedByRel = useMemo(() => {
-    const find = (rel: number) =>
-      gameState.myReceivedCards.find(rc => (rc.fromSeat - mySeat + 4) % 4 === rel);
-    return { partner: find(2), left: find(3), right: find(1) };
-  }, [gameState.myReceivedCards, mySeat]);
 
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
@@ -656,6 +669,7 @@ export default function Game({ socket, auth }: Props) {
           result={roundResult}
           players={[...players]}
           onNextRound={socket.nextRound}
+          onPlayAgain={socket.playAgain}
           onLeave={socket.resetRoom}
           isGameOver={phase === 'gameEnd'}
           mySeat={mySeat}

@@ -160,9 +160,10 @@ export function createApiRouter(io: Server): Router {
     const clientState = toClientState(room.state, seat as Seat);
     sendSseEvent(res, 'game-state', clientState);
 
-    // Clean up on disconnect
+    // Clean up on disconnect — but only if this is still the registered
+    // stream; a replacement may already have taken the key.
     req.on('close', () => {
-      sseConnections.delete(key);
+      if (sseConnections.get(key) === res) sseConnections.delete(key);
     });
   });
 
@@ -236,8 +237,10 @@ export function createApiRouter(io: Server): Router {
             res.status(400).json({ error: 'Invalid cards' });
             return;
           }
-          clearTrickCountdownTimer(room.code);
           const result = handleBomb(room, s, action.cards);
+          // Only a bomb the engine accepted cancels the running countdown; a
+          // rejected one must leave the timer to award the trick.
+          if (result.state !== room.state) clearTrickCountdownTimer(room.code);
           const modifiedResult = { ...result, state: { ...result.state, bombWindow: false } };
           processPlayResult(io, room, s, modifiedResult);
           break;
@@ -264,8 +267,8 @@ export function createApiRouter(io: Server): Router {
         }
 
         case 'concede': {
-          clearTrickCountdownTimer(room.code);
           const result = handleConcede(room, s);
+          if (result.state !== room.state) clearTrickCountdownTimer(room.code);
           processPlayResult(io, room, s, result);
           break;
         }

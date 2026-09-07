@@ -264,3 +264,20 @@ describe('singleCardRank', () => {
     expect(singleCardRank(phoenix)).toBe(1.5);
   });
 });
+
+describe('Mah Jong is only ever a straight card', () => {
+  const mj: Card = { type: 'special', name: 'mahjong' };
+  const ph: Card = { type: 'special', name: 'phoenix' };
+  const n = (rank: number, suit: 'jade' | 'sword' | 'pagoda' | 'star' = 'jade'): Card => ({ type: 'normal', suit, rank: rank as any });
+  it('does not pair with the Phoenix', () => {
+    expect(identifyCombo([mj, ph])).toBeNull();
+  });
+  it('does not form a full house or stairs with the Phoenix', () => {
+    expect(identifyCombo([mj, ph, n(5), n(5, 'sword'), n(5, 'star')])).toBeNull();
+    expect(identifyCombo([mj, ph, n(2), n(2, 'sword')])).toBeNull();
+  });
+  it('still leads a straight, with or without the Phoenix', () => {
+    expect(identifyCombo([mj, n(2), n(3), n(4), n(5)])?.type).toBe('straight');
+    expect(identifyCombo([mj, n(2), ph, n(4), n(5)])?.type).toBe('straight');
+  });
+});

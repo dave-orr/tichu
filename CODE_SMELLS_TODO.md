@@ -6,15 +6,6 @@ Open correctness bugs and design smells. Security-specific items live in
 
 ---
 
-## Engine / shared correctness
-
-### E6. `endRound` may mis-award a pending Dragon trick — LOW [suspected]
-**`shared/src/engine.ts` `endRound`** If a round ends while an un-awarded Dragon trick
-sits on the table, `endRound` pushes those cards (incl. the 25-pt Dragon) to
-`lastPlayedBy`'s team instead of forcing the opponent giveaway. The direct concede
-path is guarded (`!dragonGiveaway`), but verify the `playDog`/`playBomb`/`giveDragonTrick`
-paths can't reach `endRound` with a Dragon trick pending. Needs a test.
-
 ## Stats / persistence correctness
 
 ### S3. `playedWith` array grows unbounded — MED [confirmed]

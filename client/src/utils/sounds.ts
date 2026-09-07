@@ -3,6 +3,17 @@ let audioCtx: AudioContext | null = null;
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
     audioCtx = new AudioContext();
+    // A context created without a user gesture (e.g. right after a reload
+    // that auto-rejoined a game) starts suspended and would stay silent for
+    // the whole session. Resume it at the first gesture, and again before each
+    // sound in case the browser suspended it since.
+    const resume = () => { audioCtx?.resume().catch(() => { /* no gesture yet */ }); };
+    for (const evt of ['pointerdown', 'keydown', 'touchstart']) {
+      document.addEventListener(evt, resume, { once: true, passive: true });
+    }
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => { /* needs a user gesture first */ });
   }
   return audioCtx;
 }

@@ -47,7 +47,14 @@ export function useAuth() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
+        let token: string | null = null;
+        try {
+          token = await firebaseUser.getIdToken();
+        } catch (err) {
+          // Without a token we're effectively a guest; don't leave the auth
+          // section stuck on "Loading..." forever.
+          console.error('Failed to get ID token:', err);
+        }
         setIdToken(token);
         // Create a minimal profile from Firebase Auth data.
         // Full profile (with stats + lastSettings) is loaded via socket.
