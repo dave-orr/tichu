@@ -12,7 +12,7 @@ import ConcedeOffer from '../components/ConcedeOffer.js';
 import RoundResults from '../components/RoundResults.js';
 import UserStats from '../components/UserStats.js';
 import CardsSeen from '../components/CardsSeen.js';
-import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
+import GameAnnouncements, { useGameEvents, seatEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
 import InvitePanel from '../components/InvitePanel.js';
 import type { TichuStatus } from '../components/TichuBadge.js';
@@ -674,7 +674,7 @@ export default function Game({ socket, auth }: Props) {
       )}
 
       {/* Announcements overlay */}
-      <GameAnnouncements events={gameEvents} />
+      <GameAnnouncements events={gameEvents} table />
 
       {/* Modals */}
       {(needMahJongWish || (gameState.mahJongWishPending && gameState.lastPlayedBy === mySeat)) && (
@@ -745,6 +745,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === relativeSeats[2]}
             combo={displayComboFor(relativeSeats[2])}
             sweepOffset={sweepOffsetFor(relativeSeats[2])}
+            seat={relativeSeats[2]}
+            announcements={seatEvents(gameEvents, relativeSeats[2])}
+            bubbleSide="right"
           />
         </div>
 
@@ -761,6 +764,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === relativeSeats[3]}
             combo={displayComboFor(relativeSeats[3])}
             sweepOffset={sweepOffsetFor(relativeSeats[3])}
+            seat={relativeSeats[3]}
+            announcements={seatEvents(gameEvents, relativeSeats[3])}
+            bubbleSide="above"
           />
 
           {/* Center: wish + what's on the table */}
@@ -794,6 +800,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === relativeSeats[1]}
             combo={displayComboFor(relativeSeats[1])}
             sweepOffset={sweepOffsetFor(relativeSeats[1])}
+            seat={relativeSeats[1]}
+            announcements={seatEvents(gameEvents, relativeSeats[1])}
+            bubbleSide="below"
             mirror
           />
         </div>
@@ -811,6 +820,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === mySeat}
             combo={displayComboFor(mySeat)}
             sweepOffset={sweepOffsetFor(mySeat)}
+            seat={mySeat}
+            announcements={seatEvents(gameEvents, mySeat)}
+            bubbleSide="left"
           />
         </div>
        </div>
