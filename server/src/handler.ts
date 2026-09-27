@@ -5,7 +5,7 @@ import {
   leaveRoom, clearSocketUid, setRoomChangedCallback,
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handleUndoPass, handlePlayCards, handlePassTurn, handleBomb,
-  handleDragonGiveaway, handleMahJongWish, handleConcede, applyPlayResult,
+  handleDragonGiveaway, handleMahJongWish, handleConcede, handleRespondConcede, handleWithdrawConcede, applyPlayResult,
   startNextRound, resetRoomForNewGame, swapSeats, Room, setSocketUid, getSocketUid,
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
@@ -515,6 +515,33 @@ export function setupHandlers(io: Server): void {
       const result = handleConcede(room, seat);
       if (result.state !== room.state) clearTrickCountdownTimer(room.code);
       processPlayResult(io, room, seat, result);
+    });
+
+    // An opponent accepts or declines a pending concession.
+    guarded(socket, 'concede-respond', ({ accept }: { accept: unknown }) => {
+      if (typeof accept !== 'boolean') return;
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      const offer = room.state.concedeOffer;
+      const result = handleRespondConcede(room, seat, accept);
+      if (result.state === room.state) return;
+      if (!accept && offer) {
+        io.to(room.code).emit('concede-declined', { seat, by: offer.by });
+      }
+      processPlayResult(io, room, seat, result);
+    });
+
+    guarded(socket, 'concede-withdraw', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      const before = room.state;
+      handleWithdrawConcede(room, seat);
+      if (room.state === before) return;
+      // Play resumes; skip anyone who was left helpless while paused.
+      autoSkipHelpless(io, room);
+      broadcastState(io, room);
     });
 
     // Any player on the game-over screen can reopen the table for a new game.
@@ -1032,7 +1059,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
     const state = room.state;
     if (state.phase !== 'playing') break;
     if (state.currentTrick === null) break; // leading — can't auto-skip
-    if (state.dragonGiveaway || state.bombWindow || state.trickCountdown) break;
+    if (state.dragonGiveaway || state.bombWindow || state.trickCountdown || state.concedeOffer) break;
 
     const seat = state.turnIndex;
     const player = state.players[seat];

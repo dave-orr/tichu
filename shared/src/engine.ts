@@ -36,6 +36,7 @@ export function createInitialState(settings?: GameSettings): GameState {
     trickCountdown: null,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
+    concedeOffer: null,
     settings: settings ?? DEFAULT_SETTINGS,
     playedCards: [],
     roundEndReady: [],
@@ -86,6 +87,7 @@ export function startNewRound(state: GameState): GameState {
     trickCountdown: null,
     dragonGiveaway: false,
     dragonGiveawayBy: null,
+    concedeOffer: null,
     playedCards: [],
     roundEndReady: [],
     receivedCards: [[], [], [], []],
@@ -312,6 +314,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   if (state.turnIndex !== seat) return { state };
   if (state.dragonGiveaway) return { state };
   if (state.mahJongWishPending) return { state }; // wait for wish to be set
+  if (state.concedeOffer) return { state }; // paused while opponents answer a concession
   // Once everyone else has passed the trick is won and only a bomb (playBomb)
   // may interrupt the countdown. turnIndex still points at the last passer, so
   // without this guard they could play on top of a trick they just conceded.
@@ -490,6 +493,7 @@ export function passTurn(state: GameState, seat: Seat): PlayResult {
   if (state.phase !== 'playing') return { state };
   if (state.turnIndex !== seat) return { state };
   if (state.currentTrick === null) return { state }; // Can't pass on lead
+  if (state.concedeOffer) return { state }; // paused while opponents answer a concession
   if (state.mahJongWishPending) return { state }; // wait for wish to be set
   if (state.dragonGiveaway) return { state }; // trick already awarded, awaiting giveaway
   if (state.trickCountdown) return { state }; // everyone has passed; don't restart the countdown
@@ -719,6 +723,7 @@ function checkWishCompliance(state: GameState, seat: Seat, cards: Card[]): boole
 
 export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResult {
   if (state.phase !== 'playing') return { state };
+  if (state.concedeOffer) return { state }; // paused while opponents answer a concession
   if (state.mahJongWishPending) return { state };
   // The trick countdown is the window for bombing a won trick. Once it has
   // been awarded and the Dragon giveaway is pending, the trick is closed;
@@ -792,14 +797,59 @@ export function playBomb(state: GameState, seat: Seat, cards: Card[]): PlayResul
 
 // ===== Concede =====
 
-export function concede(state: GameState, seat: Seat): PlayResult {
-  if (state.phase !== 'playing') return { state };
-  if (state.players[seat].isOut) return { state };
-  if (state.dragonGiveaway) return { state };
-
+function canConcede(state: GameState, seat: Seat): boolean {
+  if (state.phase !== 'playing') return false;
+  if (state.players[seat].isOut) return false;
+  if (state.dragonGiveaway) return false;
   // Partner must be out
-  const partnerSeat = getPartnerSeat(seat);
-  if (!state.players[partnerSeat].isOut) return { state };
+  return state.players[getPartnerSeat(seat)].isOut;
+}
+
+/** Opponents of the conceder who still hold cards — the ones who must accept. */
+function concedeResponders(state: GameState, by: Seat): Seat[] {
+  return ([0, 1, 2, 3] as Seat[]).filter(s =>
+    getTeamForSeat(s) !== getTeamForSeat(by) && !state.players[s].isOut);
+}
+
+/**
+ * Offer to concede. The round only ends once every opponent still holding
+ * cards accepts (AI opponents accept automatically); play pauses meanwhile.
+ * Not allowed mid-countdown or while a wish/Dragon choice is pending, so the
+ * state can't move under the offer and concede() stays valid on acceptance.
+ */
+export function offerConcede(state: GameState, seat: Seat): PlayResult {
+  if (!canConcede(state, seat)) return { state };
+  if (state.concedeOffer) return { state };
+  if (state.trickCountdown || state.mahJongWishPending) return { state };
+  const accepted = concedeResponders(state, seat).filter(s => state.players[s].isAi);
+  return resolveConcedeOffer({ ...state, concedeOffer: { by: seat, accepted } });
+}
+
+/** An opponent answers a pending concession. Declining cancels it. */
+export function respondToConcede(state: GameState, seat: Seat, accept: boolean): PlayResult {
+  const offer = state.concedeOffer;
+  if (!offer) return { state };
+  if (!concedeResponders(state, offer.by).includes(seat)) return { state };
+  if (!accept) return { state: { ...state, concedeOffer: null } };
+  if (offer.accepted.includes(seat)) return { state };
+  return resolveConcedeOffer({ ...state, concedeOffer: { ...offer, accepted: [...offer.accepted, seat] } });
+}
+
+/** The conceder withdraws a pending offer. */
+export function withdrawConcede(state: GameState, seat: Seat): GameState {
+  if (state.concedeOffer?.by !== seat) return state;
+  return { ...state, concedeOffer: null };
+}
+
+function resolveConcedeOffer(state: GameState): PlayResult {
+  const offer = state.concedeOffer!;
+  const allAccepted = concedeResponders(state, offer.by).every(s => offer.accepted.includes(s));
+  if (!allAccepted) return { state };
+  return concede({ ...state, concedeOffer: null }, offer.by);
+}
+
+export function concede(state: GameState, seat: Seat): PlayResult {
+  if (!canConcede(state, seat)) return { state };
 
   const newPlayers = toPlayers(state.players.map(p => ({
     ...p,
@@ -974,6 +1024,7 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     trickCountdown: state.trickCountdown,
     dragonGiveaway: state.dragonGiveaway,
     dragonGiveawayBy: state.dragonGiveawayBy,
+    concedeOffer: state.concedeOffer ?? null,
     mahJongWishPending: state.mahJongWishPending,
     settings: state.settings,
     playedCards: state.playedCards,

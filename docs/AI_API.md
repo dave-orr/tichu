@@ -397,7 +397,14 @@ If your partner has already gone out, you can concede (forfeit your remaining ca
 ```
 
 - Only valid when your partner is out (`players[partnerSeat].isOut === true`).
+- This is an *offer*: it sets `state.concedeOffer = { by, accepted }` and pauses play until every opponent still holding cards accepts (AI opponents accept automatically). If a human opponent declines, the offer is cleared and play resumes.
 - Your remaining hand cards go to the opposing team.
+
+To answer an opponent's concession yourself (only needed if you were seated as a human when it was offered):
+
+```json
+{"type": "respond-concede", "accept": true}
+```
 
 ### Phase: roundEnd / gameEnd
 

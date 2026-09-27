@@ -2,7 +2,7 @@ import {
   GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound,
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
-  giveDragonTrick, setMahJongWish, toClientState, concede as concedeEngine,
+  giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
   Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
 } from '@tichu/shared';
 
@@ -840,8 +840,17 @@ export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank | nul
   room.state = setMahJongWish(room.state, seat, rank);
 }
 
+/** Offer to concede; the round ends once the opponents accept (see offerConcede). */
 export function handleConcede(room: Room, seat: Seat): PlayResult {
-  return concedeEngine(room.state, seat);
+  return offerConcede(room.state, seat);
+}
+
+export function handleRespondConcede(room: Room, seat: Seat, accept: boolean): PlayResult {
+  return respondToConcede(room.state, seat, accept);
+}
+
+export function handleWithdrawConcede(room: Room, seat: Seat): void {
+  room.state = withdrawConcede(room.state, seat);
 }
 
 export function applyPlayResult(room: Room, result: PlayResult): void {

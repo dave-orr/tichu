@@ -34,6 +34,8 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   const [expiredInviteUids, setExpiredInviteUids] = useState<Set<string>>(new Set());
   const [autoSkippedSeat, setAutoSkippedSeat] = useState<number | null>(null);
   const autoSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [concedeDeclined, setConcedeDeclined] = useState<{ seat: number; by: number } | null>(null);
+  const concedeDeclinedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [roomLost, setRoomLost] = useState(false);
   const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
   const [eloUpdate, setEloUpdate] = useState<EloUpdate | null>(null);
@@ -189,6 +191,12 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       autoSkipTimerRef.current = setTimeout(() => setAutoSkippedSeat(null), 2000);
     });
 
+    socket.on('concede-declined', (info: { seat: number; by: number }) => {
+      setConcedeDeclined(info);
+      if (concedeDeclinedTimerRef.current) clearTimeout(concedeDeclinedTimerRef.current);
+      concedeDeclinedTimerRef.current = setTimeout(() => setConcedeDeclined(null), 3000);
+    });
+
     socket.on('random-partners-updated', ({ randomPartners }: { randomPartners: boolean }) => {
       setRandomPartners(randomPartners);
     });
@@ -217,6 +225,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
     return () => {
       if (autoSkipTimerRef.current) clearTimeout(autoSkipTimerRef.current);
+      if (concedeDeclinedTimerRef.current) clearTimeout(concedeDeclinedTimerRef.current);
       socket.disconnect();
     };
   }, []);
@@ -296,6 +305,14 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
   const concedeAction = useCallback(() => {
     socketRef.current?.emit('concede');
+  }, []);
+
+  const respondConcede = useCallback((accept: boolean) => {
+    socketRef.current?.emit('concede-respond', { accept });
+  }, []);
+
+  const withdrawConcede = useCallback(() => {
+    socketRef.current?.emit('concede-withdraw');
   }, []);
 
   const nextRound = useCallback(() => {
@@ -459,6 +476,9 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     giveDragonTrick,
     mahJongWish,
     concede: concedeAction,
+    respondConcede,
+    withdrawConcede,
+    concedeDeclined,
     nextRound,
     swapSeats: swapSeatsAction,
     closeRoom,
