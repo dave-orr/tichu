@@ -3,6 +3,7 @@ import type { Card as CardType, Combo, TichuCall } from '@tichu/shared';
 import { cardId } from '@tichu/shared';
 import SeatPlay from './SeatPlay.js';
 import TichuBadge, { type TichuStatus } from './TichuBadge.js';
+import { SeatBubbles, seatGlow, type GameEvent } from './GameAnnouncement.js';
 
 type Props = {
   player: { name: string; cardCount: number; isOut: boolean; tichuCall: TichuCall; trickCount: number; capturedPoints: number };
@@ -23,6 +24,11 @@ type Props = {
   /** When set, the play is a just-cleared trick sweeping toward the winner:
    *  animate it flying by this (x, y) offset while fading out. */
   sweepOffset?: { x: number; y: number } | null;
+  /** Seat number, exposed as data-seat-panel so overlays can find the panel. */
+  seat: number;
+  /** Live announcements about this player, shown as bubbles on the panel. */
+  announcements?: GameEvent[];
+  bubbleSide?: 'above' | 'below' | 'left' | 'right';
 };
 
 /**
@@ -32,13 +38,18 @@ type Props = {
  */
 export default function PlayerPanel({
   player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed, mirror, sweepOffset,
+  seat, announcements = [], bubbleSide = 'above',
 }: Props) {
+  const glow = seatGlow(announcements);
   return (
     <div
-      className={`flex items-center gap-4 rounded-xl px-4 py-3 min-h-[140px] min-w-[440px] transition-shadow ${
+      data-seat-panel={seat}
+      className={`relative flex items-center gap-4 rounded-xl px-4 py-3 min-h-[140px] min-w-[440px] transition-shadow ${
         mirror ? 'flex-row-reverse' : ''
       } ${
-        isCurrentTurn
+        glow
+          ? `bg-black/45 ${glow}`
+          : isCurrentTurn
           ? 'bg-black/45 ring-2 ring-yellow-400 shadow-[0_0_18px_rgba(250,204,21,0.4)]'
           : `bg-black/35 ring-1 ${isMe ? 'ring-sky-400/50' : 'ring-white/15'}`
       }`}
@@ -75,6 +86,8 @@ export default function PlayerPanel({
           alongside any cards, never overwriting them). The key on SeatPlay
           re-triggers its arrival animation per play without remounting the
           whole panel; the sweep wrapper flies a cleared trick to the winner. */}
+      <SeatBubbles events={announcements} side={bubbleSide} alignEnd={mirror} />
+
       <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-[180px]">
         {play.length > 0 && (
           <div

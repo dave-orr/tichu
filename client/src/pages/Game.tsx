@@ -8,10 +8,11 @@ import CardComponent from '../components/Card.js';
 import ScoreBoard from '../components/ScoreBoard.js';
 import MahJongWish from '../components/MahJongWish.js';
 import DragonGiveaway from '../components/DragonGiveaway.js';
+import ConcedeOffer from '../components/ConcedeOffer.js';
 import RoundResults from '../components/RoundResults.js';
 import UserStats from '../components/UserStats.js';
 import CardsSeen from '../components/CardsSeen.js';
-import GameAnnouncements, { useGameEvents } from '../components/GameAnnouncement.js';
+import GameAnnouncements, { useGameEvents, seatEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
 import InvitePanel from '../components/InvitePanel.js';
 import type { TichuStatus } from '../components/TichuBadge.js';
@@ -125,7 +126,7 @@ export default function Game({ socket, auth }: Props) {
   // turnIndex stays on the last passer during the trick countdown and on the
   // giver during a Dragon giveaway, but neither is a turn anyone can act on.
   const isMyTurnNow = gameState?.phase === 'playing' && gameState?.turnIndex === gameState?.mySeat
-    && !gameState?.trickCountdown && !gameState?.dragonGiveaway;
+    && !gameState?.trickCountdown && !gameState?.dragonGiveaway && !gameState?.concedeOffer;
   useEffect(() => {
     if (isMyTurnNow && !prevTurnRef.current && !pendingWish) {
       playTurnChime();
@@ -398,8 +399,14 @@ export default function Game({ socket, auth }: Props) {
     });
   };
 
+  const concedeOffer = gameState.concedeOffer ?? null;
+  // Offers can't start mid-countdown or while a wish is pending (the engine
+  // rejects them), so hide the button then too.
   const partnerIsOut = phase === 'playing' && !myPlayer.isOut &&
-    players[getPartnerSeat(mySeat)].isOut && !gameState.dragonGiveaway;
+    players[getPartnerSeat(mySeat)].isOut && !gameState.dragonGiveaway &&
+    !gameState.trickCountdown && !gameState.mahJongWishPending && !concedeOffer;
+  const concedeOfferToMe = !!concedeOffer && phase === 'playing' && !myPlayer.isOut
+    && getTeamForSeat(concedeOffer.by) !== getTeamForSeat(mySeat);
 
   const handleConcede = () => {
     socket.concede();
@@ -449,9 +456,9 @@ export default function Game({ socket, auth }: Props) {
   // Action-bar state. The bar keeps every button mounted in a fixed slot and
   // toggles disabled instead, so nothing moves or appears under the cursor.
   const inCountdown = !!gameState.trickCountdown;
-  const canPlayNow = canPlay && !gameState.bombWindow && !inCountdown;
+  const canPlayNow = canPlay && !gameState.bombWindow && !inCountdown && !concedeOffer;
   const passQueued = !isMyTurn && passNextPlay;
-  const passDisabled = myPlayer.isOut || gameState.bombWindow || inCountdown || currentTrick === null
+  const passDisabled = myPlayer.isOut || gameState.bombWindow || inCountdown || !!concedeOffer || currentTrick === null
     || (isMyTurn && (mustPlayWish || selectedCards.size > 0));
   const passTitle = isMyTurn && selectedCards.size > 0
     ? 'Unselect cards to pass'
@@ -464,7 +471,7 @@ export default function Game({ socket, auth }: Props) {
     if (isMyTurn) handlePassTurn();
     else setPassNextPlay(v => !v);
   };
-  const bombDisabled = gameState.bombWindow || (currentTrick === null && !inCountdown);
+  const bombDisabled = gameState.bombWindow || !!concedeOffer || (currentTrick === null && !inCountdown);
   const canCallTichu = phase === 'playing' && !myPlayer.hasPlayedFirstCard && myPlayer.tichuCall === 'none'
     && !players.some(p => p.isOut);
   const handleTichuClick = () => {
@@ -498,6 +505,22 @@ export default function Game({ socket, auth }: Props) {
           </div>
         </div>
       );
+    }
+    if (concedeOffer) {
+      if (concedeOffer.by === mySeat) {
+        return (
+          <span className="flex items-center gap-3">
+            <span className="text-2xl text-yellow-400 animate-pulse">Waiting for opponents to accept your concession…</span>
+            <button
+              onClick={socket.withdrawConcede}
+              className="shrink-0 py-1 px-3 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
+            >
+              Withdraw
+            </button>
+          </span>
+        );
+      }
+      return <span className="text-2xl text-yellow-400">{playerNames[concedeOffer.by]} offered to concede…</span>;
     }
     if (gameState.bombWindow) {
       return <span className="text-2xl text-red-400 font-bold animate-pulse">A player is considering a bomb…</span>;
@@ -651,7 +674,7 @@ export default function Game({ socket, auth }: Props) {
       )}
 
       {/* Announcements overlay */}
-      <GameAnnouncements events={gameEvents} />
+      <GameAnnouncements events={gameEvents} table />
 
       {/* Modals */}
       {(needMahJongWish || (gameState.mahJongWishPending && gameState.lastPlayedBy === mySeat)) && (
@@ -662,6 +685,14 @@ export default function Game({ socket, auth }: Props) {
           mySeat={mySeat}
           players={[...players]}
           onGive={socket.giveDragonTrick}
+        />
+      )}
+      {concedeOfferToMe && concedeOffer && (
+        <ConcedeOffer
+          concederName={playerNames[concedeOffer.by]}
+          cardCount={players[concedeOffer.by].cardCount}
+          alreadyAccepted={concedeOffer.accepted.includes(mySeat)}
+          onRespond={socket.respondConcede}
         />
       )}
       {roundResult && (
@@ -714,6 +745,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === relativeSeats[2]}
             combo={displayComboFor(relativeSeats[2])}
             sweepOffset={sweepOffsetFor(relativeSeats[2])}
+            seat={relativeSeats[2]}
+            announcements={seatEvents(gameEvents, relativeSeats[2])}
+            bubbleSide="right"
           />
         </div>
 
@@ -730,6 +764,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === relativeSeats[3]}
             combo={displayComboFor(relativeSeats[3])}
             sweepOffset={sweepOffsetFor(relativeSeats[3])}
+            seat={relativeSeats[3]}
+            announcements={seatEvents(gameEvents, relativeSeats[3])}
+            bubbleSide="above"
           />
 
           {/* Center: wish + what's on the table */}
@@ -742,9 +779,6 @@ export default function Game({ socket, auth }: Props) {
               </div>
             ) : (
               <div className="text-4xl text-gray-200 italic">Waiting for lead</div>
-            )}
-            {isMyTurn && (
-              <div className="text-yellow-300 font-bold animate-pulse text-4xl">Your turn!</div>
             )}
             <div
               className="text-3xl text-gray-500/80 select-none"
@@ -766,6 +800,9 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === relativeSeats[1]}
             combo={displayComboFor(relativeSeats[1])}
             sweepOffset={sweepOffsetFor(relativeSeats[1])}
+            seat={relativeSeats[1]}
+            announcements={seatEvents(gameEvents, relativeSeats[1])}
+            bubbleSide="below"
             mirror
           />
         </div>
@@ -783,16 +820,23 @@ export default function Game({ socket, auth }: Props) {
             isTopOfTrick={lastPlayedBy === mySeat}
             combo={displayComboFor(mySeat)}
             sweepOffset={sweepOffsetFor(mySeat)}
+            seat={mySeat}
+            announcements={seatEvents(gameEvents, mySeat)}
+            bubbleSide="left"
           />
         </div>
        </div>
       </div>
 
       {/* Toast notification */}
-      {(toast || autoSkippedSeat !== null) && (
+      {(toast || autoSkippedSeat !== null || socket.concedeDeclined) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
           <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-3xl font-medium">
-            {autoSkippedSeat !== null
+            {socket.concedeDeclined
+              ? socket.concedeDeclined.seat === mySeat
+                ? 'You declined the concession — play on'
+                : `${playerNames[socket.concedeDeclined.seat]} declined the concession — play on`
+              : autoSkippedSeat !== null
               ? autoSkippedSeat === mySeat
                 ? 'Turn skipped — not enough cards'
                 : `${playerNames[autoSkippedSeat]}'s turn skipped — not enough cards`
@@ -834,13 +878,22 @@ export default function Game({ socket, auth }: Props) {
             </div>
           )}
 
-          <Hand
-            cards={myHand}
-            selectedCards={selectedCards}
-            onToggleCard={toggleCard}
-            disabled={phase !== 'playing'}
-            large
-          />
+          {/* "Your turn!" floats just above the hand so it doesn't push
+              the cards around when it appears. */}
+          <div className="relative">
+            {isMyTurn && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-10 pointer-events-none whitespace-nowrap text-yellow-300 font-bold animate-pulse text-4xl [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]">
+                Your turn!
+              </div>
+            )}
+            <Hand
+              cards={myHand}
+              selectedCards={selectedCards}
+              onToggleCard={toggleCard}
+              disabled={phase !== 'playing'}
+              large
+            />
+          </div>
 
           {/* Cards you passed — a row mirroring the received trio: left
               opponent / partner (raised) / right opponent. */}
@@ -875,8 +928,8 @@ export default function Game({ socket, auth }: Props) {
             )}
             {showConcedeConfirm && (
               <ConfirmPopover
-                message="End the round? Your hand goes to opponents."
-                confirmLabel="Yes, Concede"
+                message="Offer to concede? If your opponents accept, the round ends and your hand goes to them."
+                confirmLabel="Offer to Concede"
                 confirmClass="bg-red-600 hover:bg-red-500"
                 onConfirm={handleConcede}
                 onCancel={() => setShowConcedeConfirm(false)}

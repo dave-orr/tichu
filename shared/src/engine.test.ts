@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPasses, callSmallTichu, canPlayWishedRankFromHand, concede, giveDragonTrick, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
+import { applyPasses, callSmallTichu, canPlayWishedRankFromHand, concede, giveDragonTrick, offerConcede, respondToConcede, withdrawConcede, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -636,5 +636,74 @@ describe('a wish can force out a bomb', () => {
   it('accepts the bomb through either play path and clears the wish', () => {
     expect(playCards(state(), 0, eights).state.mahJongWish).toBeNull();
     expect(playBomb(state(), 0, eights).state.mahJongWish).toBeNull();
+  });
+});
+
+describe('concession offers', () => {
+  // Seat 0's partner (2) is out; opponents 1 and 3 still hold cards.
+  function offerState(overrides: Partial<Player>[] = []) {
+    const players: [Player, Player, Player, Player] = [
+      makePlayer(0, { hand: [c(5)], ...overrides[0] }),
+      makePlayer(1, { hand: [c(6)], ...overrides[1] }),
+      makePlayer(2, { hand: [], isOut: true, outOrder: 1, ...overrides[2] }),
+      makePlayer(3, { hand: [c(8)], ...overrides[3] }),
+    ];
+    return makeState({ players, outCount: 1, turnIndex: 1, currentTrick: null });
+  }
+
+  it('pauses play until every remaining opponent accepts', () => {
+    const offered = offerConcede(offerState(), 0);
+    expect(offered.roundEnded).toBeFalsy();
+    expect(offered.state.concedeOffer).toEqual({ by: 0, accepted: [] });
+
+    // Play is paused while the offer stands.
+    expect(playCards(offered.state, 1, [c(6)]).state).toBe(offered.state);
+
+    const one = respondToConcede(offered.state, 1, true);
+    expect(one.roundEnded).toBeFalsy();
+    expect(one.state.concedeOffer).toEqual({ by: 0, accepted: [1] });
+
+    const both = respondToConcede(one.state, 3, true);
+    expect(both.roundEnded).toBe(true);
+    expect(both.roundResult?.concededBy).toBe(0);
+    expect(both.state.concedeOffer ?? null).toBeNull();
+  });
+
+  it('a decline cancels the offer and play resumes', () => {
+    const offered = offerConcede(offerState(), 0).state;
+    const declined = respondToConcede(offered, 3, false);
+    expect(declined.roundEnded).toBeFalsy();
+    expect(declined.state.concedeOffer).toBeNull();
+    expect(playCards(declined.state, 1, [c(6)]).state).not.toBe(declined.state);
+  });
+
+  it('ignores responses from the conceder or their team', () => {
+    const offered = offerConcede(offerState(), 0).state;
+    expect(respondToConcede(offered, 0, true).state).toBe(offered);
+    expect(respondToConcede(offered, 2, false).state).toBe(offered);
+  });
+
+  it('only the conceder can withdraw', () => {
+    const offered = offerConcede(offerState(), 0).state;
+    expect(withdrawConcede(offered, 1)).toBe(offered);
+    expect(withdrawConcede(offered, 0).concedeOffer).toBeNull();
+  });
+
+  it('AI opponents accept automatically', () => {
+    const partial = offerConcede(offerState([{}, { isAi: true }]), 0);
+    expect(partial.state.concedeOffer).toEqual({ by: 0, accepted: [1] });
+    const all = offerConcede(offerState([{}, { isAi: true }, {}, { isAi: true }]), 0);
+    expect(all.roundEnded).toBe(true);
+  });
+
+  it('only needs opponents who still hold cards', () => {
+    const offered = offerConcede(offerState([{}, { hand: [], isOut: true, outOrder: 2 }]), 0).state;
+    const done = respondToConcede(offered, 3, true);
+    expect(done.roundEnded).toBe(true);
+  });
+
+  it('cannot be offered while the partner is still in', () => {
+    const state = { ...offerState([{}, {}, { hand: [c(9)], isOut: false, outOrder: 0 }]), outCount: 0 };
+    expect(offerConcede(state, 0).state).toBe(state);
   });
 });

@@ -178,11 +178,19 @@ export type GameState = {
   trickCountdown: { winner: Seat; durationMs: number } | null; // countdown before awarding trick (durationMs is shortened when no bomb is possible)
   dragonGiveaway: boolean;     // true = dragon winner must choose opponent
   dragonGiveawayBy: Seat | null;
+  /** Pending concession awaiting the opponents' answer; play is paused while set.
+   *  Optional: absent in room snapshots taken before this field existed. */
+  concedeOffer?: ConcedeOffer | null;
   settings: GameSettings;
   playedCards: Card[];         // all cards played/discarded this round (for cards-seen tracking)
   roundEndReady: Seat[];       // seats that have acknowledged round results
   roundHistory: RoundHistoryEntry[]; // score history for all completed rounds
   receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]]; // cards received from passing, per seat
+};
+
+export type ConcedeOffer = {
+  by: Seat;         // the conceding player
+  accepted: Seat[]; // opponents who have accepted so far
 };
 
 export type TrickPlay = {

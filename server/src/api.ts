@@ -5,7 +5,7 @@ import {
   getRoom, addApiPlayer, removeApiPlayer, findRoomWithOpenAiSeat,
   isApiPlayer, handleGrandTichu, handleSmallTichu, handlePassCards,
   handlePlayCards, handlePassTurn, handleBomb, handleDragonGiveaway,
-  handleMahJongWish, handleConcede, applyPlayResult, startNextRound,
+  handleMahJongWish, handleConcede, handleRespondConcede, applyPlayResult, startNextRound,
   clearTrickCountdownTimer, Room,
 } from './rooms.js';
 import {
@@ -269,6 +269,20 @@ export function createApiRouter(io: Server): Router {
         case 'concede': {
           const result = handleConcede(room, s);
           if (result.state !== room.state) clearTrickCountdownTimer(room.code);
+          processPlayResult(io, room, s, result);
+          break;
+        }
+
+        case 'respond-concede': {
+          if (typeof action.accept !== 'boolean') {
+            res.status(400).json({ error: 'accept must be a boolean' });
+            return;
+          }
+          const offer = room.state.concedeOffer;
+          const result = handleRespondConcede(room, s, action.accept);
+          if (result.state !== room.state && !action.accept && offer) {
+            io.to(room.code).emit('concede-declined', { seat: s, by: offer.by });
+          }
           processPlayResult(io, room, s, result);
           break;
         }
