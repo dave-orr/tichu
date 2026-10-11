@@ -228,3 +228,21 @@ describe('Careful What You Wish For', () => {
     expect(counts(records, 'D')['wish-bomb']).toBe(0);
   });
 });
+
+describe('Super Partner', () => {
+  it('bomb wins the trick, then the same player leads the Dog', () => {
+    const plays: RoundPlay[] = [
+      { seat: 1, cards: [n(9)], trick: 0 },
+      { seat: 0, cards: fourOf(5), trick: 0 },
+      { seat: 0, cards: [sp('dog')], trick: 1 },
+      // A Dog led after someone else's play doesn't count.
+      { seat: 2, cards: [n(3)], trick: 2 },
+      { seat: 1, cards: fourOf(7), trick: 2 },
+      { seat: 3, cards: [sp('dog')], trick: 3 },
+    ];
+    const records: GameRecord[] = [{ summary: summary('g'), rounds: [round('g', 1, { plays })] }];
+    expect(counts(records, 'A')['super-partner']).toBe(1);
+    expect(counts(records, 'B')['super-partner']).toBe(0);
+    expect(counts(records, 'D')['super-partner']).toBe(0);
+  });
+});

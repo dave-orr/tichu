@@ -25,6 +25,8 @@ ROSE, OCHRE, OCHRE_DK = '#E27A92', '#E8AA38', '#B9802A'
 SAP, SAP_DK, TEAL, VIOLET = '#6E9F58', '#4E7A3E', '#3A9C98', '#7B5CA8'
 STONE, STONE_DK, ASH, ASH_DK = '#B7B1C2', '#8C8699', '#A39D97', '#77716C'
 BLUE, BLUE_DK = '#4F7BD6', '#2F3C7A'  # Grand Tichu blue
+CRIMSON, CRIMSON_DK = '#C9374A', '#8E2233'
+SKIN, SKIN_DK, HAIR = '#EDBB92', '#C98D63', '#5A3A2A'
 WHITE = '#FFFDF7'
 
 DEFS = f'''<defs>
@@ -163,53 +165,68 @@ icons['friendly-fire'] = badge(CREAM, layer(
         f'<path d="M44 46 Q50 40 56 48 Q50 52 44 46 Z M72 48 Q80 40 86 46 Q80 52 72 48 Z M60 36 Q66 32 70 38 Q64 40 60 36 Z" '
         f'fill="{INK}" stroke="none" opacity="0.5"/>'
         f'<circle cx="55" cy="45" r="5.5" fill="{WHITE}"/><circle cx="73" cy="45" r="5.5" fill="{WHITE}"/>'
-        f'<circle cx="55" cy="45" r="1.6" fill="{INK}" stroke="none"/><circle cx="73" cy="45" r="1.6" fill="{INK}" stroke="none"/>')
-    + layer(  # the culprit: a spent bomb, still smoking
-        f'<ellipse cx="34" cy="98" rx="9" ry="8" fill="{NIGHT}"/>'
-        f'<path d="M35 90 L37 85" stroke="{INK}" stroke-width="3"/>'
-        f'<path d="M38 83 q-4 -5 1 -9 q5 -4 1 -9" fill="none" stroke="{ASH_DK}" stroke-width="2.2"/>')
+        f'<circle cx="52" cy="48" r="1.8" fill="{INK}" stroke="none"/><circle cx="70" cy="48" r="1.8" fill="{INK}" stroke="none"/>')
+    + bomb(32, 92, 14, fuse_dir=1,
+           face=f'<path d="M25 89 l5 2 M39 89 l-5 2" stroke="{WHITE}" stroke-width="1.8"/>'
+                f'<path d="M27 97 Q32 94 37 97" fill="none" stroke="{WHITE}" stroke-width="1.8"/>')
     + layer(  # frazzled smoke curls off the head
         f'<path d="M56 22 q-4 -4 1 -7" fill="none" stroke="{ASH_DK}" stroke-width="2.2"/>'
         f'<path d="M73 22 q4 -4 -1 -7" fill="none" stroke="{ASH_DK}" stroke-width="2.2"/>')
 )
 
-# ---- Phoenix Rising: flames lick up out of a heap of ash; the phoenix bursts free.
-icons['phoenix-rising'] = badge(CREAM, layer(
-    f'<path d="M14 104 Q64 92 114 104 L114 120 L14 120 Z" fill="{PAPER}" stroke="none"/>'),
-    layer(  # flames
-        f'<path d="M44 100 C34 86 42 72 48 66 C48 76 54 80 56 86 C58 76 62 70 64 58 C70 70 76 76 74 88 '
-        f'C78 82 80 76 82 70 C90 80 92 92 84 100 Z" fill="{CLAY}"/>'
-        f'<path d="M52 100 C48 92 52 84 56 80 C56 86 60 90 62 94 C64 86 66 80 68 74 C74 84 76 92 72 100 Z" fill="{OCHRE}"/>')
-    + layer(  # ash heap with embers
-        f'<path d="M24 106 Q40 90 56 96 Q64 88 74 96 Q90 88 104 106 Z" fill="{ASH}"/>'
-        f'<path d="M36 102 Q46 96 54 100 M70 100 Q80 95 90 102" fill="none" stroke="{ASH_DK}" stroke-width="1.6"/>'
-        f'<circle cx="46" cy="101" r="1.8" fill="{CLAY}" stroke="none"/><circle cx="82" cy="100" r="1.8" fill="{CLAY}" stroke="none"/>'
-        f'<circle cx="62" cy="99" r="1.5" fill="{OCHRE}" stroke="none"/>')
-    + layer(  # wings, up and out
-        f'<path d="M60 56 C46 56 32 46 24 26 C34 34 40 34 44 32 C40 40 46 44 52 44 C50 48 54 52 60 50 Z" fill="{CLAY}"/>'
-        f'<path d="M60 54 C50 54 42 48 38 40 C44 44 50 44 58 46 Z" fill="{OCHRE}"/>'
-        f'<path d="M68 56 C82 56 96 46 104 26 C94 34 88 34 84 32 C88 40 82 44 76 44 C78 48 74 52 68 50 Z" fill="{CLAY}"/>'
-        f'<path d="M68 54 C78 54 86 48 90 40 C84 44 78 44 70 46 Z" fill="{OCHRE}"/>')
-    + layer(  # body, head, crest
-        f'<path d="M56 76 C52 66 56 52 64 46 C72 52 76 66 72 76 C68 80 60 80 56 76 Z" fill="{ROSE}"/>'
-        f'<path d="M60 34 C58 28 62 24 64 20 C64 26 68 26 68 32 Z" fill="{OCHRE}"/>'
-        f'<circle cx="64" cy="40" r="8" fill="{CLAY}"/>'
-        f'<path d="M71 40 l8 3 l-8 3 Z" fill="{OCHRE}"/>'
-        f'<circle cx="66" cy="38" r="1.8" fill="{INK}" stroke="none"/>')
-    + layer(sparkle(30, 64, 4), sparkle(98, 62, 4), sparkle(88, 84, 3, ROSE))
+# ---- Phoenix Rising: a crimson-and-gold phoenix (after Fawkes) rises out of
+# the ashes and flames, wings raised, lyre-tail plumes trailing into the fire.
+def plume(d, w=5, fill=OCHRE):
+    return (f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{w + 3}"/>'
+            f'<path d="{d}" fill="none" stroke="{fill}" stroke-width="{w}"/>')
+WING = (f'<path d="M58 56 C50 40 38 28 22 20 C26 30 28 36 32 40 C26 40 22 42 20 46 C28 48 32 50 36 54 '
+        f'C30 56 28 60 28 62 C38 62 48 64 56 66 Z" fill="{CRIMSON}"/>'
+        f'<path d="M57 59 C50 49 42 41 33 35 C35 41 37 45 41 49 C37 51 35 53 35 55 C43 57 50 60 56 63 Z" fill="{OCHRE}"/>')
+icons['phoenix-rising'] = badge(NIGHT, layer(
+    sparkle(30, 82, 2.5, OCHRE) + sparkle(98, 82, 2.5, OCHRE) + sparkle(64, 18, 2.5, CLAY_LT)),
+    layer(  # tail plumes, lyre-shaped, with eye-spots
+        plume('M62 72 C56 84 44 88 40 98', 5, OCHRE),
+        plume('M66 72 C72 84 84 88 88 98', 5, OCHRE),
+        plume('M64 74 C64 84 64 92 64 100', 5, CRIMSON),
+        f'<circle cx="40" cy="98" r="3.4" fill="{CRIMSON}"/><circle cx="88" cy="98" r="3.4" fill="{CRIMSON}"/>'
+        f'<circle cx="64" cy="100" r="3.4" fill="{OCHRE}"/>')
+    + layer(  # flames
+        f'<path d="M34 112 C26 100 32 92 38 86 C38 94 44 96 46 100 C48 92 54 86 56 80 C60 88 62 94 62 100 '
+        f'C64 94 68 88 72 80 C76 88 80 94 82 100 C84 96 90 94 90 86 C96 92 100 102 94 112 Z" fill="{CLAY}"/>'
+        f'<path d="M44 112 C40 104 44 98 48 94 C48 100 52 102 54 104 C56 98 60 92 64 88 C68 94 72 100 74 104 '
+        f'C76 102 80 100 80 96 C86 102 86 108 84 112 Z" fill="{OCHRE}"/>')
+    + layer(  # ash heap
+        f'<path d="M16 116 Q30 104 46 108 Q56 100 70 108 Q86 102 112 116 Z" fill="{ASH}"/>'
+        f'<circle cx="38" cy="111" r="1.6" fill="{OCHRE}" stroke="none"/><circle cx="84" cy="110" r="1.6" fill="{CLAY}" stroke="none"/>')
+    + layer(WING, f'<g transform="translate(128 0) scale(-1 1)">{WING}</g>')
+    + layer(  # body with a golden breast
+        f'<path d="M56 74 C52 64 56 50 64 48 C72 50 76 64 72 74 C68 78 60 78 56 74 Z" fill="{CRIMSON}"/>'
+        f'<path d="M60 70 C60 62 62 56 64 54 C66 56 68 62 68 70 Z" fill="{OCHRE}" stroke="none" opacity="0.85"/>')
+    + layer(  # head, golden crest, hooked beak
+        f'<path d="M62 36 C58 30 54 28 50 28 C54 32 56 35 58 39 Z M64 34 C62 28 60 24 56 22 C59 27 60 31 61 36 Z" fill="{OCHRE}"/>'
+        f'<circle cx="66" cy="40" r="7.5" fill="{CRIMSON}"/>'
+        f'<path d="M72 38 C78 37 81 41 78 46 C77 43 75 43 72 43 Z" fill="{OCHRE}"/>'
+        f'<circle cx="68" cy="38.5" r="2.2" fill="{OCHRE}"/><circle cx="68.5" cy="38.5" r="1" fill="{INK}" stroke="none"/>')
 )
 
 # ---- Grand Theft: while its owner dozes, a raccoon tiptoes off with the Grand crown.
 icons['grand-theft'] = badge(PAPER, layer(
     f'<path d="M14 104 Q64 98 114 104 L114 120 L14 120 Z" fill="{CLAY_LT}" stroke="none"/>'),
-    layer(  # the sleeping owner: a little clay card-player, bare-headed now
-        f'<rect x="20" y="70" width="34" height="28" rx="4" fill="{CLAY}"/>'
-        f'<path d="M24 98 L24 106 M32 98 L32 106 M42 98 L42 106 M50 98 L50 106" stroke="{INK}" stroke-width="3.5"/>'
-        f'<path d="M28 82 q3 3 6 0 M40 82 q3 3 6 0" fill="none" stroke="{INK}" stroke-width="2"/>'
-        f'<ellipse cx="37" cy="90" rx="3" ry="2" fill="{CLAY_DK}"/>')
-    + layer(  # zzz
-        f'<text x="24" y="62" font-family="system-ui, sans-serif" font-size="9" font-weight="900" fill="{INDIGO}" stroke="none">z</text>'
-        f'<text x="30" y="54" font-family="system-ui, sans-serif" font-size="12" font-weight="900" fill="{INDIGO}" stroke="none">Z</text>')
+    layer(  # the owner, staring at a butterfly, oblivious
+        f'<path d="M30 106 L31 96 M42 106 L41 96" stroke="{INK}" stroke-width="4"/>'
+        f'<path d="M24 98 Q22 74 36 72 Q50 74 48 98 Z" fill="{TEAL}"/>'
+        f'<path d="M28 80 Q20 66 24 56" fill="none" stroke="{INK}" stroke-width="7"/>'
+        f'<path d="M28 80 Q20 66 24 56" fill="none" stroke="{TEAL}" stroke-width="4"/>'
+        f'<circle cx="24" cy="54" r="3" fill="{SKIN}"/>'
+        f'<circle cx="38" cy="60" r="11" fill="{SKIN}"/>'
+        f'<path d="M30 54 Q34 46 44 48 Q50 52 48 62 Q44 56 38 54 Z" fill="{HAIR}"/>'
+        f'<circle cx="33" cy="58" r="1.7" fill="{INK}" stroke="none"/>'
+        f'<path d="M30 64 Q33 67 36 65" fill="none" stroke-width="1.5"/>')
+    + layer(  # the butterfly
+        f'<path d="M30 32 Q22 24 22 32 Q22 38 30 34 Q24 42 30 40 Q34 38 31 33 Z" fill="{ROSE}"/>'
+        f'<path d="M31 33 Q40 24 40 32 Q40 38 32 35 Q38 42 32 40 Z" fill="{ROSE}"/>'
+        f'<path d="M28 26 l-2 -4 M33 26 l2 -4" stroke-width="1.2"/>'
+        f'<path d="M36 44 q2 -3 0 -5 M40 44 q3 -2 2 -5" fill="none" stroke="{INK}" stroke-width="1.2" stroke-dasharray="2 2"/>')
     + layer(  # raccoon tail
         f'<path d="M98 92 C112 90 114 74 106 68 C108 80 102 86 94 86 Z" fill="{STONE}"/>'
         f'<path d="M105 72 L110 74 M107 79 L112 80 M103 86 L107 90" stroke="{INK}" stroke-width="3"/>')
@@ -287,59 +304,64 @@ icons['photo-finish'] = badge(SKY, layer(
     + layer(sparkle(34, 40, 8, WHITE), f'<path d="M34 28 L34 23 M22 40 L17 40 M43 31 L47 27" stroke="{OCHRE}" stroke-width="2"/>')
 )
 
-# ---- Wire to Wire: our car leads the whole way round; theirs is still in the mirror.
-def car(x, y, body, s=1.0):
-    return layer(
-        f'<g transform="translate({x} {y}) scale({s})">'
-        f'<path d="M-18 4 L-18 -4 Q-16 -8 -8 -8 L-4 -16 L8 -16 L14 -8 Q20 -8 20 -2 L20 4 Z" fill="{body}"/>'
-        f'<path d="M-2 -14 L7 -14 L11 -8 L-5 -8 Z" fill="{SKY}"/>'
-        f'<circle cx="-10" cy="5" r="5" fill="{INK}"/><circle cx="12" cy="5" r="5" fill="{INK}"/>'
-        f'<circle cx="-10" cy="5" r="1.8" fill="{STONE}" stroke="none"/><circle cx="12" cy="5" r="1.8" fill="{STONE}" stroke="none"/>'
-        f'</g>')
+# ---- Wire to Wire: the tortoise breaks the tape, never once passed; the hare
+# is still way back up the hill.
 icons['wire-to-wire'] = badge(SKY, layer(
-    f'<path d="M14 70 Q40 60 64 66 Q90 72 114 62 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'),
-    layer(f'<path d="M10 102 C30 96 40 84 60 84 C80 84 90 72 112 70" fill="none" stroke="{INK}" stroke-width="16"/>'
-          f'<path d="M10 102 C30 96 40 84 60 84 C80 84 90 72 112 70" fill="none" stroke="{STONE_DK}" stroke-width="12"/>'
-          f'<path d="M10 102 C30 96 40 84 60 84 C80 84 90 72 112 70" fill="none" stroke="{WHITE}" stroke-width="1.6" stroke-dasharray="5 6"/>')
-    + layer(f'<path d="M98 72 L98 30" stroke="{INK}" stroke-width="3"/>'
-            + ''.join(f'<rect x="{98 + c * 5}" y="{30 + r * 5}" width="5" height="5" fill="{WHITE if (r + c) % 2 == 0 else INK}" stroke="none"/>'
-                      for r in range(3) for c in range(4))
-            + f'<rect x="98" y="30" width="20" height="15" fill="none"/>')
-    + car(28, 90, STONE, 0.6)
-    + car(78, 70, CLAY)
-    + layer(f'<path d="M50 66 l-8 0 M52 72 l-10 1 M50 78 l-7 1" stroke="{INK}" stroke-width="1.8"/>')
-    + layer(sparkle(40, 38, 4, CREAM), sparkle(66, 30, 3, CREAM))
+    f'<path d="M14 64 Q40 52 64 62 L64 120 L14 120 Z" fill="{SAP_DK}" stroke="none"/>'
+    f'<path d="M14 92 Q64 84 114 92 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'),
+    layer(  # the hare, far behind on the hill, dumbfounded
+        f'<path d="M30 52 C28 44 30 38 33 38 C35 42 34 48 33 52 Z M35 52 C35 44 38 40 40 40 C41 44 39 49 37 53 Z" fill="{WHITE}"/>'
+        f'<ellipse cx="34" cy="58" rx="7" ry="6" fill="{WHITE}"/>'
+        f'<circle cx="32" cy="57" r="1.2" fill="{INK}" stroke="none"/><circle cx="36" cy="57" r="1.2" fill="{INK}" stroke="none"/>'
+        f'<ellipse cx="34" cy="61" rx="1.4" ry="1.8" fill="{INK}" stroke="none"/>')
+    + layer(  # finish posts and the snapping tape
+        f'<path d="M96 100 L96 50" stroke="{INK}" stroke-width="3"/>'
+        + ''.join(f'<rect x="{96 + c * 5}" y="{50 + r * 5}" width="5" height="5" fill="{WHITE if (r + c) % 2 == 0 else INK}" stroke="none"/>'
+                  for r in range(3) for c in range(3))
+        + f'<rect x="96" y="50" width="15" height="15" fill="none"/>')
+    + layer(  # the tortoise: stubby legs, dome shell, chin up
+        f'<path d="M48 98 L46 104 M58 99 L58 105 M72 99 L72 105 M80 98 L82 104" stroke="{INK}" stroke-width="5"/>'
+        f'<path d="M48 98 L46 104 M58 99 L58 105 M72 99 L72 105 M80 98 L82 104" stroke="{SAP}" stroke-width="2.6"/>'
+        f'<path d="M42 98 Q42 70 64 70 Q86 70 86 98 Z" fill="{OCHRE}"/>'
+        f'<path d="M54 98 L56 84 L64 78 L72 84 L74 98 M56 84 L46 88 M72 84 L82 88 M64 78 L64 71" fill="none" stroke="{OCHRE_DK}" stroke-width="2"/>'
+        f'<path d="M84 92 Q90 82 98 80 Q106 80 106 86 Q104 92 96 92 Z" fill="{SAP}"/>'
+        f'<circle cx="100" cy="84" r="1.6" fill="{INK}" stroke="none"/>'
+        f'<path d="M98 88 Q101 90 104 88" fill="none" stroke-width="1.3"/>')
+    + layer(f'<path d="M36 78 L26 78 M36 86 L22 86 M38 94 L28 94" stroke="{WHITE}" stroke-width="2.2"/>'
+            + sparkle(110, 76, 3.5, CREAM) + sparkle(84, 62, 3, CREAM))
 )
 
-# ---- Hat Trick: a rabbit pops out of an upturned top hat, fanning three cards.
+# ---- Hat Trick: a rabbit sits in an upturned top hat, fanning three cards.
 def card(x, y, w, h, rot, cx, cy, pip):
     return (f'<g transform="rotate({rot} {cx} {cy})"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="2.5" fill="{WHITE}"/>'
             f'<path d="M{x + w / 2} {y + h / 2 - 5} L{x + w / 2 + 4} {y + h / 2} L{x + w / 2} {y + h / 2 + 5} '
             f'L{x + w / 2 - 4} {y + h / 2} Z" fill="{pip}" stroke="none"/></g>')
 icons['hat-trick'] = badge(TEAL, '',
-    layer(  # ears
-        f'<path d="M52 44 C44 28 44 12 52 8 C60 14 60 30 58 44 Z" fill="{WHITE}"/>'
-        f'<path d="M52 40 C48 28 48 16 52 13 C56 18 56 30 55 40 Z" fill="{ROSE}" stroke="none"/>'
-        f'<path d="M70 44 C74 30 80 16 88 14 C92 22 84 34 76 46 Z" fill="{WHITE}"/>'
-        f'<path d="M72 42 C76 32 80 22 86 19 C88 25 82 34 75 43 Z" fill="{ROSE}" stroke="none"/>')
-    + layer(  # head
-        f'<ellipse cx="62" cy="58" rx="17" ry="15" fill="{WHITE}"/>'
-        f'<circle cx="56" cy="55" r="2.3" fill="{INK}" stroke="none"/><circle cx="68" cy="55" r="2.3" fill="{INK}" stroke="none"/>'
-        f'<path d="M60 62 L64 62 L62 65 Z" fill="{ROSE}" stroke-width="1"/>'
-        f'<path d="M62 65 Q58 69 56 66 M62 65 Q66 69 68 66" fill="none" stroke-width="1.4"/>'
-        f'<circle cx="51" cy="62" r="3" fill="{ROSE}" stroke="none" opacity="0.5"/><circle cx="73" cy="62" r="3" fill="{ROSE}" stroke="none" opacity="0.5"/>')
-    + layer(  # fanned cards with a paw
-        card(84, 44, 15, 22, -24, 92, 70, CLAY),
-        card(84, 42, 15, 22, 0, 92, 70, INDIGO),
-        card(84, 44, 15, 22, 24, 92, 70, SAP),
-        f'<ellipse cx="86" cy="68" rx="5" ry="4" fill="{WHITE}"/>')
-    + layer(  # upturned hat: opening up top, crown below
-        f'<path d="M40 76 L44 106 Q62 112 80 106 L84 76 Z" fill="{NIGHT}"/>'
-        f'<path d="M42 90 L82 90 L81 98 L43 98 Z" fill="{CLAY}"/>'
-        f'<ellipse cx="62" cy="76" rx="32" ry="8" fill="{NIGHT}"/>'
-        f'<ellipse cx="62" cy="76" rx="22" ry="4.5" fill="{INK}"/>')
-    + layer(f'<ellipse cx="62" cy="74" rx="12" ry="3" fill="{WHITE}" stroke="none"/>')
-    + layer(sparkle(26, 52, 5, CREAM), sparkle(104, 34, 4.5, CREAM), sparkle(34, 30, 3, OCHRE))
+    layer(  # back of the brim and the hat's dark inside
+        f'<ellipse cx="62" cy="80" rx="32" ry="8" fill="{NIGHT}"/>'
+        f'<ellipse cx="62" cy="80" rx="23" ry="5" fill="{INK}"/>')
+    + layer(  # ears
+        f'<path d="M54 48 C46 32 46 16 54 12 C62 18 62 34 60 48 Z" fill="{WHITE}"/>'
+        f'<path d="M54 44 C50 32 50 20 54 17 C58 22 58 34 57 44 Z" fill="{ROSE}" stroke="none"/>'
+        f'<path d="M68 48 C72 34 78 20 86 18 C90 26 82 38 74 50 Z" fill="{WHITE}"/>'
+        f'<path d="M70 46 C74 36 78 26 84 23 C86 29 80 38 73 47 Z" fill="{ROSE}" stroke="none"/>')
+    + layer(  # body sitting down in the hat, head on top
+        f'<path d="M46 84 Q44 66 62 64 Q80 66 78 84 Z" fill="{WHITE}"/>'
+        f'<ellipse cx="62" cy="60" rx="15" ry="13" fill="{WHITE}"/>'
+        f'<circle cx="57" cy="58" r="2.2" fill="{INK}" stroke="none"/><circle cx="68" cy="58" r="2.2" fill="{INK}" stroke="none"/>'
+        f'<path d="M60.5 63.5 L64 63.5 L62.2 66 Z" fill="{ROSE}" stroke-width="1"/>'
+        f'<path d="M62 66 Q58.5 69.5 57 67 M62 66 Q65.5 69.5 67 67" fill="none" stroke-width="1.3"/>'
+        f'<circle cx="52" cy="64" r="2.8" fill="{ROSE}" stroke="none" opacity="0.5"/><circle cx="72" cy="64" r="2.8" fill="{ROSE}" stroke="none" opacity="0.5"/>')
+    + layer(  # cards fanned in its paws
+        card(78, 50, 14, 20, -24, 85, 74, CLAY),
+        card(78, 48, 14, 20, 0, 85, 74, INDIGO),
+        card(78, 50, 14, 20, 24, 85, 74, SAP),
+        f'<ellipse cx="80" cy="72" rx="4.5" ry="3.6" fill="{WHITE}"/><ellipse cx="88" cy="73" rx="4.5" ry="3.6" fill="{WHITE}"/>')
+    + layer(  # front of the hat: the crown below and the front lip of the brim
+        f'<path d="M40 82 L44 108 Q62 114 80 108 L84 82 Z" fill="{NIGHT}"/>'
+        f'<path d="M42 94 L82 94 L81 101 L43 101 Z" fill="{CLAY}"/>'
+        f'<path d="M30 80 A32 8 0 0 0 94 80 L85 80 A23 5 0 0 1 39 80 Z" fill="{NIGHT}"/>')
+    + layer(sparkle(26, 50, 5, CREAM), sparkle(102, 36, 4.5, CREAM), sparkle(32, 28, 3, OCHRE))
 )
 
 # ---- Ganis!: all fourteen cards fanned into a rainbow.
@@ -359,25 +381,33 @@ icons['ganis'] = badge(VIOLET, '',
     + layer(sparkle(64, 22, 5, CREAM), sparkle(24, 60, 3.5, CREAM), sparkle(104, 60, 3.5, CREAM))
 )
 
-# ---- Score-Based Grand: a Grand crown teetering atop a house of low cards.
-def lean(x1, y1, x2, y2, num):
-    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-    ang = math.degrees(math.atan2(y2 - y1, x2 - x1)) - 90
-    return (f'<g transform="translate({mx} {my}) rotate({ang:.1f})">'
-            f'<rect x="-7.5" y="-15" width="15" height="30" rx="2" fill="{WHITE}"/>'
-            f'<text x="0" y="4" font-family="system-ui, sans-serif" font-size="10" font-weight="800" '
-            f'text-anchor="middle" fill="{STONE_DK}" stroke="none">{num}</text></g>')
+# ---- Score-Based Grand: a tiny player in a Grand crown shrugs up at a giant.
 icons['score-based-grand'] = badge(SKY, layer(
-    f'<path d="M14 104 Q64 100 114 104 L114 120 L14 120 Z" fill="{CLAY_LT}" stroke="none"/>'),
-    layer(lean(30, 104, 44, 76, 2), lean(58, 104, 44, 76, 3), lean(70, 104, 84, 76, 2), lean(98, 104, 84, 76, 3))
-    + layer(f'<rect x="38" y="73" width="52" height="5" rx="1" fill="{WHITE}"/>')
-    + layer(lean(50, 74, 64, 46, 3), lean(78, 74, 64, 46, 2))
-    + layer(f'<g transform="rotate(-12 64 36)">'
-            f'<path d="M48 44 L45 26 L55 33 L64 20 L73 33 L83 26 L80 44 Z" fill="{BLUE}"/>'
-            f'<rect x="48" y="40" width="32" height="6" rx="1.5" fill="{BLUE_DK}"/>'
-            f'<circle cx="45" cy="25" r="2.5" fill="{OCHRE}"/><circle cx="64" cy="19" r="2.5" fill="{OCHRE}"/>'
-            f'<circle cx="83" cy="25" r="2.5" fill="{OCHRE}"/></g>')
-    + layer(f'<path d="M34 34 q-4 2 -3 6 M94 30 q4 2 3 6" fill="none" stroke="{INK}" stroke-width="1.8"/>')
+    f'<path d="M14 100 Q64 94 114 100 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'
+    f'<circle cx="34" cy="34" r="8" fill="{WHITE}" stroke="none" opacity="0.7"/>'
+    f'<circle cx="42" cy="32" r="6" fill="{WHITE}" stroke="none" opacity="0.7"/>'),
+    layer(  # the giant: just its legs, boots and a dangling club fit in frame
+        f'<path d="M70 10 L72 92 L88 92 L90 10 Z M92 10 L96 92 L110 92 L112 10 Z" fill="{INDIGO}"/>'
+        f'<path d="M68 88 Q66 104 72 106 L94 106 Q96 98 90 88 Z" fill="{HAIR}"/>'
+        f'<path d="M94 88 Q92 104 98 106 L118 106 Q120 98 112 88 Z" fill="{HAIR}"/>'
+        f'<path d="M70 40 L88 40 M94 40 L111 40" stroke="{NIGHT}" stroke-width="2"/>')
+    + layer(f'<path d="M63 14 L69 14 L70 50 Q78 60 74 74 Q66 84 58 76 Q52 64 62 50 Z" fill="#8A5A3B"/>'
+            f'<path d="M62 62 l3 2 M68 70 l2 -3 M60 72 l3 0" stroke="{INK}" stroke-width="1.5"/>')
+    + layer(  # the little player: shoulders up, palms up, eyebrows up
+        f'<path d="M34 106 L35 98 M44 106 L43 98" stroke="{INK}" stroke-width="3.5"/>'
+        f'<path d="M30 100 Q28 82 39 80 Q50 82 48 100 Z" fill="{CLAY}"/>'
+        f'<path d="M32 86 L24 88 L20 80" fill="none" stroke="{INK}" stroke-width="6"/>'
+        f'<path d="M32 86 L24 88 L20 80" fill="none" stroke="{CLAY}" stroke-width="3.5"/>'
+        f'<path d="M46 86 L54 88 L58 80" fill="none" stroke="{INK}" stroke-width="6"/>'
+        f'<path d="M46 86 L54 88 L58 80" fill="none" stroke="{CLAY}" stroke-width="3.5"/>'
+        f'<ellipse cx="19" cy="78" rx="3.5" ry="2.2" fill="{SKIN}"/><ellipse cx="59" cy="78" rx="3.5" ry="2.2" fill="{SKIN}"/>'
+        f'<circle cx="39" cy="70" r="10" fill="{SKIN}"/>'
+        f'<circle cx="38" cy="69" r="1.5" fill="{INK}" stroke="none"/><circle cx="44" cy="68" r="1.5" fill="{INK}" stroke="none"/>'
+        f'<path d="M35 64 l4 -1 M42 63 l4 0" stroke-width="1.4"/>'
+        f'<path d="M37 75 Q41 73 45 75" fill="none" stroke-width="1.4"/>')
+    + layer(  # its (much too big) Grand crown
+        f'<path d="M29 62 L27 50 L34 55 L39 46 L44 55 L51 50 L49 62 Z" fill="{BLUE}"/>'
+        f'<circle cx="27" cy="49" r="2" fill="{OCHRE}"/><circle cx="39" cy="45" r="2" fill="{OCHRE}"/><circle cx="51" cy="49" r="2" fill="{OCHRE}"/>')
 )
 
 # ---- Careful What You Wish For: the lamp's wish-smoke billows up into... a bomb.
@@ -401,6 +431,41 @@ icons['wish-bomb'] = badge(VIOLET, layer(
         f'<circle cx="66" cy="74" r="3" fill="{OCHRE}"/>'
         f'<path d="M58 108 L74 108 L70 104 L62 104 Z" fill="{OCHRE_DK}"/>'
         f'<path d="M48 92 Q66 98 84 92" fill="none" stroke="{CLAY_DK}" stroke-width="1.6"/>')
+)
+
+# ---- Super Partner: bomb the trick, then lead the Dog — a caped Dog rockets
+# out of the blast to its partner.
+burst2 = []
+for i in range(20):
+    a = 2 * math.pi * i / 20
+    rr = 30 if i % 2 == 0 else 20
+    burst2.append(f'{40 + rr * math.cos(a):.1f} {84 + rr * math.sin(a):.1f}')
+icons['super-partner'] = badge(SKY, layer(
+    f'<path d="M{" L".join(burst2)} Z" fill="{OCHRE}" stroke="none"/>'
+    f'<circle cx="40" cy="84" r="10" fill="{CLAY_LT}" stroke="none"/>'
+    f'<circle cx="96" cy="40" r="7" fill="{WHITE}" stroke="none" opacity="0.7"/>'
+    f'<circle cx="104" cy="44" r="5" fill="{WHITE}" stroke="none" opacity="0.7"/>'),
+    layer(  # speed lines
+        f'<path d="M30 70 L46 62 M34 80 L50 72 M40 90 L54 80" stroke="{INK}" stroke-width="2"/>')
+    + layer(  # the cape, streaming back
+        f'<path d="M62 58 C52 62 44 72 40 82 C48 78 52 80 56 78 C56 74 60 70 66 68 Z" fill="{CRIMSON}"/>')
+    + layer(  # the Dog in flight: front paw forward, back legs streaming
+        f'<path d="M58 72 L48 80 M62 74 L54 84" stroke="{INK}" stroke-width="6"/>'
+        f'<path d="M58 72 L48 80 M62 74 L54 84" stroke="{CREAM}" stroke-width="3.4"/>'
+        f'<path d="M56 66 Q60 52 78 50 Q92 50 92 58 Q88 70 70 72 Q60 74 56 66 Z" fill="{CREAM}"/>'
+        f'<path d="M66 60 q4 -4 8 0" fill="none" stroke="{CLAY}" stroke-width="2.6"/>')
+    + layer(  # head with floppy ear and a little mask
+        f'<path d="M80 44 Q80 30 92 30 Q104 32 104 42 Q104 52 92 52 Q82 52 80 44 Z" fill="{CREAM}"/>'
+        f'<path d="M84 34 Q74 32 74 44 Q78 46 84 40 Z" fill="{HAIR}"/>'
+        f'<path d="M86 38 Q94 34 102 38 L101 42 Q94 40 87 42 Z" fill="{CRIMSON}"/>'
+        f'<circle cx="92" cy="39.5" r="1.4" fill="{WHITE}" stroke="none"/><circle cx="99" cy="39.5" r="1.4" fill="{WHITE}" stroke="none"/>'
+        f'<ellipse cx="104" cy="44" rx="2.2" ry="1.8" fill="{INK}"/>'
+        f'<path d="M94 47 Q98 50 102 47" fill="none" stroke-width="1.4"/>')
+    + layer(  # one paw thrust forward, Superman-style
+        f'<path d="M80 58 Q96 58 110 50" fill="none" stroke="{INK}" stroke-width="6.5"/>'
+        f'<path d="M80 58 Q96 58 110 50" fill="none" stroke="{CREAM}" stroke-width="3.8"/>'
+        f'<circle cx="110" cy="49" r="3.4" fill="{CREAM}"/>')
+    + layer(sparkle(104, 68, 4, CREAM), sparkle(70, 26, 3.5, CREAM))
 )
 
 out = sys.argv[1]

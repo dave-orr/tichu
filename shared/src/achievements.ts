@@ -21,7 +21,8 @@ export type AchievementId =
   | 'friendly-fire'
   | 'ganis'
   | 'score-based-grand'
-  | 'wish-bomb';
+  | 'wish-bomb'
+  | 'super-partner';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -58,6 +59,12 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     id: 'wish-bomb',
     name: 'Careful What You Wish For',
     description: 'Have your Mah Jong wish fulfilled by a bomb',
+    newLogsOnly: true,
+  },
+  {
+    id: 'super-partner',
+    name: 'Super Partner',
+    description: 'Win a trick with a bomb, then lead the Dog to your partner',
     newLogsOnly: true,
   },
 ];
@@ -117,6 +124,12 @@ function roundEvents(r: RoundLog): Array<{ id: AchievementId; seat: Seat }> {
   const plays = r.plays ?? [];
   plays.forEach((play, i) => {
     const prev = previousInTrick(plays, i);
+    // Your bomb, then your Dog leading the very next trick.
+    const before = i > 0 ? plays[i - 1] : null;
+    if (before && before.seat === play.seat && before.trick !== play.trick && isBombPlay(before)
+      && play.cards.length === 1 && isSpecial(play.cards[0], 'dog')) {
+      out.push({ id: 'super-partner', seat: play.seat });
+    }
     if (play.cards.length === 14 && identifyCombo(play.cards)?.type === 'straight') {
       out.push({ id: 'ganis', seat: play.seat });
     }
