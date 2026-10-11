@@ -4,7 +4,7 @@ import {
   GameSummary, GameSummaryPlayer, GameHistoryRound, HeadToHead,
   GameRecord, UserStats, TeamStats, PairingPlayer, EMPTY_STAT_TOTALS,
   computePlayerStats, computePartnerSummaries, computePairingBreakdown,
-  Comeback, biggestComeback,
+  Comeback, biggestComeback, computeAchievements,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room } from './rooms.js';
@@ -52,6 +52,7 @@ export async function saveRoundLog(
       tichuCall: p.tichuCall,
       outOrder: p.outOrder,
       initialHand: acc.initialHands.get(p.seat) ?? [],
+      firstEight: acc.firstEight.get(p.seat) ?? [],
       passedLeft: pass?.left ?? null,
       passedPartner: pass?.partner ?? null,
       passedRight: pass?.right ?? null,
@@ -72,6 +73,7 @@ export async function saveRoundLog(
     bombs: acc.bombs,
     dragonGiveaways: acc.dragonGiveaways,
     mahJongWishes: acc.mahJongWishes,
+    plays: acc.plays,
   };
 
   await db
@@ -507,6 +509,7 @@ export async function fetchUserStats(uid: string): Promise<UserStats> {
     ...computePlayerStats(records, uid),
     ...readElo(userSnap.data()),
     biggestComeback: biggestComeback(records, uid),
+    achievements: computeAchievements(records, uid),
   };
 }
 

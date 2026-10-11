@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ACHIEVEMENTS, type AchievementCount } from '@tichu/shared';
 import type { Comeback, PartnerStats, GameSummary, GameHistoryRound, TeamStats, UserStats as UserStatsType } from '@tichu/shared';
 import RecentGames from './RecentGames.js';
 import TeamStatsModal from './TeamStatsModal.js';
@@ -202,6 +203,12 @@ export default function UserStats({
 
             {/* Right column: recent games (separate card) */}
             <RecentGames games={recentGames} myUid={myUid} fetchGameHistory={fetchGameHistory} />
+
+            {stats.achievements && (
+              <div className="md:col-span-2 border-t border-gray-700 pt-3">
+                <Achievements achievements={stats.achievements} onOpen={setSelectedGame} />
+              </div>
+            )}
           </div>
         )}
 
@@ -287,5 +294,59 @@ function ComebackRow({ label, comeback, myUid, onOpen }: {
     </button>
   ) : (
     <div className="text-2xl px-2 py-1 -mx-2">{body}</div>
+  );
+}
+
+/**
+ * Counting achievements: earned ones show their count and open the latest
+ * game they happened in; unearned ones stay dimmed.
+ */
+function Achievements({ achievements, onOpen }: {
+  achievements: AchievementCount[];
+  onOpen: (game: GameSummary) => void;
+}) {
+  const byId = new Map(achievements.map(a => [a.id, a]));
+  const earned = achievements.filter(a => a.count > 0).length;
+  return (
+    <>
+      <div className="flex items-baseline justify-between mb-2">
+        <h4 className="text-2xl text-gray-500 uppercase tracking-wide">Achievements</h4>
+        <span className="text-xl text-gray-400">{earned} of {ACHIEVEMENTS.length} earned</span>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {ACHIEVEMENTS.map(def => {
+          const a = byId.get(def.id);
+          const count = a?.count ?? 0;
+          const game = a?.lastGame ?? null;
+          const body = (
+            <>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className={`text-2xl font-bold ${count > 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                  {def.name}{def.newLogsOnly && <span className="text-gray-500" title="Counted from games played after this was added">*</span>}
+                </span>
+                <span className={`text-2xl font-black ${count > 0 ? 'text-white' : 'text-gray-600'}`}>×{count}</span>
+              </div>
+              <div className={`text-xl ${count > 0 ? 'text-gray-300' : 'text-gray-500'}`}>{def.description}</div>
+            </>
+          );
+          const base = 'block w-full text-left rounded-lg border px-3 py-2';
+          return count > 0 && game ? (
+            <button
+              key={def.id}
+              onClick={() => onOpen(game)}
+              title="Show the latest game this was earned in"
+              className={`${base} border-yellow-600/60 bg-gray-900/60 hover:bg-gray-700 transition-colors`}
+            >
+              {body}
+            </button>
+          ) : (
+            <div key={def.id} className={`${base} border-gray-700 bg-gray-900/30`}>{body}</div>
+          );
+        })}
+      </div>
+      {ACHIEVEMENTS.some(d => d.newLogsOnly) && (
+        <div className="text-lg text-gray-500 mt-2">* Counted only from games played after achievements launched.</div>
+      )}
+    </>
   );
 }

@@ -3,16 +3,22 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
-  Card, NormalRank, PlayResult, RoundResult, PassInfo, cardId,
+  Card, NormalRank, PlayResult, RoundResult, PassInfo, RoundPlay, cardId, identifyCombo, isBomb,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
   gameId: string;
   initialHands: Map<Seat, Card[]>;
+  /** Each seat's first 8 cards: the hand a Grand Tichu call was made on. */
+  firstEight: Map<Seat, Card[]>;
   passes: Map<Seat, PassInfo>;
   bombs: Array<{ seat: Seat; cards: Card[] }>;
   dragonGiveaways: Array<{ fromSeat: Seat; toSeat: Seat }>;
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
+  /** Every accepted play (bombs and the Dog included), in order. */
+  plays: RoundPlay[];
+  /** Index of the trick in progress; bumped when a play opens a new trick. */
+  trick: number;
   scoresAtRoundStart: [number, number];
   wasDown300: [boolean, boolean]; // per team, tracked across the whole game
 };
@@ -252,10 +258,13 @@ function createAccumulator(gameId: string, scores: [number, number], prevWasDown
   return {
     gameId,
     initialHands: new Map(),
+    firstEight: new Map(),
     passes: new Map(),
     bombs: [],
     dragonGiveaways: [],
     mahJongWishes: [],
+    plays: [],
+    trick: -1,
     scoresAtRoundStart: scores,
     wasDown300,
   };
@@ -477,6 +486,9 @@ export function registerRestoredRoom(room: Room): boolean {
   if (!room.bombAnnounceThrottle) room.bombAnnounceThrottle = new Map();
   if (!room.passes) room.passes = new Map();
   if (room.lastRoundResult === undefined) room.lastRoundResult = null;
+  if (!room.accumulator.firstEight) room.accumulator.firstEight = new Map();
+  if (!room.accumulator.plays) room.accumulator.plays = [];
+  if (room.accumulator.trick === undefined) room.accumulator.trick = -1;
   // No bomb-window timer survives a restart, so don't restore an open window
   // that nothing would ever close. (The trick countdown, if any, is re-armed
   // by the handler layer, which owns the timers.)
@@ -741,6 +753,12 @@ export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
 }
 
 export function handleGrandTichu(room: Room, seat: Seat, call: boolean): void {
+  // Hands hold exactly the first 8 cards until the window closes.
+  if (room.state.phase === 'grandTichuWindow' && room.accumulator.firstEight.size === 0) {
+    for (const p of room.state.players) {
+      room.accumulator.firstEight.set(p.seat, [...p.hand]);
+    }
+  }
   room.state = callGrandTichu(room.state, seat, call);
   // Snapshot initial hands once all players have decided and full hands are dealt
   if (room.state.phase === 'passing' && room.accumulator.initialHands.size === 0) {
@@ -804,8 +822,23 @@ export function handleUndoPass(room: Room, seat: Seat): boolean {
   return true;
 }
 
+/**
+ * Log an accepted play. A play onto an empty table opens a new trick. Bombs
+ * can arrive through either handler (a bomb on your own turn is a normal
+ * play), so both feed `bombs` from here.
+ */
+function recordPlay(room: Room, prev: GameState, seat: Seat, cards: Card[]): void {
+  const acc = room.accumulator;
+  if (prev.currentTrickPlays.length === 0) acc.trick++;
+  acc.plays.push({ seat, cards: [...cards], trick: acc.trick });
+  const combo = identifyCombo(cards);
+  if (combo && isBomb(combo)) acc.bombs.push({ seat, cards: [...cards] });
+}
+
 export function handlePlayCards(room: Room, seat: Seat, cards: Card[]): PlayResult {
-  return playCards(room.state, seat, cards);
+  const result = playCards(room.state, seat, cards);
+  if (result.state !== room.state) recordPlay(room, room.state, seat, cards);
+  return result;
 }
 
 export function handlePassTurn(room: Room, seat: Seat): PlayResult {
@@ -814,10 +847,7 @@ export function handlePassTurn(room: Room, seat: Seat): PlayResult {
 
 export function handleBomb(room: Room, seat: Seat, cards: Card[]): PlayResult {
   const result = playBomb(room.state, seat, cards);
-  // Record bomb if it was actually played (state changed)
-  if (result.state !== room.state) {
-    room.accumulator.bombs.push({ seat, cards: [...cards] });
-  }
+  if (result.state !== room.state) recordPlay(room, room.state, seat, cards);
   return result;
 }
 

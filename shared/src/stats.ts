@@ -1,4 +1,5 @@
 import { getTeamForSeat, GameSummary, RoundLog, Seat } from './types.js';
+import type { AchievementCount } from './achievements.js';
 
 // ===== Derived statistics =====
 //
@@ -387,4 +388,6 @@ export type UserStats = StatTotals & {
   eloPeak: number;
   /** Optional: absent from clients/servers predating comeback tracking. */
   biggestComeback?: Comeback | null;
+  /** Optional, like `biggestComeback`. In `ACHIEVEMENTS` order. */
+  achievements?: AchievementCount[];
 };
