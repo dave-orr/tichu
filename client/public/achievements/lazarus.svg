@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<circle cx="64" cy="64" r="61" fill="#1e293b"/>
+<circle cx="64" cy="64" r="52" fill="#26354d"/>
+<circle cx="64" cy="64" r="59" fill="none" stroke="#facc15" stroke-width="4"/>
+<circle cx="64" cy="64" r="53" fill="none" stroke="#facc15" stroke-opacity="0.3" stroke-width="1.5"/>
+<g transform="translate(64 64) scale(0.84) translate(-64 -64)" stroke="#0b1220" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+
+<ellipse cx="64" cy="104" rx="40" ry="8" fill="#15803d"/>
+<g transform="translate(-12 0)">
+<path d="M36 104 L36 58 A24 24 0 0 1 84 58 L84 104 Z" fill="#94a3b8"/>
+<path d="M74 37 A24 24 0 0 1 84 58 L84 104 L74 104 Z" fill="#64748b" stroke="none"/>
+<text x="60" y="72" font-family="Georgia, serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#475569" stroke="none">RIP</text>
+<path d="M44 76 L76 62" stroke="#ef4444" stroke-width="3"/>
+<path d="M50 46 l6 8 l-4 6 l6 6" fill="none" stroke="#0b1220" stroke-width="2"/>
+</g>
+<path d="M78 106 L96 50" stroke="#0b1220" stroke-width="13"/>
+<path d="M78 106 L96 50" stroke="#facc15" stroke-width="8"/>
+<path d="M101.5 32 L106.6 53.8 L85.4 46.2 Z" fill="#facc15"/>
+<path d="M104 53 Q104 58 109 58 Q104 58 104 63 Q104 58 99 58 Q104 58 104 53 Z" fill="#facc15" stroke="none"/><path d="M24 36 Q24 40 28 40 Q24 40 24 44 Q24 40 20 40 Q24 40 24 36 Z" fill="#facc15" stroke="none"/>
+
+</g>
+</svg>

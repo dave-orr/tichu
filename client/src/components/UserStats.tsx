@@ -313,23 +313,30 @@ function Achievements({ achievements, onOpen }: {
         <h4 className="text-2xl text-gray-500 uppercase tracking-wide">Achievements</h4>
         <span className="text-xl text-gray-400">{earned} of {ACHIEVEMENTS.length} earned</span>
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      <div className="grid sm:grid-cols-2 gap-2">
         {ACHIEVEMENTS.map(def => {
           const a = byId.get(def.id);
           const count = a?.count ?? 0;
           const game = a?.lastGame ?? null;
           const body = (
             <>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className={`text-2xl font-bold ${count > 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
-                  {def.name}{def.newLogsOnly && <span className="text-gray-500" title="Counted from games played after this was added">*</span>}
-                </span>
-                <span className={`text-2xl font-black ${count > 0 ? 'text-white' : 'text-gray-600'}`}>×{count}</span>
+              <img
+                src={`${import.meta.env.BASE_URL}achievements/${def.id}.svg`}
+                alt=""
+                className={`w-24 h-24 flex-shrink-0 ${count > 0 ? '' : 'grayscale opacity-40'}`}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`text-2xl font-bold ${count > 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                    {def.name}{def.newLogsOnly && <span className="text-gray-500" title="Counted from games played after this was added">*</span>}
+                  </span>
+                  <span className={`text-2xl font-black ${count > 0 ? 'text-white' : 'text-gray-600'}`}>×{count}</span>
+                </div>
+                <div className={`text-xl ${count > 0 ? 'text-gray-300' : 'text-gray-500'}`}>{def.description}</div>
               </div>
-              <div className={`text-xl ${count > 0 ? 'text-gray-300' : 'text-gray-500'}`}>{def.description}</div>
             </>
           );
-          const base = 'block w-full text-left rounded-lg border px-3 py-2';
+          const base = 'flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2';
           return count > 0 && game ? (
             <button
               key={def.id}
