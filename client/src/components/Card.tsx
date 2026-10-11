@@ -10,17 +10,34 @@ type Props = {
   onDragStart?: (e: React.DragEvent) => void;
 };
 
+// Pip positions for 2-10 within the card's central pip box (0..1 on each
+// axis), laid out like a traditional deck so a hand reads by pattern as well
+// as by number.
+const PIPS: Record<number, [number, number][]> = {
+  2: [[0.5, 0], [0.5, 1]],
+  3: [[0.5, 0], [0.5, 0.5], [0.5, 1]],
+  4: [[0, 0], [1, 0], [0, 1], [1, 1]],
+  5: [[0, 0], [1, 0], [0.5, 0.5], [0, 1], [1, 1]],
+  6: [[0, 0], [1, 0], [0, 0.5], [1, 0.5], [0, 1], [1, 1]],
+  7: [[0, 0], [1, 0], [0.5, 0.25], [0, 0.5], [1, 0.5], [0, 1], [1, 1]],
+  8: [[0, 0], [1, 0], [0.5, 0.25], [0, 0.5], [1, 0.5], [0.5, 0.75], [0, 1], [1, 1]],
+  9: [[0, 0], [1, 0], [0, 1 / 3], [1, 1 / 3], [0.5, 0.5], [0, 2 / 3], [1, 2 / 3], [0, 1], [1, 1]],
+  10: [[0, 0], [1, 0], [0.5, 1 / 6], [0, 1 / 3], [1, 1 / 3], [0, 2 / 3], [1, 2 / 3], [0.5, 5 / 6], [0, 1], [1, 1]],
+};
+
+// Per-size geometry (px): card size, corner index, pips, and the big centre
+// symbol for courts and Aces. Pips and index symbols reuse the same few suit
+// images, which the browser draws once and then just repeats.
+const SIZES = {
+  small: { w: 64, h: 96, corner: 'text-sm', index: 11, pip: 13, centre: 34 },
+  default: { w: 96, h: 144, corner: 'text-base', index: 15, pip: 19, centre: 52 },
+  large: { w: 144, h: 216, corner: 'text-2xl', index: 22, pip: 28, centre: 76 },
+} as const;
+
 export default function CardComponent({ card, selected, onClick, small, large, draggable, onDragStart }: Props) {
   // Default card is w-24 h-36. `large` is 50% bigger (w-36 h-[216px]) with
   // proportionally scaled glyphs, used for the player's own hand and pass slots.
   const sizeClass = small ? 'w-16 h-24 text-xs' : large ? 'w-36 h-[216px]' : 'w-24 h-36';
-  const cornerClass = large ? 'text-2xl' : 'text-base';
-  // Suit art (scripts/gen-card-art.py). The 發 reads heavier than the other
-  // suits, so it is drawn a little smaller to balance them.
-  const suitSize = small ? 9 : large ? 20 : 14;
-  const suitClass = card.type === 'normal' && card.suit === 'jade'
-    ? { 9: 'w-8 h-8', 14: 'w-12 h-12', 20: 'w-[72px] h-[72px]' }[suitSize]
-    : { 9: 'w-9 h-9', 14: 'w-14 h-14', 20: 'w-20 h-20' }[suitSize];
 
   if (card.type === 'special') {
     return (
@@ -35,25 +52,59 @@ export default function CardComponent({ card, selected, onClick, small, large, d
     );
   }
 
+  const g = SIZES[small ? 'small' : large ? 'large' : 'default'];
+  // Full papercraft art for the big centre symbol; the bolder, filter-free
+  // pip version for the corner index and pips (crisp small, cheap to draw).
+  const suitSrc = `${import.meta.env.BASE_URL}cards/suit-${card.suit}.svg`;
+  const pipSrc = `${import.meta.env.BASE_URL}cards/pip-${card.suit}.svg`;
+  // The 發 reads heavier than the other suits, so draw it a touch smaller.
+  const scale = card.suit === 'jade' ? 0.9 : 1;
+  const suitImg = (size: number, style?: React.CSSProperties, key?: number, src = pipSrc) => (
+    <img
+      key={key}
+      src={src}
+      alt=""
+      draggable={false}
+      className="pointer-events-none select-none"
+      style={{ width: size * scale, height: size * scale, ...style }}
+    />
+  );
+  const index = (
+    <div className={`${g.corner} font-bold leading-none flex flex-col items-center gap-0.5`}>
+      <span>{RANK_NAMES[card.rank]}</span>
+      {suitImg(g.index)}
+    </div>
+  );
+  const pips = PIPS[card.rank];
+  const isCourt = card.rank >= 11 && card.rank <= 13;
+  // Pip box: the middle of the card, clear of the corner indices.
+  const box = { left: g.w * 0.36, right: g.w * 0.64, top: g.h * 0.18, bottom: g.h * 0.82 };
+
   return (
     <div
       className={`card suit-${card.suit} ${selected ? 'selected' : ''} ${sizeClass}`}
       onClick={onClick}
       draggable={draggable}
       onDragStart={onDragStart}
+      aria-label={`${RANK_NAMES[card.rank]} of ${card.suit}`}
     >
-      <div className={`${cornerClass} font-bold absolute top-1 left-1.5`}>
-        {RANK_NAMES[card.rank]}
-      </div>
-      <img
-        src={`${import.meta.env.BASE_URL}cards/suit-${card.suit}.svg`}
-        alt={card.suit}
-        draggable={false}
-        className={`${suitClass} pointer-events-none`}
-      />
-      <div className={`${cornerClass} font-bold absolute bottom-1 right-1.5 rotate-180`}>
-        {RANK_NAMES[card.rank]}
-      </div>
+      <div className="absolute top-1 left-1">{index}</div>
+      <div className="absolute bottom-1 right-1 rotate-180">{index}</div>
+      {pips ? (
+        pips.map(([x, y], k) => {
+          const px = g.pip * scale;
+          return suitImg(g.pip, {
+            position: 'absolute',
+            left: box.left + (box.right - box.left) * x - px / 2,
+            top: box.top + (box.bottom - box.top) * y - px / 2,
+          }, k);
+        })
+      ) : (
+        <>
+          {isCourt && <div className="absolute inset-[18%] rounded-md border-2 border-yellow-500/50 pointer-events-none" />}
+          {suitImg(g.centre, undefined, undefined, suitSrc)}
+        </>
+      )}
     </div>
   );
 }

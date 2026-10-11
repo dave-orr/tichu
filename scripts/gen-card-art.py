@@ -225,6 +225,34 @@ facets = ''.join(
 suits['star'] = suit_svg(layer(f'<path d="{star}" fill="{RED}"/>' + facets + f'<path d="{star}" fill="none"/>'))
 
 
+
+# ===== Pip versions of the suit symbols =====
+# For the corner index and the pips, drawn at 10-25px many times per hand:
+# the same designs, simplified and bolder, with no paper filters, so they
+# stay crisp at that size and cost almost nothing to draw.
+def pip_svg(body, sw=6):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+            f'<g stroke="{INK}" stroke-width="{sw}" stroke-linejoin="round" stroke-linecap="round">{body}</g></svg>\n')
+pips = {}
+pips['star'] = pip_svg(f'<path d="{star}" fill="{RED}"/>')
+pips['jade'] = pip_svg(
+    f'<path d="{FA}" fill="{INK}" stroke="{INK}" stroke-width="4"/>'
+    f'<path d="{FA}" fill="{JADE}" stroke="{JADE}" stroke-width="2.2"/>', 0)
+def pip_jian(rot):
+    return (f'<g transform="rotate({rot} 50 50)">'
+            f'<path d="M50 4 L58 14 L58 64 L42 64 L42 14 Z" fill="{STEEL_DK}"/>'
+            f'<path d="M32 64 L68 64 L68 74 L32 74 Z" fill="{OCHRE}"/>'
+            f'<rect x="44" y="74" width="12" height="20" rx="3" fill="{HILT}"/></g>')
+pips['sword'] = pip_svg(pip_jian(-38) + pip_jian(38))
+def pip_eave(y, half):
+    return (f'<path d="M{50 - half} {y} L{50 - half * .5} {y - 8} L{50 + half * .5} {y - 8} L{50 + half} {y} '
+            f'Q{50 + half * .6} {y + 5} {50 + half * .4} {y + 5} L{50 - half * .4} {y + 5} Q{50 - half * .6} {y + 5} {50 - half} {y} Z" fill="{BLUE}"/>')
+pips['pagoda'] = pip_svg(
+    f'<path d="M50 4 L50 22" stroke="{OCHRE_DK}" stroke-width="7"/>'
+    f'<rect x="36" y="72" width="28" height="22" fill="{CREAM}"/>' + pip_eave(70, 46)
+    + f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>' + pip_eave(48, 38)
+    + f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>' + pip_eave(28, 30), 5)
+
 # ===== Animation sprites (side view, facing right; two frames each) =====
 anim = {}
 
@@ -355,6 +383,8 @@ for k, v in art.items():
     open(os.path.join(out, f'{k}.svg'), 'w').write(v)
 for k, v in suits.items():
     open(os.path.join(out, f'suit-{k}.svg'), 'w').write(v)
+for k, v in pips.items():
+    open(os.path.join(out, f'pip-{k}.svg'), 'w').write(v)
 for k, v in anim.items():
     open(os.path.join(out, f'anim-{k}.svg'), 'w').write(v)
-print('wrote', len(art) + len(suits) + len(anim))
+print('wrote', len(art) + len(suits) + len(pips) + len(anim))

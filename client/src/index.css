@@ -306,3 +306,22 @@ body {
 .achievement-pop {
   animation: achievement-pop 0.45s ease-out both;
 }
+
+/* A card leaving the hand: it lifts and fades while its slot (width and
+   overlap margin) collapses, so the remaining cards slide together. */
+@keyframes hand-leave {
+  0% { opacity: 1; translate: 0 -12px; }
+  100% { opacity: 0; translate: 0 -40px; width: 0; margin-left: 0; }
+}
+.hand-leave {
+  animation: hand-leave 0.3s ease-in-out forwards;
+}
+/* When the hand shrinks its spacing eases to the new overlap instead of
+   snapping, so the remaining cards glide together. */
+.hand-slot {
+  transition: margin-left 0.3s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hand-leave { display: none; }
+  .hand-slot { transition: none; }
+}
