@@ -336,14 +336,34 @@ function edgePoint(rect: DOMRect, to: Point, gap = 10): Point {
   return { x: cx + dx * t + (dx / len) * gap, y: cy + dy * t + (dy / len) * gap };
 }
 
+/** Maps client (post-FitToViewport-scale) points into `overlay`'s own box. */
+function overlayMapper(overlay: HTMLElement) {
+  const o = overlay.getBoundingClientRect();
+  const scale = overlay.offsetWidth ? o.width / overlay.offsetWidth : 1;
+  return (p: Point): Point => ({ x: (p.x - o.left) / scale, y: (p.y - o.top) / scale });
+}
+
+const rectCenter = (r: DOMRect): Point => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+
+/** Two papercraft frames flipping back and forth (legs running, wings flapping). */
+function Sprite({ name, flip, className }: { name: string; flip: boolean; className: string }) {
+  const src = (n: number) => `${import.meta.env.BASE_URL}cards/anim-${name}-${n}.svg`;
+  return (
+    <div className={`sprite-frames ${className}`} style={flip ? { transform: 'scaleX(-1)' } : undefined}>
+      <img src={src(1)} alt="" />
+      <img src={src(2)} alt="" />
+    </div>
+  );
+}
+
 /**
- * Dashed arc from the giver's panel to the receiver's, with the Dragon card
- * riding along it. Panels are found by `data-seat-panel`; coordinates are
+ * Dashed arc from the giver's panel to the receiver's, with the Dragon flying
+ * along it. Panels are found by `data-seat-panel`; coordinates are
  * converted into this overlay's own (possibly scaled) box.
  */
 function DragonArrow({ event }: { event: GameEvent }) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const [path, setPath] = useState<{ d: string } | null>(null);
+  const [path, setPath] = useState<{ d: string; flip: boolean } | null>(null);
 
   useLayoutEffect(() => {
     const overlay = overlayRef.current;
@@ -358,7 +378,10 @@ function DragonArrow({ event }: { event: GameEvent }) {
     const toRect = to.getBoundingClientRect();
     const center = (r: DOMRect): Point => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     const local = (p: Point): Point => ({ x: (p.x - o.left) / scale, y: (p.y - o.top) / scale });
-    const s = local(edgePoint(fromRect, center(toRect)));
+    // Opponents sit next to each other and their panels nearly touch, so an
+    // edge-to-edge arc would be a few pixels long. Launch from the middle of
+    // the giver's panel instead, landing on the receiver's edge.
+    const s = local(center(fromRect));
     const e = local(edgePoint(toRect, center(fromRect)));
     // Bow the arc away from the table center so it doesn't cross the trick.
     const mid = { x: (s.x + e.x) / 2, y: (s.y + e.y) / 2 };
@@ -367,9 +390,10 @@ function DragonArrow({ event }: { event: GameEvent }) {
     let ny = (e.x - s.x) / len;
     const tableCenter = { x: overlay.offsetWidth / 2, y: overlay.offsetHeight / 2 };
     if ((mid.x - tableCenter.x) * nx + (mid.y - tableCenter.y) * ny < 0) { nx = -nx; ny = -ny; }
-    const bow = len * 0.25;
+    const bow = len * 0.35;
     const c = { x: mid.x + nx * bow, y: mid.y + ny * bow };
-    setPath({ d: `M ${s.x} ${s.y} Q ${c.x} ${c.y} ${e.x} ${e.y}` });
+    // The sprite faces right; mirror it when the Dragon is heading left.
+    setPath({ d: `M ${s.x} ${s.y} Q ${c.x} ${c.y} ${e.x} ${e.y}`, flip: e.x < s.x });
   }, [event.giverSeat, event.seat]);
 
   return (
@@ -393,10 +417,96 @@ function DragonArrow({ event }: { event: GameEvent }) {
             />
           </svg>
           <div
-            className="dragon-card-fly absolute left-0 top-0 -ml-6 -mt-8 flex items-center justify-center w-12 h-16 rounded-md bg-white border-2 border-red-700 shadow-[0_6px_16px_rgba(0,0,0,0.5),0_0_16px_rgba(192,132,252,0.6)]"
+            className="dragon-card-fly sprite-motion absolute left-0 top-0 w-24 h-24"
             style={{ offsetPath: `path('${path.d}')` } as CSSProperties}
           >
-            <span className="text-xs font-extrabold text-red-700">Dragon</span>
+            <Sprite name="dragon-fly" flip={path.flip} className="w-24 h-24 dragon-bob" />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The Dog was led: the blue doodle bounds from the player's panel to their
+ * partner's in three hops, leaving paw prints, and lies down when it arrives,
+ * head up and ready.
+ * Partners sit opposite each other, so the run is straight up the screen
+ * (seen from behind), straight down it (seen from the front), or sideways
+ * (in profile); the sprite is picked to match.
+ */
+function DogDash({ event }: { event: GameEvent }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [dash, setDash] = useState<{ d: string; sprite: string; flip: boolean; bounce: boolean; prints: Point[] } | null>(null);
+
+  useLayoutEffect(() => {
+    const overlay = overlayRef.current;
+    const partner = getPartnerSeat(event.seat);
+    const from = document.querySelector(`[data-seat-panel="${event.seat}"]`);
+    const to = document.querySelector(`[data-seat-panel="${partner}"]`);
+    if (!overlay || !from || !to) return;
+    const local = overlayMapper(overlay);
+    const fromRect = from.getBoundingClientRect();
+    const toRect = to.getBoundingClientRect();
+    const s = local(edgePoint(fromRect, rectCenter(toRect), 18));
+    const e = local(edgePoint(toRect, rectCenter(fromRect), 18));
+    const dx = e.x - s.x;
+    const dy = e.y - s.y;
+    const at = (t: number): Point => ({ x: s.x + dx * t, y: s.y + dy * t });
+    const landings = [1 / 3, 2 / 3, 1].map(at);
+    const prints = [s, ...landings.slice(0, 2)];
+    if (Math.abs(dy) > Math.abs(dx)) {
+      // Running toward or away from the viewer: a straight run, with the hops
+      // done as a bounce on the sprite itself.
+      setDash({ d: `M ${s.x} ${s.y} L ${e.x} ${e.y}`, sprite: dy < 0 ? 'doodle-back' : 'doodle-front', flip: false, bounce: true, prints });
+      return;
+    }
+    // Sideways, in profile: three hops arcing up the screen.
+    const len = Math.hypot(dx, dy) || 1;
+    let nx = dy / len;
+    let ny = -dx / len;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    const hop = Math.min(60, len * 0.14);
+    let d = `M ${s.x} ${s.y}`;
+    [0, 1, 2].forEach(i => {
+      const m = at((i + 0.5) / 3);
+      d += ` Q ${m.x + nx * hop * 2} ${m.y + ny * hop * 2} ${landings[i].x} ${landings[i].y}`;
+    });
+    setDash({ d, sprite: 'doodle-run', flip: dx < 0, bounce: false, prints });
+  }, [event.seat]);
+
+  return (
+    <div ref={overlayRef} className="fixed inset-0 pointer-events-none z-40 sprite-motion">
+      {dash && (
+        <>
+          {dash.prints.map((p, i) => (
+            <svg
+              key={i}
+              className="paw-print absolute -ml-3 -mt-3 w-6 h-6"
+              style={{ left: p.x, top: p.y, animationDelay: `${i * 0.27}s` }}
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <g fill="#2B2233" opacity="0.45">
+                <ellipse cx="12" cy="15" rx="5" ry="4.2" />
+                <circle cx="6" cy="9" r="2.2" /><circle cx="10" cy="6" r="2.2" />
+                <circle cx="14" cy="6" r="2.2" /><circle cx="18" cy="9" r="2.2" />
+              </g>
+            </svg>
+          ))}
+          <div
+            className="dog-dash absolute left-0 top-0 -mt-8 w-24 h-24"
+            style={{ offsetPath: `path('${dash.d}')` } as CSSProperties}
+          >
+            <div className={`relative w-24 h-24 ${dash.bounce ? 'dog-bounce' : ''}`}>
+              <Sprite name={dash.sprite} flip={dash.flip} className="dog-running w-24 h-24" />
+              <img
+                src={`${import.meta.env.BASE_URL}cards/anim-doodle-lie.svg`}
+                alt=""
+                className="dog-lie absolute inset-0 w-24 h-24"
+              />
+            </div>
           </div>
         </>
       )}
@@ -408,7 +518,8 @@ function DragonArrow({ event }: { event: GameEvent }) {
  * Overlay announcements.
  *
  * `table` (the playing view): player events are drawn by the panels via
- * SeatBubbles, so this only renders the center banner and the Dragon arrow.
+ * SeatBubbles, so this only renders the center banner, the Dragon's flight
+ * and the Dog's dash.
  * Otherwise (Grand Tichu / passing screens, which have no panels) player
  * events show as a centered stack of the same solid bubbles.
  */
@@ -420,9 +531,10 @@ export default function GameAnnouncements({ events, table = false }: { events: G
   return (
     <>
       {table
-        ? playerEvents
-            .filter(e => e.type === 'dragon-given' && e.giverSeat !== undefined)
-            .map(e => <DragonArrow key={e.id} event={e} />)
+        ? playerEvents.map(e =>
+            e.type === 'dragon-given' && e.giverSeat !== undefined ? <DragonArrow key={e.id} event={e} />
+              : e.type === 'dog' ? <DogDash key={e.id} event={e} />
+                : null)
         : playerEvents.length > 0 && (
             <div className="fixed inset-x-0 top-24 z-50 pointer-events-none flex flex-col items-center gap-3">
               {playerEvents.map(e => (

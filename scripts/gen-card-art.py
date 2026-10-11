@@ -224,10 +224,137 @@ facets = ''.join(
     for i in range(10))
 suits['star'] = suit_svg(layer(f'<path d="{star}" fill="{RED}"/>' + facets + f'<path d="{star}" fill="none"/>'))
 
+
+# ===== Animation sprites (side view, facing right; two frames each) =====
+anim = {}
+
+def limb(d, fill, w=5.5):
+    return (f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{w + 2.6}"/>'
+            f'<path d="{d}" fill="none" stroke="{fill}" stroke-width="{w}"/>')
+
+# The blue doodle mid-dash. Frame 1: legs stretched out; frame 2: gathered under.
+def doodle_run(stretched):
+    if stretched:
+        legs_far = limb('M64 64 L80 74', DOODLE_DK) + limb('M34 64 L18 72', DOODLE_DK)
+        legs_near = limb('M68 64 L86 70', DOODLE) + limb('M30 64 L12 66', DOODLE)
+        paws = [(86, 70), (12, 66)]
+    else:
+        legs_far = limb('M62 64 L58 80', DOODLE_DK) + limb('M36 64 L42 80', DOODLE_DK)
+        legs_near = limb('M66 64 L64 82', DOODLE) + limb('M32 64 L36 82', DOODLE)
+        paws = [(64, 82), (36, 82)]
+    return svg(
+        layer(legs_far)
+        + layer(f'<path d="{fluff(18, 42, 7, 6, 8, 2.4)}" fill="{DOODLE}"/>')                     # pom-pom tail
+        + layer(f'<path d="{fluff(48, 54, 24, 14, 16, 3)}" fill="{DOODLE}"/>',
+                curls([(36, 50), (48, 48), (58, 52), (42, 58)], 2.8))                          # body
+        + layer(legs_near, ''.join(f'<path d="{fluff(x, y, 4, 3, 7, 1.4)}" fill="{DOODLE_LT}"/>' for x, y in paws))
+        + layer(f'<path d="M66 50 Q72 56 78 52 L78 56 Q72 60 66 54 Z" fill="{OCHRE_DK}"/>')        # collar
+        + layer(f'<path d="{fluff(76, 38, 13, 12, 12, 2.8)}" fill="{DOODLE}"/>',
+                curls([(72, 28), (80, 27)], 2.4),
+                f'<ellipse cx="88" cy="43" rx="8" ry="6" fill="{DOODLE_LT}"/>'
+                f'<ellipse cx="95" cy="40.5" rx="3" ry="2.4" fill="{INK}"/>'
+                f'<circle cx="80" cy="35" r="2.2" fill="{INK}" stroke="none"/><circle cx="80.8" cy="34.2" r="0.7" fill="{WHITE}" stroke="none"/>'
+                f'<path d="M88 47 Q91 50 94 47" fill="none" stroke-width="1.5"/>'
+                f'<path d="M90 48 Q91 54 93 48 Z" fill="{ROSE}" stroke-width="1.2"/>')                # head
+        + layer(f'<path d="{fluff(66, 40, 5.5, 9, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate({30 if stretched else -6} 66 33)"/>')  # flopping ear
+    )
+anim['doodle-run-1'] = doodle_run(True)
+anim['doodle-run-2'] = doodle_run(False)
+
+
+# Facing away (running up the screen). Frames alternate which hind paw is up.
+def doodle_back(left_up):
+    lp, rp = (78, 88) if left_up else (88, 78)
+    return svg(
+        layer(limb(f'M40 72 L38 {lp}', DOODLE) + limb(f'M60 72 L62 {rp}', DOODLE),
+              f'<path d="{fluff(38, lp + 1, 5, 3.4, 7, 1.4)}" fill="{DOODLE_LT}"/>'
+              f'<path d="{fluff(62, rp + 1, 5, 3.4, 7, 1.4)}" fill="{DOODLE_LT}"/>')       # hind legs, pads showing
+        + layer(f'<path d="{fluff(50, 60, 21, 18, 16, 3)}" fill="{DOODLE}"/>',
+                curls([(40, 54), (52, 50), (60, 60), (44, 66)], 2.8))                      # body from behind
+        + layer(f'<path d="M36 46 Q50 52 64 46 L64 50 Q50 56 36 50 Z" fill="{OCHRE_DK}"/>')  # collar, back of the neck
+        + layer(f'<path d="{fluff(50, 32, 15, 13, 12, 2.8)}" fill="{DOODLE}"/>',
+                curls([(44, 26), (54, 24), (50, 34)], 2.4))                                # back of the head
+        + layer(f'<path d="{fluff(33, 36, 6, 10, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate({-28 if left_up else -12} 36 28)"/>'
+                f'<path d="{fluff(67, 36, 6, 10, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate({12 if left_up else 28} 64 28)"/>')  # ears flying out
+        + layer(f'<path d="{fluff(50, 70, 7, 6, 8, 2.4)}" fill="{DOODLE_LT}"/>')           # pom-pom tail on the rump
+    )
+anim['doodle-back-1'] = doodle_back(True)
+anim['doodle-back-2'] = doodle_back(False)
+
+# Running toward the camera (down the screen). Frames alternate front paws.
+def doodle_front(left_up):
+    lp, rp = (76, 88) if left_up else (88, 76)
+    return svg(
+        layer(f'<path d="{fluff(50, 64, 19, 16, 14, 3)}" fill="{DOODLE}"/>',
+              curls([(42, 62), (56, 66)], 2.6))                                            # body
+        + layer(limb(f'M42 70 L40 {lp}', DOODLE) + limb(f'M58 70 L60 {rp}', DOODLE),
+                f'<path d="{fluff(40, lp + 1, 5, 3.4, 7, 1.4)}" fill="{DOODLE_LT}"/>'
+                f'<path d="{fluff(60, rp + 1, 5, 3.4, 7, 1.4)}" fill="{DOODLE_LT}"/>')     # front legs
+        + layer(f'<path d="{fluff(28, 38, 7, 11, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate({-34 if left_up else -18} 32 30)"/>'
+                f'<path d="{fluff(72, 38, 7, 11, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate({18 if left_up else 34} 68 30)"/>')  # ears flying
+        + layer(f'<path d="{fluff(50, 34, 17, 15, 14, 3.2)}" fill="{DOODLE}"/>',
+                curls([(42, 22), (52, 20), (60, 24)], 2.6),
+                f'<ellipse cx="50" cy="43" rx="10" ry="8" fill="{DOODLE_LT}"/>'
+                f'<circle cx="43" cy="33" r="2.6" fill="{INK}" stroke="none"/><circle cx="57" cy="33" r="2.6" fill="{INK}" stroke="none"/>'
+                f'<circle cx="44" cy="32" r="0.9" fill="{WHITE}" stroke="none"/><circle cx="58" cy="32" r="0.9" fill="{WHITE}" stroke="none"/>'
+                f'<ellipse cx="50" cy="40" rx="4.2" ry="3.1" fill="{INK}"/>'
+                f'<path d="M50 43 Q46 48 43 45 M50 43 Q54 48 57 45" fill="none" stroke-width="1.6"/>'
+                f'<path d="M47.5 46 Q50 54 52.5 46 Z" fill="{ROSE}" stroke-width="1.2"/>')        # happy face, tongue out
+        + layer(f'<path d="M37 50 Q50 56 63 50 L63 54 Q50 60 37 54 Z" fill="{OCHRE_DK}"/>')  # collar
+    )
+anim['doodle-front-1'] = doodle_front(True)
+anim['doodle-front-2'] = doodle_front(False)
+
+# Arrived: down on its belly but head up, ears perked, tongue out, tail
+# going: ready for its partner to take the lead.
+anim['doodle-lie'] = svg(
+    layer(f'<path d="{fluff(82, 60, 7, 6, 8, 2.4)}" fill="{DOODLE}"/>',
+          f'<path d="M88 50 q4 -2 6 2 M90 44 q5 -2 7 3" fill="none" stroke="{INK}" stroke-width="1.6"/>')  # wagging tail
+    + layer(f'<path d="{fluff(50, 72, 30, 13, 18, 3)}" fill="{DOODLE}"/>',
+            curls([(30, 68), (44, 66), (64, 66), (72, 72)], 2.6))                              # body, down
+    + layer(f'<path d="{fluff(38, 84, 7, 4, 8, 1.6)}" fill="{DOODLE_LT}"/><path d="{fluff(62, 84, 7, 4, 8, 1.6)}" fill="{DOODLE_LT}"/>')  # paws out front
+    + layer(f'<path d="{fluff(31, 40, 6.5, 10, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate(-30 34 32)"/>'
+            f'<path d="{fluff(69, 40, 6.5, 10, 8, 2.2)}" fill="{DOODLE_DK}" transform="rotate(30 66 32)"/>')  # ears perked up and out
+    + layer(f'<path d="{fluff(50, 44, 16, 14, 14, 3)}" fill="{DOODLE}"/>',
+            curls([(42, 33), (52, 31), (58, 35)], 2.4),
+            f'<ellipse cx="50" cy="53" rx="9.5" ry="7" fill="{DOODLE_LT}"/>'
+            f'<circle cx="43" cy="43" r="2.6" fill="{INK}" stroke="none"/><circle cx="57" cy="43" r="2.6" fill="{INK}" stroke="none"/>'
+            f'<circle cx="44" cy="42" r="0.9" fill="{WHITE}" stroke="none"/><circle cx="58" cy="42" r="0.9" fill="{WHITE}" stroke="none"/>'
+            f'<ellipse cx="50" cy="50" rx="4" ry="3" fill="{INK}"/>'
+            f'<path d="M50 53 Q46 58 43 55 M50 53 Q54 58 57 55" fill="none" stroke-width="1.5"/>'
+            f'<path d="M47.5 56 Q50 64 52.5 56 Z" fill="{ROSE}" stroke-width="1.2"/>')            # head up, bright eyes, tongue out
+    + layer(f'<path d="M37 59 Q50 64 63 59 L63 62 Q50 67 37 62 Z" fill="{OCHRE_DK}"/>')        # collar
+)
+
+# The green Dragon in flight. Frame 1: wings up; frame 2: wings down.
+def dragon_fly(up):
+    wing = ('M46 46 C40 26 30 12 16 6 C20 16 20 22 24 26 C18 26 14 28 12 32 C20 34 26 38 30 44 Z' if up else
+            'M46 54 C40 70 30 82 16 88 C20 78 20 72 24 68 C18 68 14 66 12 62 C20 60 26 56 30 52 Z')
+    return svg(
+        layer(f'<path d="{wing}" fill="{VIOLET}" transform="translate(10 0)"/>')                # far wing
+        + layer(limb('M28 52 Q14 54 6 44', SAP, 6), f'<path d="M2 36 L10 44 L2 48 Z" fill="{SAP}"/>')  # tail + spade
+        + layer(f'<path d="M24 52 Q30 40 50 40 Q66 40 72 46 Q70 60 50 62 Q32 62 24 52 Z" fill="{SAP}"/>'
+                f'<path d="M30 56 Q48 64 66 54" fill="none" stroke="{OCHRE}" stroke-width="4"/>'
+                f'<path d="M34 42 L37 34 L41 41 L45 32 L49 40 L53 32 L57 41 Z" fill="{OCHRE}"/>'
+                + limb('M44 60 L42 68', SAP, 4) + limb('M58 58 L58 66', SAP, 4))                # body, belly, back spikes, tucked legs
+        + layer(f'<path d="{wing}" fill="{VIOLET}"/>')                                          # near wing
+        + layer(f'<path d="M66 44 Q70 32 82 32 Q96 34 98 44 Q98 52 86 52 Q72 54 66 44 Z" fill="{SAP}"/>'
+                f'<path d="M84 44 Q96 44 98 48 Q92 53 84 50 Z" fill="{SAP_LT}"/>'
+                f'<path d="M72 34 L66 24 L76 30 Z M78 32 L76 20 L84 30 Z" fill="{OCHRE}"/>'
+                f'<circle cx="81" cy="39" r="4" fill="{WHITE}" stroke-width="1.6"/><circle cx="82.5" cy="39" r="1.8" fill="{INK}" stroke="none"/>'
+                f'<path d="M76.5 35.5 Q81 33 86 35.5" fill="none" stroke-width="2"/>'
+                f'<circle cx="95" cy="45" r="1" fill="{INK}" stroke="none"/>'
+                f'<path d="M89 51 L90.5 55 L92 51 Z" fill="{WHITE}" stroke-width="1"/>')             # head: horns, half-lidded grumpy eye, fang
+    )
+anim['dragon-fly-1'] = dragon_fly(True)
+anim['dragon-fly-2'] = dragon_fly(False)
+
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for k, v in art.items():
     open(os.path.join(out, f'{k}.svg'), 'w').write(v)
 for k, v in suits.items():
     open(os.path.join(out, f'suit-{k}.svg'), 'w').write(v)
-print('wrote', len(art) + len(suits))
+for k, v in anim.items():
+    open(os.path.join(out, f'anim-{k}.svg'), 'w').write(v)
+print('wrote', len(art) + len(suits) + len(anim))

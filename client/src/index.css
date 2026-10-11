@@ -186,6 +186,89 @@ body {
   offset-rotate: 0deg;
 }
 
+/* Two-frame papercraft sprites (running doodle, flapping dragon). */
+.sprite-frames {
+  position: relative;
+}
+.sprite-frames > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.sprite-frames > img:nth-child(2) {
+  animation: sprite-frame 0.26s steps(1) infinite;
+}
+.sprite-frames > img:nth-child(1) {
+  animation: sprite-frame 0.26s steps(1) infinite reverse;
+}
+@keyframes sprite-frame {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+}
+/* The Dragon bobs gently as it flaps. */
+.dragon-bob {
+  animation: dragon-bob 0.52s ease-in-out infinite;
+}
+@keyframes dragon-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+/* Dog dash: a quick run along its path (0.8s), then it lies down for a moment. */
+@keyframes dog-dash {
+  0% { offset-distance: 0%; opacity: 0; }
+  4% { opacity: 1; }
+  36% { offset-distance: 100%; }
+  88% { offset-distance: 100%; opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+.dog-dash {
+  animation: dog-dash 2.2s linear forwards;
+  offset-rotate: 0deg;
+}
+/* Head-on / from-behind runs hop in place: three bounces over the run. */
+@keyframes dog-bounce {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -16px; }
+}
+.dog-bounce {
+  animation: dog-bounce 0.267s ease-in-out 3;
+}
+/* At the end of the run the running sprite gives way to the lying-down one,
+   which flops down with a little squash. */
+@keyframes dog-stop-running {
+  to { opacity: 0; }
+}
+.dog-running {
+  animation: dog-stop-running 0.8s steps(1, end) forwards;
+}
+@keyframes dog-lie {
+  0% { opacity: 1; scale: 0.95 1.12; translate: 0 -8px; }
+  55% { scale: 1.1 0.88; translate: 0 2px; }
+  100% { opacity: 1; scale: 1 1; translate: 0 0; }
+}
+.dog-lie {
+  opacity: 0;
+  transform-origin: 50% 85%;
+  animation: dog-lie 0.4s ease-out 0.8s forwards;
+}
+@keyframes paw-print {
+  0% { opacity: 0; scale: 0.6; }
+  15% { opacity: 1; scale: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.paw-print {
+  opacity: 0;
+  animation: paw-print 1.1s ease-out forwards;
+}
+
+/* Reduced motion: skip the flying and running; the arc and bubbles remain. */
+@media (prefers-reduced-motion: reduce) {
+  .sprite-motion .dog-dash, .sprite-motion .paw-print, .dragon-card-fly.sprite-motion { display: none; }
+}
+
 @keyframes seat-play-in {
   0% { transform: scale(0.85) translateY(-6px); opacity: 0; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
