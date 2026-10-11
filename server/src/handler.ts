@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   leaveRoom, clearSocketUid, setRoomChangedCallback,
@@ -17,7 +17,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { recordPlayedWith, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
+import { recordPlayedWith, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards, sanitizeSettings,
@@ -767,6 +767,20 @@ export function setupHandlers(io: Server): void {
       } catch (err) {
         console.error('Failed to fetch recent games:', err);
         callback({ games: [] });
+      }
+    });
+
+    guarded(socket, 'fetch-comeback-record', async (callback: (data: { record: Comeback | null; needsAuth?: boolean }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ record: null, needsAuth: true });
+        return;
+      }
+      try {
+        callback({ record: await fetchComebackRecord(uid) });
+      } catch (err) {
+        console.error('Failed to fetch comeback record:', err);
+        callback({ record: null });
       }
     });
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import type { PartnerStats, GameSummary, GameHistoryRound, TeamStats, UserStats as UserStatsType } from '@tichu/shared';
+import type { Comeback, PartnerStats, GameSummary, GameHistoryRound, TeamStats, UserStats as UserStatsType } from '@tichu/shared';
 import RecentGames from './RecentGames.js';
 import TeamStatsModal from './TeamStatsModal.js';
+import GameHistoryModal from './GameHistoryModal.js';
 
 type Props = {
   /** Stats loaded with the profile; shown until a fresh copy arrives. */
@@ -11,6 +12,7 @@ type Props = {
   fetchPartnerStats: () => Promise<{ partners: PartnerStats[] }>;
   fetchTeamStats: (partnerUid: string) => Promise<{ team: TeamStats | null }>;
   fetchRecentGames: () => Promise<{ games: GameSummary[] }>;
+  fetchComebackRecord: () => Promise<{ record: Comeback | null }>;
   fetchGameHistory: (gameId: string) => Promise<{ rounds: GameHistoryRound[] }>;
   onClose: () => void;
 };
@@ -20,12 +22,14 @@ const pct = (num: number, denom: number) => (denom > 0 ? Math.round((num / denom
 const ratio = (num: number, denom: number) => (denom > 0 ? `${num}/${denom} (${pct(num, denom)}%)` : '0');
 
 export default function UserStats({
-  stats: initialStats, myUid, fetchUserStats, fetchPartnerStats, fetchTeamStats, fetchRecentGames, fetchGameHistory, onClose,
+  stats: initialStats, myUid, fetchUserStats, fetchPartnerStats, fetchTeamStats, fetchRecentGames, fetchComebackRecord, fetchGameHistory, onClose,
 }: Props) {
   const [freshStats, setFreshStats] = useState<UserStatsType | null>(null);
   const [partners, setPartners] = useState<PartnerStats[] | null>(null);
   const [recentGames, setRecentGames] = useState<GameSummary[] | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<PartnerStats | null>(null);
+  const [comebackRecord, setComebackRecord] = useState<Comeback | null>(null);
+  const [selectedGame, setSelectedGame] = useState<GameSummary | null>(null);
 
   // The profile copy can be stale (it's loaded once per sign-in), so refetch on open.
   useEffect(() => {
@@ -39,6 +43,10 @@ export default function UserStats({
   useEffect(() => {
     fetchRecentGames().then(({ games }) => setRecentGames(games));
   }, [fetchRecentGames]);
+
+  useEffect(() => {
+    fetchComebackRecord().then(({ record }) => setComebackRecord(record)).catch(() => {});
+  }, [fetchComebackRecord]);
 
   const stats = freshStats ?? initialStats;
 
@@ -130,6 +138,20 @@ export default function UserStats({
                   <StatRow label="Close Games" value={ratio(stats.closeGameWins, stats.closeGamesPlayed)} />
                   <StatRow label="Comebacks (down 300+)" value={ratio(stats.comebackWins, stats.comebackOpportunities)} />
                 </div>
+                <div className="mt-3 space-y-1">
+                  <ComebackRow
+                    label="Your Biggest Comeback"
+                    comeback={stats.biggestComeback ?? null}
+                    myUid={myUid}
+                    onOpen={setSelectedGame}
+                  />
+                  <ComebackRow
+                    label="Server Record"
+                    comeback={comebackRecord}
+                    myUid={myUid}
+                    onOpen={setSelectedGame}
+                  />
+                </div>
               </div>
 
               {partners && partners.length > 0 && (
@@ -183,6 +205,14 @@ export default function UserStats({
           </div>
         )}
 
+        {selectedGame && (
+          <GameHistoryModal
+            game={selectedGame}
+            fetchGameHistory={fetchGameHistory}
+            onClose={() => setSelectedGame(null)}
+          />
+        )}
+
         {selectedPartner && (
           <TeamStatsModal
             partnerUid={selectedPartner.partnerUid}
@@ -204,5 +234,58 @@ function StatRow({ label, value }: { label: string; value: string | number }) {
       <div className="text-gray-400 text-2xl">{label}</div>
       <div className="font-semibold">{value}</div>
     </div>
+  );
+}
+
+/**
+ * A comeback ("down 450 in round 6"), with the winners and final score. Opens
+ * the game's history when the viewer played in it (history is private to its
+ * players, and the server strips uids from games the viewer wasn't in).
+ */
+function ComebackRow({ label, comeback, myUid, onOpen }: {
+  label: string;
+  comeback: Comeback | null;
+  myUid: string;
+  onOpen: (game: GameSummary) => void;
+}) {
+  if (!comeback) {
+    return (
+      <div className="flex items-baseline justify-between gap-3 text-2xl">
+        <span className="text-gray-400">{label}</span>
+        <span className="text-gray-500">—</span>
+      </div>
+    );
+  }
+  const { game, team, deficit, roundNumber } = comeback;
+  const winners = game.players.filter(p => p.team === team).sort((a, b) => a.seat - b.seat).map(p => p.name).join(' + ');
+  const other = team === 0 ? 1 : 0;
+  const date = new Date(game.finishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const canOpen = game.players.some(p => p.uid === myUid);
+  const body = (
+    <>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-gray-400">{label}</span>
+        <span className="font-semibold whitespace-nowrap">
+          Down <span className="text-yellow-300">{deficit}</span> in round {roundNumber}
+        </span>
+      </div>
+      <div className="flex items-baseline justify-between gap-3 text-xl text-gray-400">
+        <span className="truncate">{winners}</span>
+        <span className="whitespace-nowrap">
+          Won {game.finalScores[team]}–{game.finalScores[other]} · {date}
+        </span>
+      </div>
+    </>
+  );
+  return canOpen ? (
+    <button
+      onClick={() => onOpen(game)}
+      title="Show game history"
+      className="block w-full text-left text-2xl rounded-lg px-2 py-1 -mx-2 hover:bg-gray-700 transition-colors"
+    >
+      {body}
+    </button>
+  ) : (
+    <div className="text-2xl px-2 py-1 -mx-2">{body}</div>
   );
 }

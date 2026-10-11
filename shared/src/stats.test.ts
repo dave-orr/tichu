@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computePlayerStats, computePartnerSummaries, computePairingBreakdown, computeStatTotals,
-  pairPerspective, GameRecord,
+  pairPerspective, GameRecord, biggestComeback,
 } from './stats.js';
 import { GameSummary, RoundLog, RoundLogPlayerEntry, Seat, TichuCall } from './types.js';
 
@@ -300,5 +300,44 @@ describe('computeStatTotals', () => {
     const rounds = [round('g', 1, { uids: [null, 'B', 'C', 'D'] }), round('g', 2)];
     const a = computeStatTotals([{ summary: summary({ id: 'g' }), rounds }], s => ({ team: 0, uids: ['A'] }));
     expect(a.roundsPlayed).toBe(1);
+  });
+});
+
+describe('biggestComeback', () => {
+  const records: GameRecord[] = [
+    // Team 0 won after trailing by 350 at the start of round 2.
+    {
+      summary: summary({ id: 'g1', finishedAt: 100, winningTeam: 0 }),
+      rounds: [round('g1', 1, { before: [0, 0] }), round('g1', 2, { before: [100, 450] }), round('g1', 3, { before: [500, 600] })],
+    },
+    // Team 1 won after trailing by 500 (deepest overall).
+    {
+      summary: summary({ id: 'g2', finishedAt: 200, finalScores: [800, 1000], winningTeam: 1 }),
+      rounds: [round('g2', 1, { before: [0, 0] }), round('g2', 2, { before: [600, 100] })],
+    },
+    // Ties g2's 500 but finished later, so it doesn't take the record.
+    {
+      summary: summary({ id: 'g3', finishedAt: 300, finalScores: [900, 1000], winningTeam: 1 }),
+      rounds: [round('g3', 1, { before: [500, 0] })],
+    },
+    // Team 0 led throughout: no comeback.
+    {
+      summary: summary({ id: 'g4', finishedAt: 400 }),
+      rounds: [round('g4', 1, { before: [0, 0] }), round('g4', 2, { before: [300, 0] })],
+    },
+  ];
+
+  it('finds the deepest deficit overcome across all games, earliest game on ties', () => {
+    const c = biggestComeback(records);
+    expect(c?.game.gameId).toBe('g2');
+    expect(c?.deficit).toBe(500);
+    expect(c?.roundNumber).toBe(2);
+    expect(c?.team).toBe(1);
+  });
+
+  it('only counts games the player won', () => {
+    expect(biggestComeback(records, 'A')).toMatchObject({ deficit: 350, roundNumber: 2, team: 0 });
+    expect(biggestComeback(records, 'B')?.game.gameId).toBe('g2');
+    expect(biggestComeback(records.slice(3), 'A')).toBeNull();
   });
 });

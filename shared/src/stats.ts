@@ -191,6 +191,52 @@ export function computePlayerStats(records: readonly GameRecord[], uid: string):
   return computeStatTotals(records, s => playerPerspective(s, uid));
 }
 
+// ===== Comebacks =====
+
+/** A game won after trailing: the largest deficit the winners overcame. */
+export type Comeback = {
+  /** Points the winning team trailed by at the start of its worst round. */
+  deficit: number;
+  /** The round that started at that deficit. */
+  roundNumber: number;
+  /** The team that came back to win. */
+  team: 0 | 1;
+  game: GameSummary;
+};
+
+/** The comeback in a single game, or null if the winners never trailed at a round start. */
+export function gameComeback({ summary, rounds }: GameRecord): Comeback | null {
+  const team = summary.winningTeam;
+  if (team === null) return null;
+  const other = team === 0 ? 1 : 0;
+  let best: Comeback | null = null;
+  for (const r of rounds) {
+    const deficit = r.scoresBeforeRound[other] - r.scoresBeforeRound[team];
+    if (deficit > 0 && (!best || deficit > best.deficit)) {
+      best = { deficit, roundNumber: r.roundNumber, team, game: summary };
+    }
+  }
+  return best;
+}
+
+/**
+ * The biggest comeback across `records`. With `uid`, only games that player
+ * won count. Ties go to the earlier game (the first to set the mark).
+ */
+export function biggestComeback(records: readonly GameRecord[], uid?: string): Comeback | null {
+  let best: Comeback | null = null;
+  for (const record of records) {
+    if (uid !== undefined && teamOf(record.summary, uid) !== record.summary.winningTeam) continue;
+    const c = gameComeback(record);
+    if (!c) continue;
+    if (!best || c.deficit > best.deficit
+      || (c.deficit === best.deficit && c.game.finishedAt < best.game.finishedAt)) {
+      best = c;
+    }
+  }
+  return best;
+}
+
 // ===== Partners =====
 
 /** One row of the "By Partner" list. */
@@ -339,4 +385,6 @@ export type UserStats = StatTotals & {
   elo: number;
   eloGames: number;
   eloPeak: number;
+  /** Optional: absent from clients/servers predating comeback tracking. */
+  biggestComeback?: Comeback | null;
 };

@@ -4,6 +4,7 @@ import {
   GameSummary, GameSummaryPlayer, GameHistoryRound, HeadToHead,
   GameRecord, UserStats, TeamStats, PairingPlayer, EMPTY_STAT_TOTALS,
   computePlayerStats, computePartnerSummaries, computePairingBreakdown,
+  Comeback, biggestComeback,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room } from './rooms.js';
@@ -114,6 +115,7 @@ export async function saveGameSummary(room: Room): Promise<void> {
 
   // playerUids is stored alongside the summary purely for querying.
   await db.collection('games').doc(acc.gameId).set({ ...summary, playerUids }, { merge: true });
+  invalidateComebackRecord();
 }
 
 /**
@@ -501,7 +503,66 @@ export async function fetchUserStats(uid: string): Promise<UserStats> {
     loadGameRecords(uid),
     db.collection('users').doc(uid).get(),
   ]);
-  return { ...computePlayerStats(records, uid), ...readElo(userSnap.data()) };
+  return {
+    ...computePlayerStats(records, uid),
+    ...readElo(userSnap.data()),
+    biggestComeback: biggestComeback(records, uid),
+  };
+}
+
+// ===== Server-wide comeback record =====
+
+/**
+ * The record is a scan of every game's rounds, so it is computed at most once
+ * per TTL (or after a game finishes) and the pending promise is shared, the
+ * same way `roundLogCache` dedupes concurrent stats-page fetches.
+ */
+const COMEBACK_RECORD_TTL_MS = 30 * 60 * 1000;
+let comebackRecordCache: { at: number; pending: Promise<Comeback | null> } | null = null;
+
+/** Drop the cached record so the next request rescans (a new game may have beaten it). */
+export function invalidateComebackRecord(): void {
+  comebackRecordCache = null;
+}
+
+async function computeComebackRecord(): Promise<Comeback | null> {
+  const db = firebaseAdmin!.firestore();
+  // Only the score fields: round logs also carry full hands and plays.
+  const [gamesSnap, roundsSnap] = await Promise.all([
+    db.collection('games').get(),
+    db.collectionGroup('rounds').select('roundNumber', 'scoresBeforeRound').get(),
+  ]);
+  const roundsByGame = new Map<string, RoundLog[]>();
+  for (const doc of roundsSnap.docs) {
+    const gameId = doc.ref.parent.parent?.id;
+    if (!gameId) continue;
+    const list = roundsByGame.get(gameId) ?? [];
+    list.push(doc.data() as RoundLog);
+    roundsByGame.set(gameId, list);
+  }
+  const records: GameRecord[] = gamesSnap.docs.map(d => {
+    const summary = toSummary(d.data());
+    return { summary, rounds: roundsByGame.get(summary.gameId) ?? [] };
+  });
+  return biggestComeback(records);
+}
+
+/**
+ * The biggest comeback ever won on this server. Player uids are stripped
+ * unless the requester played in the game (they gate opening its history).
+ */
+export async function fetchComebackRecord(uid: string): Promise<Comeback | null> {
+  if (!firebaseAdmin) return null;
+  if (!comebackRecordCache || Date.now() - comebackRecordCache.at > COMEBACK_RECORD_TTL_MS) {
+    const pending = computeComebackRecord();
+    const entry = { at: Date.now(), pending };
+    comebackRecordCache = entry;
+    // Don't cache a failure (transient Firestore error), or it would stick.
+    pending.catch(() => { if (comebackRecordCache === entry) comebackRecordCache = null; });
+  }
+  const record = await comebackRecordCache.pending;
+  if (!record || record.game.players.some(p => p.uid === uid)) return record;
+  return { ...record, game: { ...record.game, players: record.game.players.map(p => ({ ...p, uid: null })) } };
 }
 
 const pairKey = (a: string, b: string) => [a, b].sort().join('_');
