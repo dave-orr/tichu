@@ -1,3 +1,4 @@
+import AchievementsEarned from './AchievementsEarned.js';
 import { RoundResult, RoundHistoryEntry, RoundTichuCall, ClientPlayer, Seat, EloUpdate, HeadToHead, getTeamForSeat } from '@tichu/shared';
 
 type Props = {
@@ -106,6 +107,10 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
   );
 
   // ===== Sections, composed differently for round-end vs game-over =====
+
+  const achievementsBlock = (
+    <AchievementsEarned events={result.achievements} players={players} isGameOver={isGameOver} />
+  );
 
   const doubleVictoryBlock = result.isDoubleVictory && (
     <div className="text-center mb-4">
@@ -370,6 +375,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
 
         {isGameOver ? (
           <>
+            {achievementsBlock}
             {/* Two columns: the final round + history left, analytics right —
                 horizontal space instead of one long scroll. */}
             <div className="grid md:grid-cols-2 gap-x-8 items-start text-center">
@@ -403,6 +409,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
           </>
         ) : (
           <>
+            {achievementsBlock}
             {doubleVictoryBlock}
             {scoringTable}
             {outOrderBlock}

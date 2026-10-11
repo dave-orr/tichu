@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAchievements, AchievementId } from './achievements.js';
+import { computeAchievements, achievementEvents, AchievementId } from './achievements.js';
 import { GameRecord } from './stats.js';
 import {
   Card, GameSummary, NormalRank, RoundLog, RoundPlay, Seat, Suit, TichuCall,
@@ -188,5 +188,25 @@ describe('computeAchievements', () => {
     const photo = computeAchievements(records, 'A').find(a => a.id === 'photo-finish')!;
     expect(photo.count).toBe(2);
     expect(photo.lastGame?.gameId).toBe('new');
+  });
+});
+
+describe('achievementEvents (live, per round)', () => {
+  it('tags round events with their round and adds game events only once the game is over', () => {
+    const made = (i: number) => round('g', i, { calls: { 1: 'small' }, outOrder: [1, 0, 2] });
+    const rounds = [made(1), made(2), made(3)];
+    rounds[2].bombs = [{ seat: 0, cards: fourOf(5) }, { seat: 0, cards: fourOf(6) }];
+
+    const live = achievementEvents(rounds).filter(e => e.roundNumber === 3);
+    expect(live).toEqual(expect.arrayContaining([
+      { id: 'double-tap', seats: [0], roundNumber: 3 },
+      { id: 'hat-trick', seats: [1], roundNumber: 3 },
+    ]));
+    expect(live).toHaveLength(2);
+    expect(achievementEvents(rounds).some(e => e.roundNumber === null)).toBe(false);
+
+    const ended = achievementEvents(rounds, { winningTeam: 0, finalScores: [1005, 1000] });
+    expect(ended).toContainEqual({ id: 'photo-finish', seats: [0, 2], roundNumber: null });
+    expect(ended).toContainEqual({ id: 'wire-to-wire', seats: [0, 2], roundNumber: null });
   });
 });

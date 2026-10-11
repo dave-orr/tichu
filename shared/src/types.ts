@@ -255,6 +255,8 @@ export type RoundHistoryEntry = {
   tichuCalls?: RoundTichuCall[];
 };
 
+import type { AchievementEvent } from './achievements.js';
+
 export type RoundResult = {
   teamScores: [number, number]; // card points this round
   tichuBonuses: [number, number];
@@ -263,6 +265,8 @@ export type RoundResult = {
   totalScores: [number, number]; // cumulative
   outOrder: [Seat, Seat, Seat, Seat]; // order players went out (last = still had cards)
   concededBy?: Seat; // set when the round ended via concession
+  /** Achievements earned this round (and, at game end, by the game). Set by the server. */
+  achievements?: AchievementEvent[];
 };
 
 // ===== Round Log (for analytics) =====

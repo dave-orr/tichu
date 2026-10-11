@@ -31,13 +31,8 @@ export async function recordPlayedWith(room: Room): Promise<void> {
   await batch.commit();
 }
 
-export async function saveRoundLog(
-  room: Room,
-  roundResult: RoundResult,
-): Promise<void> {
-  if (!firebaseAdmin) return;
-  const db = firebaseAdmin.firestore();
-
+/** The analytics log for the round that just ended. */
+export function buildRoundLog(room: Room, roundResult: RoundResult): RoundLog {
   const state = room.state;
   const acc = room.accumulator;
 
@@ -75,12 +70,16 @@ export async function saveRoundLog(
     mahJongWishes: acc.mahJongWishes,
     plays: acc.plays,
   };
+  return log;
+}
 
-  await db
+export async function saveRoundLog(log: RoundLog): Promise<void> {
+  if (!firebaseAdmin) return;
+  await firebaseAdmin.firestore()
     .collection('games')
-    .doc(acc.gameId)
+    .doc(log.gameId)
     .collection('rounds')
-    .doc(String(state.roundNumber))
+    .doc(String(log.roundNumber))
     .set(log);
 }
 

@@ -3,7 +3,7 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
-  Card, NormalRank, PlayResult, RoundResult, PassInfo, RoundPlay, cardId, identifyCombo, isBomb,
+  Card, NormalRank, PlayResult, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, cardId, identifyCombo, isBomb,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
@@ -46,6 +46,10 @@ export type Room = {
   // the table is on the roundEnd/gameEnd screen (the round-result event itself
   // is only emitted once, at the moment the round ends).
   lastRoundResult: RoundResult | null;
+  /** This game's finished rounds, slimmed to what cross-round achievements need. */
+  gameRoundLogs: RoundLog[];
+  /** Achievements earned so far this game, round by round. */
+  gameAchievements: AchievementEvent[];
 };
 
 /** Live human sockets in a room (API/AI players are excluded). */
@@ -307,6 +311,8 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     aiOpenSeats: new Set(),
     bombAnnounceThrottle: new Map(),
     lastRoundResult: null,
+    gameRoundLogs: [],
+    gameAchievements: [],
   };
 
   rooms.set(code, room);
@@ -486,6 +492,8 @@ export function registerRestoredRoom(room: Room): boolean {
   if (!room.bombAnnounceThrottle) room.bombAnnounceThrottle = new Map();
   if (!room.passes) room.passes = new Map();
   if (room.lastRoundResult === undefined) room.lastRoundResult = null;
+  if (!room.gameRoundLogs) room.gameRoundLogs = [];
+  if (!room.gameAchievements) room.gameAchievements = [];
   if (!room.accumulator.firstEight) room.accumulator.firstEight = new Map();
   if (!room.accumulator.plays) room.accumulator.plays = [];
   if (room.accumulator.trick === undefined) room.accumulator.trick = -1;
@@ -680,6 +688,8 @@ export function startGame(room: Room): void {
   room.gameId = `${room.code}_${Date.now()}`;
   room.state = startNewRound(room.state);
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
+  room.gameRoundLogs = [];
+  room.gameAchievements = [];
   room.passes.clear();
   room.lastRoundResult = null;
 }
@@ -917,6 +927,8 @@ export function resetRoomForNewGame(room: Room): boolean {
   room.lastRoundResult = null;
   room.gameId = `${room.code}_${Date.now()}`;
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
+  room.gameRoundLogs = [];
+  room.gameAchievements = [];
   // If the organizer has gone, hand the role to someone still here.
   if (!room.playerSockets.has(room.organizer)) handOffOrganizer(room);
   return true;

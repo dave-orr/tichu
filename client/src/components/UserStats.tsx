@@ -298,61 +298,53 @@ function ComebackRow({ label, comeback, myUid, onOpen }: {
 }
 
 /**
- * Counting achievements: earned ones show their count and open the latest
- * game they happened in; unearned ones stay dimmed.
+ * Earned achievements only, with their counts; each opens the latest game it
+ * was earned in. Unearned ones stay hidden so they're a surprise when they
+ * first happen.
  */
 function Achievements({ achievements, onOpen }: {
   achievements: AchievementCount[];
   onOpen: (game: GameSummary) => void;
 }) {
   const byId = new Map(achievements.map(a => [a.id, a]));
-  const earned = achievements.filter(a => a.count > 0).length;
+  const earned = ACHIEVEMENTS
+    .map(def => ({ def, a: byId.get(def.id) }))
+    .filter((x): x is { def: typeof x.def; a: AchievementCount } => !!x.a && x.a.count > 0);
   return (
     <>
-      <div className="flex items-baseline justify-between mb-2">
-        <h4 className="text-2xl text-gray-500 uppercase tracking-wide">Achievements</h4>
-        <span className="text-xl text-gray-400">{earned} of {ACHIEVEMENTS.length} earned</span>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-2">
-        {ACHIEVEMENTS.map(def => {
-          const a = byId.get(def.id);
-          const count = a?.count ?? 0;
-          const game = a?.lastGame ?? null;
-          const body = (
-            <>
-              <img
-                src={`${import.meta.env.BASE_URL}achievements/${def.id}.svg`}
-                alt=""
-                className={`w-24 h-24 flex-shrink-0 ${count > 0 ? '' : 'grayscale opacity-40'}`}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={`text-2xl font-bold ${count > 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
-                    {def.name}{def.newLogsOnly && <span className="text-gray-500" title="Counted from games played after this was added">*</span>}
-                  </span>
-                  <span className={`text-2xl font-black ${count > 0 ? 'text-white' : 'text-gray-600'}`}>×{count}</span>
+      <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">Achievements</h4>
+      {earned.length === 0 ? (
+        <p className="text-2xl text-gray-500">None yet. Keep playing to discover them!</p>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-2">
+          {earned.map(({ def, a }) => {
+            const body = (
+              <>
+                <img src={`${import.meta.env.BASE_URL}achievements/${def.id}.svg`} alt="" className="w-24 h-24 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-2xl font-bold text-yellow-400">{def.name}</span>
+                    <span className="text-2xl font-black text-white">×{a.count}</span>
+                  </div>
+                  <div className="text-xl text-gray-300">{def.description}</div>
                 </div>
-                <div className={`text-xl ${count > 0 ? 'text-gray-300' : 'text-gray-500'}`}>{def.description}</div>
-              </div>
-            </>
-          );
-          const base = 'flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2';
-          return count > 0 && game ? (
-            <button
-              key={def.id}
-              onClick={() => onOpen(game)}
-              title="Show the latest game this was earned in"
-              className={`${base} border-yellow-600/60 bg-gray-900/60 hover:bg-gray-700 transition-colors`}
-            >
-              {body}
-            </button>
-          ) : (
-            <div key={def.id} className={`${base} border-gray-700 bg-gray-900/30`}>{body}</div>
-          );
-        })}
-      </div>
-      {ACHIEVEMENTS.some(d => d.newLogsOnly) && (
-        <div className="text-lg text-gray-500 mt-2">* Counted only from games played after achievements launched.</div>
+              </>
+            );
+            const base = 'flex items-center gap-3 w-full text-left rounded-lg border border-yellow-600/60 bg-gray-900/60 px-3 py-2';
+            return a.lastGame ? (
+              <button
+                key={def.id}
+                onClick={() => onOpen(a.lastGame!)}
+                title="Show the latest game this was earned in"
+                className={`${base} hover:bg-gray-700 transition-colors`}
+              >
+                {body}
+              </button>
+            ) : (
+              <div key={def.id} className={base}>{body}</div>
+            );
+          })}
+        </div>
       )}
     </>
   );
