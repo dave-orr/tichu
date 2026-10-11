@@ -1,22 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-<circle cx="64" cy="64" r="61" fill="#1e293b"/>
-<circle cx="64" cy="64" r="52" fill="#26354d"/>
-<circle cx="64" cy="64" r="59" fill="none" stroke="#facc15" stroke-width="4"/>
-<circle cx="64" cy="64" r="53" fill="none" stroke="#facc15" stroke-opacity="0.3" stroke-width="1.5"/>
-<g transform="translate(64 64) scale(0.84) translate(-64 -64)" stroke="#0b1220" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
-
-<ellipse cx="64" cy="104" rx="40" ry="8" fill="#15803d"/>
-<g transform="translate(-12 0)">
-<path d="M36 104 L36 58 A24 24 0 0 1 84 58 L84 104 Z" fill="#94a3b8"/>
-<path d="M74 37 A24 24 0 0 1 84 58 L84 104 L74 104 Z" fill="#64748b" stroke="none"/>
-<text x="60" y="72" font-family="Georgia, serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#475569" stroke="none">RIP</text>
-<path d="M44 76 L76 62" stroke="#ef4444" stroke-width="3"/>
-<path d="M50 46 l6 8 l-4 6 l6 6" fill="none" stroke="#0b1220" stroke-width="2"/>
-</g>
-<path d="M78 106 L96 50" stroke="#0b1220" stroke-width="13"/>
-<path d="M78 106 L96 50" stroke="#facc15" stroke-width="8"/>
-<path d="M101.5 32 L106.6 53.8 L85.4 46.2 Z" fill="#facc15"/>
-<path d="M104 53 Q104 58 109 58 Q104 58 104 63 Q104 58 99 58 Q104 58 104 53 Z" fill="#facc15" stroke="none"/><path d="M24 36 Q24 40 28 40 Q24 40 24 44 Q24 40 20 40 Q24 40 24 36 Z" fill="#facc15" stroke="none"/>
-
+<defs>
+<filter id="cut" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="3" result="w"/>
+  <feDisplacementMap in="SourceGraphic" in2="w" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feDropShadow in="d" dx="0.5" dy="1.6" stdDeviation="0.9" flood-color="#2B2233" flood-opacity="0.38"/>
+</filter>
+<filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" result="t"/>
+  <feColorMatrix in="t" type="matrix" values="0 0 0 0 0.33  0 0 0 0 0.25  0 0 0 0 0.17  0.3 0 0 0 -0.12" result="g"/>
+  <feComposite in="g" in2="SourceAlpha" operator="in" result="grain"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="11" result="m"/>
+  <feColorMatrix in="m" type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.33  0 0 0 0 0.2  0.45 0 0 0 -0.18" result="mo"/>
+  <feComposite in="mo" in2="SourceAlpha" operator="in" result="mottle"/>
+  <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="mottle"/><feMergeNode in="grain"/></feMerge>
+</filter>
+<clipPath id="disc"><circle cx="64" cy="64" r="49"/></clipPath>
+</defs>
+<g filter="url(#paper)">
+<g filter="url(#cut)"><path d="M125.00 64.00 L124.67 66.65 L123.72 69.22 L122.27 71.67 L120.53 73.97 L121.38 76.72 L121.90 79.52 L121.92 82.26 L121.32 84.86 L120.10 87.24 L118.33 89.33 L116.14 91.14 L113.71 92.70 L113.57 95.58 L113.10 98.38 L112.18 100.97 L110.73 103.21 L108.77 105.03 L106.39 106.39 L103.71 107.34 L100.90 107.97 L99.78 110.63 L98.38 113.10 L96.63 115.22 L94.50 116.83 L92.04 117.86 L89.33 118.33 L86.49 118.30 L83.63 117.94 L81.67 120.06 L79.52 121.90 L77.14 123.29 L74.59 124.07 L71.93 124.21 L69.22 123.72 L66.56 122.72 L64.00 121.40 L61.44 122.72 L58.78 123.72 L56.07 124.21 L53.41 124.07 L50.86 123.29 L48.48 121.90 L46.33 120.06 L44.37 117.94 L41.51 118.30 L38.67 118.33 L35.96 117.86 L33.50 116.83 L31.37 115.22 L29.62 113.10 L28.22 110.63 L27.10 107.97 L24.29 107.34 L21.61 106.39 L19.23 105.03 L17.27 103.21 L15.82 100.97 L14.90 98.38 L14.43 95.58 L14.29 92.70 L11.86 91.14 L9.67 89.33 L7.90 87.24 L6.68 84.86 L6.08 82.26 L6.10 79.52 L6.62 76.72 L7.47 73.97 L5.73 71.67 L4.28 69.22 L3.33 66.65 L3.00 64.00 L3.33 61.35 L4.28 58.78 L5.73 56.33 L7.47 54.03 L6.62 51.28 L6.10 48.48 L6.08 45.74 L6.68 43.14 L7.90 40.76 L9.67 38.67 L11.86 36.86 L14.29 35.30 L14.43 32.42 L14.90 29.62 L15.82 27.03 L17.27 24.79 L19.23 22.97 L21.61 21.61 L24.29 20.66 L27.10 20.03 L28.22 17.37 L29.62 14.90 L31.37 12.78 L33.50 11.17 L35.96 10.14 L38.67 9.67 L41.51 9.70 L44.37 10.06 L46.33 7.94 L48.48 6.10 L50.86 4.71 L53.41 3.93 L56.07 3.79 L58.78 4.28 L61.44 5.28 L64.00 6.60 L66.56 5.28 L69.22 4.28 L71.93 3.79 L74.59 3.93 L77.14 4.71 L79.52 6.10 L81.67 7.94 L83.63 10.06 L86.49 9.70 L89.33 9.67 L92.04 10.14 L94.50 11.17 L96.63 12.78 L98.38 14.90 L99.78 17.37 L100.90 20.03 L103.71 20.66 L106.39 21.61 L108.77 22.97 L110.73 24.79 L112.18 27.03 L113.10 29.62 L113.57 32.42 L113.71 35.30 L116.14 36.86 L118.33 38.67 L120.10 40.76 L121.32 43.14 L121.92 45.74 L121.90 48.48 L121.38 51.28 L120.53 54.03 L122.27 56.33 L123.72 58.78 L124.67 61.35 Z" fill="#E8AA38" stroke="#B9802A" stroke-width="1.5"/></g>
+<g filter="url(#cut)"><circle cx="64" cy="64" r="50" fill="#1F2550" stroke="#B9802A" stroke-width="1.5"/></g>
+<g clip-path="url(#disc)"><g filter="url(#cut)"><circle cx="88" cy="30" r="11" fill="#FFF5E2" stroke="none"/><circle cx="84" cy="27" r="2.5" fill="#F3EBDC" stroke="none"/><path d="M30 31 Q30.6 33.4 33 34 Q30.6 34.6 30 37 Q29.4 34.6 27 34 Q29.4 33.4 30 31 Z" fill="#FFF5E2" stroke-width="1.2"/><path d="M46 19.5 Q46.5 21.5 48.5 22 Q46.5 22.5 46 24.5 Q45.5 22.5 43.5 22 Q45.5 21.5 46 19.5 Z" fill="#FFF5E2" stroke-width="1.2"/><path d="M100 41.5 Q100.5 43.5 102.5 44 Q100.5 44.5 100 46.5 Q99.5 44.5 97.5 44 Q99.5 43.5 100 41.5 Z" fill="#FFF5E2" stroke-width="1.2"/></g></g>
+<g stroke="#2B2233" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><g filter="url(#cut)"><path d="M22 92 L22 50 A16 16 0 0 1 54 50 L54 92 Z" fill="#B7B1C2"/><path d="M30 54 L46 54 M38 46 L38 66" stroke="#8C8699" stroke-width="3"/><path d="M48 40 l-4 8 l4 4 l-3 6" fill="none" stroke="#2B2233" stroke-width="1.5"/></g><g filter="url(#cut)"><path d="M50 82 C44 74 40 64 34 58" fill="none" stroke="#2B2233" stroke-width="10"/><path d="M50 82 C44 74 40 64 34 58" fill="none" stroke="#6E9F58" stroke-width="6"/><path d="M84 82 C92 74 96 64 100 56" fill="none" stroke="#2B2233" stroke-width="10"/><path d="M84 82 C92 74 96 64 100 56" fill="none" stroke="#6E9F58" stroke-width="6"/><circle cx="33" cy="56" r="5" fill="#6E9F58"/><circle cx="101" cy="54" r="5" fill="#6E9F58"/><path d="M48 100 Q50 80 68 78 Q86 80 88 100 Z" fill="#7B5CA8"/><path d="M56 86 l3 4 M76 84 l3 5" stroke="#2B2233" stroke-width="1.5"/></g><g filter="url(#cut)"><ellipse cx="68" cy="62" rx="17" ry="16" fill="#6E9F58"/><circle cx="61" cy="59" r="5.5" fill="#FFFDF7"/><circle cx="76" cy="59" r="3.8" fill="#FFFDF7"/><circle cx="62" cy="60" r="2" fill="#2B2233" stroke="none"/><circle cx="76" cy="60" r="1.6" fill="#2B2233" stroke="none"/><path d="M60 70 Q68 78 77 70 Z" fill="#A84D33"/><path d="M64 71 l0 3 M71 71 l0 3" stroke="#FFFDF7" stroke-width="1.6"/><path d="M74 48 l4 3 M76 46 l-1 5 M79 47 l-2 5" stroke="#2B2233" stroke-width="1.2"/><path d="M56 48 Q60 44 66 46" fill="none" stroke="#4E7A3E" stroke-width="3"/></g><g filter="url(#cut)"><path d="M14 120 L14 102 Q30 90 48 96 Q66 86 86 96 Q104 90 114 102 L114 120 Z" fill="#A84D33"/><circle cx="34" cy="104" r="2" fill="#D97757" stroke="none"/><circle cx="74" cy="100" r="2.4" fill="#D97757" stroke="none"/><circle cx="96" cy="106" r="2" fill="#D97757" stroke="none"/></g></g>
 </g>
 </svg>

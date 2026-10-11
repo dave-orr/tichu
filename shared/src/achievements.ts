@@ -18,9 +18,10 @@ export type AchievementId =
   | 'photo-finish'
   | 'wire-to-wire'
   | 'hat-trick'
-  | 'dragons-hoard'
+  | 'friendly-fire'
   | 'ganis'
-  | 'score-based-grand';
+  | 'score-based-grand'
+  | 'wish-bomb';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -45,12 +46,18 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'photo-finish', name: 'Photo Finish', description: `Win a game by ${PHOTO_FINISH_MARGIN} points or less` },
   { id: 'wire-to-wire', name: 'Wire to Wire', description: 'Win a game while ahead after every round' },
   { id: 'hat-trick', name: 'Hat Trick', description: 'Make Tichu or Grand Tichu three rounds in a row' },
-  { id: 'dragons-hoard', name: "Dragon's Hoard", description: 'Bomb your own Dragon', newLogsOnly: true },
+  { id: 'friendly-fire', name: 'Friendly Fire', description: 'Bomb your own Dragon', newLogsOnly: true },
   { id: 'ganis', name: 'Ganis!', description: 'Play a 14-card straight', newLogsOnly: true },
   {
     id: 'score-based-grand',
     name: 'Score-Based Grand',
     description: 'Call Grand Tichu without a Dragon, Phoenix or Ace in your first 8 cards',
+    newLogsOnly: true,
+  },
+  {
+    id: 'wish-bomb',
+    name: 'Careful What You Wish For',
+    description: 'Have your Mah Jong wish fulfilled by a bomb',
     newLogsOnly: true,
   },
 ];
@@ -117,9 +124,18 @@ function roundEvents(r: RoundLog): Array<{ id: AchievementId; seat: Seat }> {
     // Someone else's bomb right on top of a bomb: the bombed player earns it.
     if (prev.seat !== play.seat && isBombPlay(prev)) out.push({ id: 'out-bombed', seat: prev.seat });
     if (prev.seat === play.seat && prev.cards.length === 1 && isSpecial(prev.cards[0], 'dragon')) {
-      out.push({ id: 'dragons-hoard', seat: play.seat });
+      out.push({ id: 'friendly-fire', seat: play.seat });
     }
   });
+
+  // A wish is fulfilled by the first play after the Mah Jong that contains
+  // the wished rank; the wisher earns this when that play is a bomb.
+  for (const wish of r.mahJongWishes) {
+    const mj = plays.findIndex(p => p.seat === wish.seat && p.cards.some(c => isSpecial(c, 'mahjong')));
+    if (mj < 0) continue;
+    const fulfilled = plays.slice(mj + 1).find(p => p.cards.some(c => c.type === 'normal' && c.rank === wish.rank));
+    if (fulfilled && isBombPlay(fulfilled)) out.push({ id: 'wish-bomb', seat: wish.seat });
+  }
 
   return out;
 }

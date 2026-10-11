@@ -134,7 +134,7 @@ describe('computeAchievements', () => {
     expect(counts(records, 'B')['double-tap']).toBe(0);
   });
 
-  it("Out-Bombed and Dragon's Hoard read the play log", () => {
+  it("Out-Bombed and Friendly Fire read the play log", () => {
     const plays: RoundPlay[] = [
       { seat: 0, cards: [sp('dragon')], trick: 0 },
       { seat: 0, cards: fourOf(5), trick: 0 },   // A bombs own Dragon
@@ -145,11 +145,11 @@ describe('computeAchievements', () => {
     ];
     const records: GameRecord[] = [{ summary: summary('g'), rounds: [round('g', 1, { plays })] }];
     const a = counts(records, 'A');
-    expect(a['dragons-hoard']).toBe(1);
+    expect(a['friendly-fire']).toBe(1);
     expect(a['out-bombed']).toBe(1);
     const d = counts(records, 'D');
     expect(d['out-bombed']).toBe(0);
-    expect(counts(records, 'B')['dragons-hoard']).toBe(0);
+    expect(counts(records, 'B')['friendly-fire']).toBe(0);
   });
 
   it('Ganis!: a 14-card straight, Phoenix allowed', () => {
@@ -208,5 +208,23 @@ describe('achievementEvents (live, per round)', () => {
     const ended = achievementEvents(rounds, { winningTeam: 0, finalScores: [1005, 1000] });
     expect(ended).toContainEqual({ id: 'photo-finish', seats: [0, 2], roundNumber: null });
     expect(ended).toContainEqual({ id: 'wire-to-wire', seats: [0, 2], roundNumber: null });
+  });
+});
+
+describe('Careful What You Wish For', () => {
+  const mahjongLead = (seat: Seat): RoundPlay => ({ seat, cards: [sp('mahjong')], trick: 0 });
+  const wishRound = (gid: string, plays: RoundPlay[]): RoundLog => ({
+    ...round(gid, 1, { plays }), mahJongWishes: [{ seat: 0, rank: 9 as NormalRank }],
+  });
+
+  it('credits the wisher when a bomb fulfils the wish', () => {
+    const records: GameRecord[] = [
+      // Fulfilled by a bomb of 9s.
+      { summary: summary('g1'), rounds: [wishRound('g1', [mahjongLead(0), { seat: 1, cards: [n(4)], trick: 0 }, { seat: 3, cards: fourOf(9), trick: 0 }])] },
+      // Fulfilled by a plain 9 first; a later bomb of 9s doesn't count.
+      { summary: summary('g2'), rounds: [wishRound('g2', [mahjongLead(0), { seat: 1, cards: [n(9)], trick: 0 }, { seat: 3, cards: fourOf(9), trick: 0 }])] },
+    ];
+    expect(counts(records, 'A')['wish-bomb']).toBe(1);
+    expect(counts(records, 'D')['wish-bomb']).toBe(0);
   });
 });
