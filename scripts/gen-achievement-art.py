@@ -281,27 +281,34 @@ icons['lazarus'] = badge(NIGHT, layer(
         f'<circle cx="96" cy="106" r="2" fill="{CLAY}" stroke="none"/>')
 )
 
-# ---- Photo Finish: two horses hit the line nose to nose; the camera flashes.
-def horse(dx, dy, coat, mane, cap):
+# ---- Photo Finish: two horses at full gallop hit the line nose to nose; the
+# camera flashes.
+def horse(dx, dy, coat, mane, cloth, s=0.9):
+    leg = lambda d: (f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="6.5"/>'
+                     f'<path d="{d}" fill="none" stroke="{coat}" stroke-width="3.6"/>')
     return layer(
-        f'<g transform="translate({dx} {dy}) scale(0.72)">'
-        f'<path d="M-6 60 C-6 40 0 26 12 16 L12 8 L18 14 C28 14 40 20 48 28 C52 32 51 39 45 40 '
-        f'C38 40 30 37 26 38 C22 44 20 52 22 60 Z" fill="{coat}"/>'
-        f'<path d="M12 16 C4 24 -2 36 -6 48 L-10 40 C-6 30 0 20 10 12 Z" fill="{mane}"/>'
-        f'<circle cx="24" cy="22" r="2.4" fill="{INK}" stroke="none"/>'
-        f'<circle cx="44" cy="34" r="1.6" fill="{INK}" stroke="none"/>'
-        f'<path d="M22 30 L36 36 L28 44" fill="none" stroke="{OCHRE}" stroke-width="2"/>'
-        f'</g>')
+        f'<g transform="translate({dx} {dy}) scale({s})">'
+        # far legs, then tail, body, near legs
+        + leg('M42 32 L52 38 L58 36') + leg('M16 32 L6 38 L0 44')
+        + f'<path d="M10 20 C2 18 -6 24 -10 32 C-2 30 4 28 10 26 Z" fill="{mane}"/>'
+        f'<path d="M10 20 C14 14 30 12 40 14 C44 10 46 4 50 0 L51 -5 L54 1 C58 2 62 6 64 11 '
+        f'C64 14 61 15 58 13 C54 11 51 13 49 18 C48 24 45 30 39 32 C30 34 18 34 12 30 C8 28 8 24 10 20 Z" fill="{coat}"/>'
+        f'<path d="M40 14 C44 9 46 5 50 0 L46 3 C42 7 38 11 35 14 Z" fill="{mane}"/>'
+        f'<path d="M22 15 L34 14 L35 24 L23 25 Z" fill="{cloth}"/>'
+        f'<circle cx="54" cy="5" r="1.6" fill="{INK}" stroke="none"/>'
+        f'<circle cx="62" cy="11" r="1" fill="{INK}" stroke="none"/>'
+        + leg('M38 30 L50 40 L56 40') + leg('M14 30 L4 42 L-2 44')
+        + '</g>')
 checks = ''.join(
-    f'<rect x="{90 + c * 5}" y="{18 + r * 5}" width="5" height="5" fill="{WHITE if (r + c) % 2 == 0 else INK}" stroke="none"/>'
+    f'<rect x="{94 + c * 5}" y="{18 + r * 5}" width="5" height="5" fill="{WHITE if (r + c) % 2 == 0 else INK}" stroke="none"/>'
     for r in range(18) for c in range(2))
 icons['photo-finish'] = badge(SKY, layer(
-    f'<path d="M14 98 Q64 92 114 98 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'
-    f'<path d="M14 104 Q64 98 114 104" fill="none" stroke="{WHITE}" stroke-width="2" opacity="0.7"/>'),
-    horse(54, 30, INDIGO, INK, ROSE)
-    + layer(checks, f'<rect x="90" y="18" width="10" height="90" fill="none"/>')
-    + horse(55, 62, CLAY, CLAY_DK, TEAL)
-    + layer(sparkle(34, 40, 8, WHITE), f'<path d="M34 28 L34 23 M22 40 L17 40 M43 31 L47 27" stroke="{OCHRE}" stroke-width="2"/>')
+    f'<path d="M14 92 Q64 86 114 92 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'
+    f'<path d="M14 100 Q64 94 114 100" fill="none" stroke="{WHITE}" stroke-width="2" opacity="0.7"/>'),
+    horse(36, 36, INDIGO, INK, ROSE)
+    + layer(checks, f'<rect x="94" y="18" width="10" height="90" fill="none"/>')
+    + horse(37, 62, CLAY, CLAY_DK, TEAL)
+    + layer(sparkle(30, 30, 7, WHITE), f'<path d="M30 19 L30 15 M19 30 L15 30 M38 22 L41 19" stroke="{OCHRE}" stroke-width="2"/>')
 )
 
 # ---- Wire to Wire: the tortoise breaks the tape, never once passed; the hare
@@ -386,13 +393,11 @@ icons['score-based-grand'] = badge(SKY, layer(
     f'<path d="M14 100 Q64 94 114 100 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'
     f'<circle cx="34" cy="34" r="8" fill="{WHITE}" stroke="none" opacity="0.7"/>'
     f'<circle cx="42" cy="32" r="6" fill="{WHITE}" stroke="none" opacity="0.7"/>'),
-    layer(  # the giant: just its legs, boots and a dangling club fit in frame
+    layer(  # the giant: only its legs and boots fit in frame
         f'<path d="M70 10 L72 92 L88 92 L90 10 Z M92 10 L96 92 L110 92 L112 10 Z" fill="{INDIGO}"/>'
         f'<path d="M68 88 Q66 104 72 106 L94 106 Q96 98 90 88 Z" fill="{HAIR}"/>'
         f'<path d="M94 88 Q92 104 98 106 L118 106 Q120 98 112 88 Z" fill="{HAIR}"/>'
         f'<path d="M70 40 L88 40 M94 40 L111 40" stroke="{NIGHT}" stroke-width="2"/>')
-    + layer(f'<path d="M63 14 L69 14 L70 50 Q78 60 74 74 Q66 84 58 76 Q52 64 62 50 Z" fill="#8A5A3B"/>'
-            f'<path d="M62 62 l3 2 M68 70 l2 -3 M60 72 l3 0" stroke="{INK}" stroke-width="1.5"/>')
     + layer(  # the little player: shoulders up, palms up, eyebrows up
         f'<path d="M34 106 L35 98 M44 106 L43 98" stroke="{INK}" stroke-width="3.5"/>'
         f'<path d="M30 100 Q28 82 39 80 Q50 82 48 100 Z" fill="{CLAY}"/>'

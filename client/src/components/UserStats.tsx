@@ -3,6 +3,7 @@ import { ACHIEVEMENTS, type AchievementCount } from '@tichu/shared';
 import type { Comeback, PartnerStats, GameSummary, GameHistoryRound, TeamStats, UserStats as UserStatsType } from '@tichu/shared';
 import RecentGames from './RecentGames.js';
 import TeamStatsModal from './TeamStatsModal.js';
+import AchievementBadge from './AchievementBadge.js';
 import GameHistoryModal from './GameHistoryModal.js';
 
 type Props = {
@@ -320,7 +321,7 @@ function Achievements({ achievements, onOpen }: {
           {earned.map(({ def, a }) => {
             const body = (
               <>
-                <img src={`${import.meta.env.BASE_URL}achievements/${def.id}.svg`} alt="" className="w-24 h-24 flex-shrink-0" />
+                <AchievementBadge id={def.id} className="w-24 h-24" hint={a.lastGame ? 'Click to see the latest game it happened in.' : undefined} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-2xl font-bold text-yellow-400">{def.name}</span>
@@ -335,7 +336,6 @@ function Achievements({ achievements, onOpen }: {
               <button
                 key={def.id}
                 onClick={() => onOpen(a.lastGame!)}
-                title="Show the latest game this was earned in"
                 className={`${base} hover:bg-gray-700 transition-colors`}
               >
                 {body}

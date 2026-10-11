@@ -1,4 +1,5 @@
 import { ACHIEVEMENTS, type AchievementEvent, type ClientPlayer } from '@tichu/shared';
+import AchievementBadge from './AchievementBadge.js';
 
 const DEFS = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
 
@@ -26,9 +27,8 @@ export default function AchievementsEarned({ events, players, isGameOver }: {
               key={`${e.id}-${e.roundNumber}-${e.seats.join()}-${i}`}
               className="achievement-pop flex items-center gap-3 rounded-xl border border-yellow-600/60 bg-gray-900/70 pl-2 pr-4 py-2"
               style={{ animationDelay: `${i * 120}ms` }}
-              title={def.description}
             >
-              <img src={`${import.meta.env.BASE_URL}achievements/${e.id}.svg`} alt="" className="w-20 h-20 flex-shrink-0" />
+              <AchievementBadge id={e.id} />
               <div className="text-left">
                 <div className="text-2xl font-bold text-yellow-400">{def.name}</div>
                 <div className="text-2xl text-white">{e.seats.map(s => players[s]?.name ?? '?').join(' + ')}</div>
