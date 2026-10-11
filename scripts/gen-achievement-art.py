@@ -23,6 +23,7 @@ CLAY, CLAY_DK, CLAY_LT = '#D97757', '#A84D33', '#F2A283'
 NIGHT, INDIGO, SKY = '#1F2550', '#2F3C7A', '#8EC3E6'
 ROSE, OCHRE, OCHRE_DK = '#E27A92', '#E8AA38', '#B9802A'
 SAP, SAP_DK, TEAL, VIOLET = '#6E9F58', '#4E7A3E', '#3A9C98', '#7B5CA8'
+SAP_LT = '#A9CF8A'
 STONE, STONE_DK, ASH, ASH_DK = '#B7B1C2', '#8C8699', '#A39D97', '#77716C'
 BLUE, BLUE_DK = '#4F7BD6', '#2F3C7A'  # Grand Tichu blue
 CRIMSON, CRIMSON_DK = '#C9374A', '#8E2233'
@@ -137,7 +138,8 @@ icons['out-bombed'] = badge(SKY, layer(
     + layer(sparkle(26, 82, 4.5), sparkle(36, 74, 3.5, ROSE), sparkle(60, 86, 3.5))
 )
 
-# ---- Friendly Fire: you bombed your own Dragon. It is sooty, frazzled, betrayed.
+# ---- Friendly Fire: you bombed your own (green, as in game) Dragon. It is sooty,
+# frazzled, and staring at the lit bomb.
 burst = []
 for i in range(22):
     a = 2 * math.pi * i / 22
@@ -150,16 +152,16 @@ icons['friendly-fire'] = badge(CREAM, layer(
         f'<path d="M84 70 C98 64 106 50 102 40 L96 48 L92 42 L88 52 L82 58 Z" fill="{VIOLET}"/>')
     + layer(  # tail with a spade tip, body, belly scutes, feet
         f'<path d="M84 98 Q100 100 104 88" fill="none" stroke="{INK}" stroke-width="7"/>'
-        f'<path d="M84 98 Q100 100 104 88" fill="none" stroke="{CLAY}" stroke-width="4"/>'
-        f'<path d="M104 80 L110 90 L100 90 Z" fill="{CLAY}"/>'
-        f'<path d="M44 106 Q40 74 64 70 Q88 74 84 106 Z" fill="{CLAY}"/>'
+        f'<path d="M84 98 Q100 100 104 88" fill="none" stroke="{SAP}" stroke-width="4"/>'
+        f'<path d="M104 80 L110 90 L100 90 Z" fill="{SAP}"/>'
+        f'<path d="M44 106 Q40 74 64 70 Q88 74 84 106 Z" fill="{SAP}"/>'
         f'<path d="M54 106 Q52 84 64 82 Q76 84 74 106 Z" fill="{OCHRE}"/>'
         f'<path d="M55 90 L73 90 M54 97 L74 97" stroke="{OCHRE_DK}" stroke-width="1.4"/>'
-        f'<ellipse cx="52" cy="107" rx="7" ry="3.5" fill="{CLAY}"/><ellipse cx="76" cy="107" rx="7" ry="3.5" fill="{CLAY}"/>')
+        f'<ellipse cx="52" cy="107" rx="7" ry="3.5" fill="{SAP}"/><ellipse cx="76" cy="107" rx="7" ry="3.5" fill="{SAP}"/>')
     + layer(  # head: spiky crest, long snout, fangs, soot, stunned eyes
         f'<path d="M50 36 L54 22 L60 32 L64 18 L68 32 L74 22 L78 36 Z" fill="{OCHRE}"/>'
-        f'<path d="M42 50 Q42 32 64 32 Q86 32 86 50 Q86 60 80 64 Q64 70 48 64 Q42 60 42 50 Z" fill="{CLAY}"/>'
-        f'<path d="M50 58 Q50 52 64 52 Q78 52 78 58 Q78 68 64 68 Q50 68 50 58 Z" fill="{CLAY_LT}"/>'
+        f'<path d="M42 50 Q42 32 64 32 Q86 32 86 50 Q86 60 80 64 Q64 70 48 64 Q42 60 42 50 Z" fill="{SAP}"/>'
+        f'<path d="M50 58 Q50 52 64 52 Q78 52 78 58 Q78 68 64 68 Q50 68 50 58 Z" fill="{SAP_LT}"/>'
         f'<ellipse cx="59" cy="57" rx="1.8" ry="1.2" fill="{INK}" stroke="none"/><ellipse cx="69" cy="57" rx="1.8" ry="1.2" fill="{INK}" stroke="none"/>'
         f'<path d="M56 66 L58 71 L60 66 Z M68 66 L70 71 L72 66 Z" fill="{WHITE}" stroke-width="1.2"/>'
         f'<path d="M44 46 Q50 40 56 48 Q50 52 44 46 Z M72 48 Q80 40 86 46 Q80 52 72 48 Z M60 36 Q66 32 70 38 Q64 40 60 36 Z" '
