@@ -52,19 +52,19 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   {
     id: 'score-based-grand',
     name: 'Score-Based Grand',
-    description: 'Call Grand Tichu without a Dragon, Phoenix or Ace in your first 8 cards',
+    description: 'Call Grand Tichu without a Dragon, Phoenix or Ace',
     newLogsOnly: true,
   },
   {
     id: 'wish-bomb',
     name: 'Careful What You Wish For',
-    description: 'Have your Mah Jong wish fulfilled by a bomb',
+    description: 'Have your wish fulfilled by a bomb',
     newLogsOnly: true,
   },
   {
     id: 'super-partner',
     name: 'Super Partner',
-    description: 'Win a trick with a bomb, then lead the Dog to your partner',
+    description: 'Bomb, then Dog',
     newLogsOnly: true,
   },
 ];
