@@ -255,6 +255,8 @@ export type RoundHistoryEntry = {
   tichuCalls?: RoundTichuCall[];
 };
 
+import type { AchievementEvent } from './achievements.js';
+
 export type RoundResult = {
   teamScores: [number, number]; // card points this round
   tichuBonuses: [number, number];
@@ -263,6 +265,8 @@ export type RoundResult = {
   totalScores: [number, number]; // cumulative
   outOrder: [Seat, Seat, Seat, Seat]; // order players went out (last = still had cards)
   concededBy?: Seat; // set when the round ended via concession
+  /** Achievements earned this round (and, at game end, by the game). Set by the server. */
+  achievements?: AchievementEvent[];
 };
 
 // ===== Round Log (for analytics) =====
@@ -275,6 +279,8 @@ export type RoundLogPlayerEntry = {
   tichuCall: TichuCall;
   outOrder: number;
   initialHand: Card[];
+  /** The 8 cards seen before the Grand Tichu decision. Absent in older logs. */
+  firstEight?: Card[];
   passedLeft: Card | null;
   passedPartner: Card | null;
   passedRight: Card | null;
@@ -294,7 +300,12 @@ export type RoundLog = {
   bombs: Array<{ seat: Seat; cards: Card[] }>;
   dragonGiveaways: Array<{ fromSeat: Seat; toSeat: Seat }>;
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
+  /** Every play in order, grouped into tricks. Absent in older logs. */
+  plays?: RoundPlay[];
 };
+
+/** One accepted play. `trick` numbers the round's tricks from 0. */
+export type RoundPlay = { seat: Seat; cards: Card[]; trick: number };
 
 // ===== Completed-game summaries & history (for the stats page) =====
 

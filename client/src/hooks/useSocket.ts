@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound, UserStats, TeamStats } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback } from '@tichu/shared';
 import { getSessionId, saveRoom, loadRoom, clearRoom } from '../utils/session.js';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
@@ -377,6 +377,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     return emitWithAuthRetry<{ team: TeamStats | null; needsAuth?: boolean }>('fetch-team-stats', { partnerUid }, { team: null });
   }, []);
 
+  const fetchComebackRecord = useCallback((): Promise<{ record: Comeback | null }> => {
+    return emitWithAuthRetry<{ record: Comeback | null; needsAuth?: boolean }>('fetch-comeback-record', undefined, { record: null });
+  }, []);
+
   const fetchRecentGames = useCallback((): Promise<{ games: GameSummary[] }> => {
     return emitWithAuthRetry<{ games: GameSummary[]; needsAuth?: boolean }>('fetch-recent-games', undefined, { games: [] });
   }, [emitWithAuthRetry]);
@@ -491,6 +495,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     fetchUserStats,
     fetchTeamStats,
     fetchRecentGames,
+    fetchComebackRecord,
     fetchGameHistory,
     fetchRoomElos,
     eloUpdate,

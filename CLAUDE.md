@@ -61,6 +61,7 @@ these files.
 - `shared/src/scoring.ts` — Round scoring, card point values
 - `shared/src/deck.ts` — Deck creation, shuffle, sortHand
 - `shared/src/stats.ts` — Player / partner / pairing stats derived from game history (pure, tested)
+- `shared/src/achievements.ts` — Counting achievements derived from game history (pure, tested); some read the per-round `plays` log / `firstEight`, which only newer round logs carry. The same detector runs live at each round end (`roundAchievements` in `handler.ts`); results ride on `RoundResult.achievements`. Badge art: `scripts/gen-achievement-art.py` → `client/public/achievements/`
 - `server/src/handler.ts` — All socket event handlers, broadcastState
 - `server/src/rooms.ts` — Room CRUD, game state management, seat swapping/shuffling
 - `server/src/stats.ts` — Round logs, game summaries, Elo, and history-derived stats queries (Firestore)

@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   leaveRoom, clearSocketUid, setRoomChangedCallback,
@@ -17,7 +17,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { recordPlayedWith, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
+import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards, sanitizeSettings,
@@ -770,6 +770,20 @@ export function setupHandlers(io: Server): void {
       }
     });
 
+    guarded(socket, 'fetch-comeback-record', async (callback: (data: { record: Comeback | null; needsAuth?: boolean }) => void) => {
+      const uid = getSocketUid(socket.id);
+      if (!uid) {
+        callback({ record: null, needsAuth: true });
+        return;
+      }
+      try {
+        callback({ record: await fetchComebackRecord(uid) });
+      } catch (err) {
+        console.error('Failed to fetch comeback record:', err);
+        callback({ record: null });
+      }
+    });
+
     guarded(socket, 'fetch-game-history', async ({ gameId }: { gameId: string }, callback: (data: { rounds: GameHistoryRound[]; needsAuth?: boolean }) => void) => {
       const uid = getSocketUid(socket.id);
       if (!uid) {
@@ -1038,12 +1052,7 @@ export function processPlayResult(io: Server, room: Room, seat: Seat, result: Pl
     broadcastState(io, room);
     return;
   }
-  if (result.roundResult) {
-    room.lastRoundResult = result.roundResult;
-    io.to(room.code).emit('round-result', { result: result.roundResult });
-    sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
-    handleRoundResult(io, room, result.roundResult);
-  }
+  if (result.roundResult) handleRoundResult(io, room, result.roundResult);
   if (!result.roundResult) autoSkipHelpless(io, room);
   broadcastState(io, room);
 }
@@ -1086,12 +1095,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
       break;
     }
 
-    if (result.roundResult) {
-      room.lastRoundResult = result.roundResult;
-      io.to(room.code).emit('round-result', { result: result.roundResult });
-      sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: result.roundResult });
-      handleRoundResult(io, room, result.roundResult);
-    }
+    if (result.roundResult) handleRoundResult(io, room, result.roundResult);
 
     iterations++;
   }
@@ -1123,12 +1127,24 @@ function resolveTrickCountdown(io: Server, room: Room): void {
   broadcastState(io, room);
 }
 
-function handleRoundResult(io: Server, room: Room, roundResult: RoundResult): void {
+/**
+ * A round just ended: work out what the table earned, announce the result
+ * (achievements ride along, so a reconnect replaying `lastRoundResult` sees
+ * them too), then do the bookkeeping.
+ */
+function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): void {
   const state = room.state;
-  if (state.phase !== 'roundEnd' && state.phase !== 'gameEnd') return;
+  const roundEnded = state.phase === 'roundEnd' || state.phase === 'gameEnd';
+  const log = roundEnded ? buildRoundLog(room, engineResult) : null;
+  const roundResult: RoundResult = log ? { ...engineResult, achievements: roundAchievements(room, log) } : engineResult;
+
+  room.lastRoundResult = roundResult;
+  io.to(room.code).emit('round-result', { result: roundResult });
+  sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: roundResult });
+  if (!log) return;
 
   // Save round log (fire-and-forget)
-  saveRoundLog(room, roundResult).catch(err =>
+  saveRoundLog(log).catch(err =>
     console.error('Failed to save round log:', err)
   );
 
@@ -1165,4 +1181,33 @@ function handleRoundResult(io: Server, room: Room, roundResult: RoundResult): vo
       })
       .catch(err => console.error('Failed to update Elo ratings:', err));
   }
+}
+
+/**
+ * Achievements earned in the round that just ended or, if it ended the game,
+ * across the whole game (game-level ones included). Earlier rounds are kept,
+ * slimmed, for the achievements that span rounds (Hat Trick, comebacks,
+ * leads); what each round earned is kept separately, since the slimmed logs
+ * no longer carry the plays and hands it was computed from.
+ */
+function roundAchievements(room: Room, log: RoundLog): AchievementEvent[] {
+  const rounds = [...room.gameRoundLogs.filter(r => r.roundNumber !== log.roundNumber), log];
+  const scores: [number, number] = [room.state.teams[0].score, room.state.teams[1].score];
+  const outcome: GameOutcome | undefined = room.state.phase === 'gameEnd'
+    ? { finalScores: scores, winningTeam: scores[0] === scores[1] ? null : scores[0] > scores[1] ? 0 : 1 }
+    : undefined;
+  const all = achievementEvents(rounds, outcome);
+  const thisRound = all.filter(e => e.roundNumber === log.roundNumber);
+  room.gameAchievements = [...room.gameAchievements.filter(e => e.roundNumber !== log.roundNumber), ...thisRound];
+  // Hands and plays only matter within their own round; drop them so the
+  // room snapshot stays small.
+  room.gameRoundLogs = [...rounds.slice(0, -1), {
+    ...log,
+    players: log.players.map(p => ({ ...p, initialHand: [], firstEight: undefined })),
+    plays: undefined,
+    bombs: [],
+  }];
+  // A round's results show that round's achievements; the game-over screen
+  // shows everything earned across the game.
+  return outcome ? [...room.gameAchievements, ...all.filter(e => e.roundNumber === null)] : thisRound;
 }

@@ -211,3 +211,13 @@ body {
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
   100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
 }
+
+/* Achievement cards on the results screen pop in one after another. */
+@keyframes achievement-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.achievement-pop {
+  animation: achievement-pop 0.45s ease-out both;
+}

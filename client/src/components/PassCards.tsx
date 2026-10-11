@@ -78,11 +78,12 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
       const card: CardType = JSON.parse(e.dataTransfer.getData('application/json'));
       const id = cardId(card);
 
-      // If this card is already assigned to another slot, remove it from there
+      // If this card is already assigned to another slot, swap: that slot
+      // takes whatever card the target slot held (or empties if none).
       const newSelections = { ...selections };
       for (const t of ['left', 'partner', 'right'] as PassTarget[]) {
         if (newSelections[t] && cardId(newSelections[t]!) === id) {
-          newSelections[t] = null;
+          newSelections[t] = selections[target];
         }
       }
 
