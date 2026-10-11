@@ -593,7 +593,7 @@ export default function Game({ socket, auth }: Props) {
     return (
       <div className="relative w-[77px] h-[116px]" title={played ? `${title} — played` : title}>
         <div className={`origin-top-left scale-[0.8] transition-[filter,opacity] duration-300 ${played ? 'grayscale opacity-40' : ''}`}>
-          <CardComponent card={card} small />
+          <CardComponent card={card} />
         </div>
       </div>
     );

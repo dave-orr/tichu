@@ -1,0 +1,233 @@
+"""Generate the papercraft card art in client/public/cards/: the four special
+cards and the four suit symbols (suit-*.svg).
+
+Same cut-paper look as the achievement badges (see gen-achievement-art.py),
+lighter on the filters since cards render far more often. Art only, on a
+transparent background; the card face, border and label come from Card.tsx.
+
+    python3 scripts/gen-card-art.py client/public/cards
+"""
+import os, sys
+INK = '#2B2233'
+CREAM, WHITE = '#FFF5E2', '#FFFDF7'
+CLAY, CLAY_DK, CLAY_LT = '#D97757', '#A84D33', '#F2A283'
+OCHRE, OCHRE_DK = '#E8AA38', '#B9802A'
+SAP, SAP_DK, SAP_LT = '#6E9F58', '#4E7A3E', '#A9CF8A'
+VIOLET, ROSE, SKY = '#7B5CA8', '#E27A92', '#8EC3E6'
+TEAL = '#3A9C98'
+CRIMSON, CRIMSON_DK = '#C9374A', '#8E2233'
+HAIR, STONE = '#5A3A2A', '#B7B1C2'
+
+DEFS = f'''<defs>
+<filter id="cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="3" result="w"/>
+  <feDisplacementMap in="SourceGraphic" in2="w" scale="1.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feDropShadow in="d" dx="0.4" dy="1.2" stdDeviation="0.7" flood-color="{INK}" flood-opacity="0.35"/>
+</filter>
+<filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" result="t"/>
+  <feColorMatrix in="t" type="matrix" values="0 0 0 0 0.33  0 0 0 0 0.25  0 0 0 0 0.17  0.3 0 0 0 -0.12" result="g"/>
+  <feComposite in="g" in2="SourceAlpha" operator="in" result="grain"/>
+  <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+</filter>
+</defs>'''
+
+def layer(*p): return f'<g filter="url(#cut)">{"".join(p)}</g>'
+def svg(body):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{DEFS}'
+            f'<g filter="url(#paper)" stroke="{INK}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">{body}</g></svg>\n')
+
+art = {}
+
+# Mah Jong: a slim sparrow perched on a bamboo stalk (the 1-of-Bamboo bird).
+art['mahjong'] = svg(
+    layer(  # bamboo: stalk with nodes, a sprig of leaves
+        f'<path d="M4 80 L96 70" stroke="{INK}" stroke-width="9"/>'
+        f'<path d="M4 80 L96 70" stroke="{SAP}" stroke-width="6"/>'
+        f'<path d="M30 74 L31 80 M62 70 L63 77" stroke="{SAP_DK}" stroke-width="2.4"/>'
+        f'<path d="M64 72 C72 82 84 86 92 84 C84 80 76 76 64 72 Z" fill="{SAP_LT}"/>'
+        f'<path d="M64 72 C70 88 76 94 80 96 C78 88 72 80 64 72 Z" fill="{SAP}"/>'
+        f'<path d="M30 78 C24 88 16 92 8 92 C14 86 22 82 30 78 Z" fill="{SAP_LT}"/>')
+    + layer(f'<path d="M34 62 C24 66 14 66 8 62 C16 60 24 56 30 52 Z" fill="{HAIR}"/>')                       # tail
+    + layer(f'<path d="M30 58 C30 44 42 34 56 34 C70 34 76 44 74 54 C72 66 60 72 48 72 C38 72 31 66 30 58 Z" fill="{CLAY}"/>'
+            f'<path d="M48 72 C58 70 68 64 70 56 C62 60 52 62 44 60 C42 66 44 70 48 72 Z" fill="{CREAM}"/>')  # slim body + breast
+    + layer(f'<path d="M36 56 C42 46 52 44 60 48 C54 54 46 58 36 56 Z" fill="{HAIR}"/>'
+            f'<path d="M42 53 L52 49 M44 56 L55 52" stroke="{CREAM}" stroke-width="1.3"/>')                   # wing
+    + layer(f'<circle cx="64" cy="32" r="12" fill="{CLAY}"/>'
+            f'<path d="M57 22 C61 19 69 19 74 24 C68 24 62 25 57 26 Z" fill="{HAIR}"/>'
+            f'<path d="M75 32 L85 34.5 L75 37 Z" fill="{OCHRE}"/>'
+            f'<circle cx="69" cy="30" r="2.3" fill="{INK}" stroke="none"/><circle cx="70" cy="29" r="0.8" fill="{WHITE}" stroke="none"/>'
+            f'<circle cx="62" cy="37" r="2.6" fill="{ROSE}" stroke="none" opacity="0.6"/>')                    # head
+    + layer(f'<path d="M46 72 L45 77 M54 71 L54 76" stroke="{OCHRE_DK}" stroke-width="2.4"/>'
+            f'<path d="M41 77 Q45 74 49 77 M50 76 Q54 73 58 76" fill="none" stroke="{OCHRE_DK}" stroke-width="2"/>')  # feet gripping
+)
+
+# Dog: a (blue!) goldendoodle sitting politely: curly coat, fluffy ears, teddy-bear face.
+DOODLE, DOODLE_DK, DOODLE_LT = '#7E9FDB', '#3F5FA8', '#BFD3F2'
+def curls(pts, r=3.2):
+    return ''.join(f'<path d="M{x - r} {y} a{r} {r} 0 1 1 {2 * r} 0" fill="none" stroke="{DOODLE_DK}" stroke-width="1.5"/>' for x, y in pts)
+def fluff(cx, cy, rx, ry, n=14, bump=3.4):
+    """A blob with a scalloped, curly outline."""
+    import math
+    pts = []
+    for k in range(n):
+        a0 = 2 * math.pi * k / n
+        a1 = 2 * math.pi * (k + 1) / n
+        x0, y0 = cx + rx * math.cos(a0), cy + ry * math.sin(a0)
+        x1, y1 = cx + rx * math.cos(a1), cy + ry * math.sin(a1)
+        am = (a0 + a1) / 2
+        qx, qy = cx + (rx + bump) * math.cos(am), cy + (ry + bump) * math.sin(am)
+        pts.append((x0, y0, qx, qy, x1, y1))
+    d = f'M{pts[0][0]:.1f} {pts[0][1]:.1f} ' + ' '.join(f'Q{qx:.1f} {qy:.1f} {x1:.1f} {y1:.1f}' for _, _, qx, qy, x1, y1 in pts) + ' Z'
+    return d
+art['dog'] = svg(
+    layer(f'<path d="{fluff(80, 74, 7, 6, 8, 2.4)}" fill="{DOODLE}"/>')                                     # pom-pom tail
+    + layer(f'<path d="{fluff(50, 76, 21, 18, 16, 3)}" fill="{DOODLE}"/>',
+            curls([(40, 72), (52, 68), (60, 78), (44, 84), (56, 88)]),
+            f'<path d="{fluff(38, 93, 7, 3.6, 8, 1.6)}" fill="{DOODLE_LT}"/><path d="{fluff(62, 93, 7, 3.6, 8, 1.6)}" fill="{DOODLE_LT}"/>')  # body, paws
+    + layer(f'<path d="{fluff(27, 42, 9, 15, 10, 3)}" fill="{DOODLE_DK}"/><path d="{fluff(73, 42, 9, 15, 10, 3)}" fill="{DOODLE_DK}"/>')  # floppy curly ears
+    + layer(f'<path d="{fluff(50, 34, 20, 19, 16, 3.2)}" fill="{DOODLE}"/>',
+            curls([(42, 20), (52, 18), (60, 22), (36, 30), (64, 30)], 2.8),
+            f'<ellipse cx="50" cy="44" rx="11" ry="8.5" fill="{DOODLE_LT}"/>'
+            f'<circle cx="42" cy="34" r="2.7" fill="{INK}" stroke="none"/><circle cx="58" cy="34" r="2.7" fill="{INK}" stroke="none"/>'
+            f'<circle cx="43" cy="33" r="0.9" fill="{WHITE}" stroke="none"/><circle cx="59" cy="33" r="0.9" fill="{WHITE}" stroke="none"/>'
+            f'<ellipse cx="50" cy="41" rx="4.4" ry="3.3" fill="{INK}"/>'
+            f'<path d="M50 44 Q46 49 43 46 M50 44 Q54 49 57 46" fill="none" stroke-width="1.7"/>'
+            f'<path d="M47.5 47.5 Q50 53 52.5 47.5 Z" fill="{ROSE}" stroke-width="1.3"/>')                  # head
+    + layer(f'<path d="M36 54 Q50 60 64 54 L64 58 Q50 64 36 58 Z" fill="{OCHRE_DK}"/><circle cx="50" cy="61" r="2.6" fill="{OCHRE}"/>')  # collar
+)
+
+# Phoenix: crimson and gold, wings raised, a lush fan of flame-shaped tail plumes.
+import math
+WING = (f'<path d="M46 46 C40 34 30 22 12 14 C16 24 18 30 22 34 C16 34 12 36 10 40 C18 42 22 44 26 48 '
+        f'C20 50 18 54 18 56 C28 56 38 58 46 60 Z" fill="{CRIMSON}"/>'
+        f'<path d="M45 49 C40 40 32 33 23 28 C25 34 27 38 31 42 C27 44 25 46 25 48 C33 50 40 53 45 56 Z" fill="{OCHRE}"/>')
+def feather(bx, by, tx, ty, w, fill, edge, eye):
+    """A broad, gently curving plume from base to tip, gold-edged, with an eye-spot."""
+    dx, dy = tx - bx, ty - by
+    L = math.hypot(dx, dy); nx, ny = -dy / L, dx / L
+    mx, my = bx + dx * .55, by + dy * .55
+    c1 = (mx + nx * w, my + ny * w); c2 = (mx - nx * w, my - ny * w)
+    tip_c = (tx + dx / L * 4, ty + dy / L * 4)
+    d = (f'M{bx} {by} Q{c1[0]:.1f} {c1[1]:.1f} {tx + nx * w * .45:.1f} {ty + ny * w * .45:.1f} '
+         f'Q{tip_c[0]:.1f} {tip_c[1]:.1f} {tx - nx * w * .45:.1f} {ty - ny * w * .45:.1f} '
+         f'Q{c2[0]:.1f} {c2[1]:.1f} {bx} {by} Z')
+    ex, ey = bx + dx * .78, by + dy * .78
+    vein = f'M{bx} {by} Q{mx + nx * 1.5:.1f} {my + ny * 1.5:.1f} {bx + dx * .7:.1f} {by + dy * .7:.1f}'
+    return (f'<path d="{d}" fill="{fill}"/>'
+            f'<path d="{vein}" fill="none" stroke="{edge}" stroke-width="1.3"/>'
+            f'<ellipse cx="{ex:.1f}" cy="{ey:.1f}" rx="{w * .38:.1f}" ry="{w * .3:.1f}" fill="{edge}" stroke-width="1.2"/>'
+            f'<ellipse cx="{ex:.1f}" cy="{ey:.1f}" rx="{w * .16:.1f}" ry="{w * .13:.1f}" fill="{eye}" stroke="none"/>')
+art['phoenix'] = svg(
+    layer(  # back row: wide outer plumes
+        feather(48, 64, 14, 92, 9, CRIMSON, OCHRE, CRIMSON_DK),
+        feather(52, 64, 86, 92, 9, CRIMSON, OCHRE, CRIMSON_DK))
+    + layer(  # middle row
+        feather(49, 66, 30, 98, 8, OCHRE, CRIMSON, CRIMSON_DK),
+        feather(51, 66, 70, 98, 8, OCHRE, CRIMSON, CRIMSON_DK))
+    + layer(feather(50, 66, 50, 99, 8, CRIMSON, OCHRE, CRIMSON_DK))  # centre plume
+    + layer(WING, f'<g transform="translate(100 0) scale(-1 1)">{WING}</g>')
+    + layer(f'<path d="M42 68 C38 58 42 44 50 42 C58 44 62 58 58 68 C54 72 46 72 42 68 Z" fill="{CRIMSON}"/>'
+            f'<path d="M46 64 C46 56 48 50 50 48 C52 50 54 56 54 64 Z" fill="{OCHRE}" stroke="none" opacity="0.85"/>')
+    + layer(f'<path d="M48 28 C44 22 40 20 36 20 C40 24 42 27 44 31 Z M50 26 C48 20 46 16 42 14 C45 19 46 23 47 28 Z" fill="{OCHRE}"/>'
+            f'<circle cx="52" cy="33" r="7.5" fill="{CRIMSON}"/>'
+            f'<path d="M58 31 C64 30 67 34 64 39 C63 36 61 36 58 36 Z" fill="{OCHRE}"/>'
+            f'<circle cx="54" cy="31.5" r="2.2" fill="{OCHRE}"/><circle cx="54.5" cy="31.5" r="1" fill="{INK}" stroke="none"/>')
+)
+
+# Dragon: the green dragon, proud this time (no soot, no bomb).
+art['dragon'] = svg(
+    layer(f'<path d="M26 58 C12 52 6 38 10 28 L16 36 L20 30 L24 40 L30 46 Z" fill="{VIOLET}"/>'
+          f'<path d="M74 58 C88 52 94 38 90 28 L84 36 L80 30 L76 40 L70 46 Z" fill="{VIOLET}"/>')            # wings
+    + layer(f'<path d="M70 84 Q88 86 90 72" fill="none" stroke="{INK}" stroke-width="7"/>'
+            f'<path d="M70 84 Q88 86 90 72" fill="none" stroke="{SAP}" stroke-width="4"/>'
+            f'<path d="M90 64 L96 74 L86 74 Z" fill="{SAP}"/>'
+            f'<path d="M28 94 Q24 62 50 58 Q76 62 72 94 Z" fill="{SAP}"/>'
+            f'<path d="M38 94 Q36 72 50 70 Q64 72 62 94 Z" fill="{OCHRE}"/>'
+            f'<path d="M39 78 L61 78 M38 86 L62 86" stroke="{OCHRE_DK}" stroke-width="1.3"/>')                  # tail, body, belly
+    + layer(f'<path d="M36 22 L40 8 L46 18 L50 4 L54 18 L60 8 L64 22 Z" fill="{OCHRE}"/>'
+            f'<path d="M26 38 Q26 18 50 18 Q74 18 74 38 Q74 48 68 52 Q50 58 32 52 Q26 48 26 38 Z" fill="{SAP}"/>'
+            f'<path d="M34 46 Q34 40 50 40 Q66 40 66 46 Q66 56 50 56 Q34 56 34 46 Z" fill="{SAP_LT}"/>'
+            f'<ellipse cx="44" cy="45" rx="1.8" ry="1.2" fill="{INK}" stroke="none"/><ellipse cx="56" cy="45" rx="1.8" ry="1.2" fill="{INK}" stroke="none"/>'
+            f'<path d="M42 54 L44 59 L46 54 Z M54 54 L56 59 L58 54 Z" fill="{WHITE}" stroke-width="1.2"/>'
+            f'<path d="M34 30 Q40 26 46 31 Q40 36 34 30 Z M54 31 Q60 26 66 30 Q60 36 54 31 Z" fill="{OCHRE}"/>'
+            f'<ellipse cx="40" cy="31" rx="1.2" ry="3" fill="{INK}" stroke="none"/><ellipse cx="60" cy="31" rx="1.2" ry="3" fill="{INK}" stroke="none"/>'
+            f'<path d="M32 26 L46 28 M68 26 L54 28" stroke="{INK}" stroke-width="2.4"/>')                     # head, smug
+)
+
+
+# ===== Suit symbols =====
+# Drawn a touch bolder than the special cards so they hold up small. Each
+# keeps its suit's colour (Card.tsx / index.css suit-* classes).
+JADE, JADE_DK = '#2F8A55', '#1E6440'
+STEEL, STEEL_DK = '#B9C3CF', '#7F8C9C'
+BLUE, BLUE_DK = '#3B6FD6', '#24489A'
+RED, RED_DK, RED_LT = '#D93A3A', '#9E2323', '#F08A7E'
+HILT, STONE_DK = '#3A2A33', '#8C8699'
+def suit_svg(body):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{DEFS}'
+            f'<g filter="url(#paper)" stroke="{INK}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">{body}</g></svg>\n')
+suits = {}
+
+# Jade: the green 發 (as on the mahjong tile), cut from paper. The outline is
+# traced from Noto Serif SC Black (SIL Open Font License 1.1, (c) Google) so
+# it looks the same on every device; the ink outline is a silhouette drawn
+# underneath, since the glyph's strokes overlap.
+FA = ('M29 53.1H25.7L26.9 52.7Q26.7 54.3 26.3 57Q25.8 59.6 25.3 62.3Q24.9 64.9 24.4 66.7H25.2L21 71.9L11.5 65.8Q12.5 64.8 14.1 64Q15.7 63.3 17.2 62.9L14.3 66.1Q14.9 64.1 15.4 60.8Q16 57.5 16.4 54.1Q16.9 50.7 17 48.5ZM48.5 69.3Q58.4 69.6 65.1 71.5Q71.8 73.3 75.7 76Q79.6 78.7 81.1 81.6Q82.6 84.4 82.2 86.7Q81.7 89.1 79.7 90.2Q77.7 91.3 74.7 90.5Q72.5 87.9 69.3 85Q66.2 82.1 62.5 79.3Q58.8 76.6 55 74.2Q51.3 71.8 47.9 70.1ZM34.7 38.9 39.2 33.9 47.4 42Q46.3 43.2 44.3 43.5V56.9Q44.3 57 42.8 57.5Q41.4 58 39.2 58.3Q37 58.7 34.8 58.7H32.6V38.9ZM63.7 38.5 69.1 32.7 78.8 40.4Q78.4 40.7 77.6 41.1Q76.8 41.4 75.7 41.6V48.7Q75.7 49.3 75.9 49.6Q76.1 49.9 76.6 49.9H77.2Q77.4 49.9 77.6 49.9Q77.7 49.9 78.1 49.9Q78.3 49.9 79 49.8Q79.7 49.8 80 49.7Q80.4 49.7 81 49.6Q81.7 49.4 82.1 49.3H82.9L83.4 49.5Q85.1 50.4 85.7 51.2Q86.3 52 86.3 53.3Q86.3 56.5 83.6 57.5Q80.9 58.5 75.5 58.5H72.3Q68.8 58.5 67.2 57.7Q65.6 56.8 65.1 55Q64.7 53.3 64.7 50.3V38.5ZM49.2 37.6V33.3L62.1 38.5H60.4V44Q60.4 46 59.9 48.4Q59.3 50.8 57.6 53.3Q55.9 55.9 52.6 58.1Q49.2 60.3 43.7 61.9L43.2 61.1Q46.1 58.5 47.3 55.5Q48.6 52.6 48.9 49.6Q49.2 46.7 49.2 44V38.5ZM32.8 64.3 38.3 59.2 48 67.1Q47 68.2 44.6 68.6Q43.7 77.1 42.1 82Q40.5 86.9 37.3 88.9Q35.3 90.1 32.6 90.8Q29.9 91.4 26.1 91.4Q26.1 89.2 25.7 87.3Q25.4 85.5 24.3 84.4Q23.1 83.2 21 82.3Q18.8 81.3 16 80.7L16.1 79.7Q17.9 79.9 20.2 80Q22.5 80.1 24.5 80.2Q26.4 80.3 27.3 80.3Q29.3 80.3 30 79.7Q31.2 78.8 32.2 74.8Q33.1 70.8 33.7 64.3ZM74.4 62.1V64.6H46.8L46 62.1ZM38.1 38.9V41.3H21.7L20.9 38.9ZM39.7 64.3V66.7H20.3V64.3ZM37.9 53.1V55.5H22.3V53.1ZM70.6 38.5V40.9H54.6V38.5ZM90.4 25.5Q90.1 26.1 89.3 26.4Q88.6 26.7 87.1 26.4Q84.4 27.5 80.8 28.7Q77.1 29.8 73.7 30.5L72.8 29.6Q74 28 75.3 25.8Q76.5 23.7 77.6 21.6Q78.7 19.4 79.2 18ZM78.3 16.9Q77.9 17.5 77.2 17.8Q76.5 18.1 75 17.8Q72.1 19.2 68.2 20.7Q64.3 22.1 60.4 23.2L59.6 22.2Q61 20.4 62.4 18Q63.9 15.7 65.2 13.4Q66.4 11.1 67.1 9.4ZM52.1 8.3Q54.6 13.9 58.9 18Q63.1 22 68.6 25Q74 27.9 80 29.8Q86 31.8 92 33L91.8 34Q88.1 34.9 85.6 37.8Q83 40.7 81.8 45.2Q74.3 41.6 68.3 36.9Q62.3 32.1 58 25.3Q53.7 18.5 51.1 8.8ZM15.3 20.8Q21.2 20.8 24.4 22Q27.7 23.3 28.7 25.1Q29.7 26.9 29 28.7Q28.4 30.6 26.7 31.8Q24.9 33 22.5 32.9Q20.2 32.8 17.7 30.9Q18 28.2 17.1 25.6Q16.2 22.9 14.7 21.3ZM68.3 62.1 74.9 55.9 85.7 65Q85.2 65.6 84.5 65.9Q83.8 66.2 82.3 66.4Q77.2 76.3 66.9 82.7Q56.6 89.1 41.8 91.7L41.4 90.7Q52.3 86.3 59.4 78.9Q66.6 71.5 69.4 62.1ZM34.4 15.3 41 9 51.7 18.1Q51.3 18.8 50.6 19.1Q49.8 19.3 48.3 19.5Q43.3 29.9 33.3 37.4Q23.2 44.9 8.4 48.5L8 47.5Q18.5 42.1 25.6 33.7Q32.6 25.2 35.5 15.3ZM41.7 15.3V17.7H13.7L12.9 15.3Z')
+suits['jade'] = suit_svg(
+    layer(f'<path d="{FA}" fill="{JADE_DK}" stroke="{JADE_DK}" stroke-width="2.6" transform="translate(1.6 2.4)"/>')
+    + layer(f'<path d="{FA}" fill="{INK}" stroke="{INK}" stroke-width="2.6"/>'
+            f'<path d="{FA}" fill="{JADE}" stroke="none"/>')
+)
+
+# Sword: two crossed jian, steel blades, gold guards, dark hilts with red tassels.
+def jian(rot):
+    return (f'<g transform="rotate({rot} 50 50)">'
+            f'<path d="M50 6 L55 14 L55 66 L45 66 L45 14 Z" fill="{STEEL}"/>'
+            f'<path d="M50 9 L50 64" stroke="{STEEL_DK}" stroke-width="1.4"/>'
+            f'<path d="M36 66 Q50 72 64 66 L64 71 Q50 77 36 71 Z" fill="{OCHRE}"/>'
+            f'<rect x="46" y="73" width="8" height="15" rx="2" fill="{HILT}"/>'
+            f'<circle cx="50" cy="91" r="4" fill="{OCHRE}"/>'
+            f'<path d="M50 95 Q46 100 44 99 M50 95 Q54 100 56 99" fill="none" stroke="{RED}" stroke-width="2.4"/></g>')
+suits['sword'] = suit_svg(layer(jian(-38)) + layer(jian(38)))
+
+# Pagoda: after Kyoto's To-ji five-storey pagoda: five wide, gently upturned
+# eaves that shrink only a little toward the top, slim bodies tucked beneath,
+# and a tall ringed spire (sorin).
+def eave(y, half):
+    """A thin roof: shallow pitch up to the ridge, gently upturned eave tips."""
+    return (f'<path d="M{50 - half} {y} L{50 - half * .55} {y - 4.5} L{50 + half * .55} {y - 4.5} L{50 + half} {y} '
+            f'Q{50 + half * .7} {y + 3} {50 + half * .45} {y + 3} L{50 - half * .45} {y + 3} Q{50 - half * .7} {y + 3} {50 - half} {y} Z" '
+            f'fill="{BLUE}"/>')
+def body(top, bot, half):
+    return (f'<rect x="{50 - half}" y="{top}" width="{2 * half}" height="{bot - top}" fill="{CREAM}"/>'
+            f'<path d="M{50 - half + 3} {top} L{50 - half + 3} {bot} M{50 + half - 3} {top} L{50 + half - 3} {bot}" stroke="{RED}" stroke-width="2"/>'
+            f'<path d="M{50 - half} {bot - 2.5} L{50 + half} {bot - 2.5}" stroke="{RED_DK}" stroke-width="1.4"/>')
+tiers = [(84, 42), (69, 38.5), (54, 35), (39, 31.5), (24, 28)]  # (eave y, half-width), bottom up
+pag = layer(f'<path d="M16 96 L84 96 L80 92 L20 92 Z" fill="{STONE_DK}"/>')
+for k, (y, half) in enumerate(tiers):
+    bot = 92 if k == 0 else tiers[k - 1][0] - 4
+    pag += layer(body(y + 2, bot, half * .5), eave(y, half))
+suits['pagoda'] = suit_svg(
+    layer(f'<path d="M50 3 L50 20" stroke="{OCHRE_DK}" stroke-width="3"/>'
+          + ''.join(f'<path d="M46.5 {y} L53.5 {y}" stroke="{OCHRE_DK}" stroke-width="2"/>' for y in (9, 12, 15, 18))
+          + f'<circle cx="50" cy="4.5" r="2.4" fill="{OCHRE}"/>')
+    + pag
+)
+
+# Star: a faceted five-point paper star.
+pts = [(50 + (42 if i % 2 == 0 else 18) * math.cos(-math.pi / 2 + i * math.pi / 5),
+        54 + (42 if i % 2 == 0 else 18) * math.sin(-math.pi / 2 + i * math.pi / 5)) for i in range(10)]
+star = 'M' + ' L'.join(f'{x:.1f} {y:.1f}' for x, y in pts) + ' Z'
+facets = ''.join(
+    f'<path d="M50 54 L{pts[i][0]:.1f} {pts[i][1]:.1f} L{pts[(i + 1) % 10][0]:.1f} {pts[(i + 1) % 10][1]:.1f} Z" fill="{RED_LT if i % 2 == 0 else RED_DK}" stroke="none" opacity="0.5"/>'
+    for i in range(10))
+suits['star'] = suit_svg(layer(f'<path d="{star}" fill="{RED}"/>' + facets + f'<path d="{star}" fill="none"/>'))
+
+out = sys.argv[1]
+os.makedirs(out, exist_ok=True)
+for k, v in art.items():
+    open(os.path.join(out, f'{k}.svg'), 'w').write(v)
+for k, v in suits.items():
+    open(os.path.join(out, f'suit-{k}.svg'), 'w').write(v)
+print('wrote', len(art) + len(suits))

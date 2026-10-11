@@ -21,7 +21,7 @@ export default function SeatPlay({ cards, isTopOfTrick, combo }: Props) {
     >
       <div className="flex">
         {sorted.map((card, i) => (
-          <div key={cardId(card)} style={{ marginLeft: i > 0 ? '-28px' : 0 }}>
+          <div key={cardId(card)} style={{ marginLeft: i > 0 ? '-20px' : 0 }}>
             <CardComponent card={card} small />
           </div>
         ))}

@@ -11,9 +11,11 @@ body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* Card styles */
+/* Card styles. Size (w/h) comes from the component's small/default/large
+   classes: set here it would override them, since this rule sits after the
+   Tailwind utilities. */
 .card {
-  @apply relative w-24 h-36 rounded-lg border-2 border-gray-300 bg-white shadow-md flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
+  @apply relative rounded-lg border-2 border-gray-300 bg-white shadow-md flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
 }
 
 .card:hover {
