@@ -504,33 +504,53 @@ def dragon_fly(up):
 anim['dragon-fly-1'] = dragon_fly(True)
 anim['dragon-fly-2'] = dragon_fly(False)
 
-# Card back: clay-red stock with a cut-paper frame, a seigaiha (wave) field
-# and an ochre medallion holding a cream four-petal knot.
-BACK, BACK_DK, BACK_LT = '#B8473A', '#8E3229', '#CC6150'
-def wave_pattern():
+# Card back: clay-red stock in a cut-paper frame, filled with seigaiha (wave)
+# scales. The scales shift colourway in concentric bands, so a target emerges
+# only on a second look, and a tonal phoenix watermark sits over it.
+BACK, BACK_DK = '#B8473A', '#8E3229'
+BACK_CX, BACK_CY = 50, 75
+TARGET_BANDS = [(0, 7), (16, 25), (34, 43), (52, 61), (70, 79)]  # (inner, outer) radii
+
+def wave_pattern(pid, fill, arc):
     # Rows overlap: draw each scale's fill then its arcs, back to front.
     body = ''
     for x, y in ((0, 6), (12, 6), (6, 12), (18, 12), (0, 18), (12, 18)):
-        body += f'<path d="M{x - 6} {y} A6 6 0 0 1 {x + 6} {y} Z" fill="{BACK_DK}"/>'
-        body += ''.join(f'<path d="M{x - r} {y} A{r} {r} 0 0 1 {x + r} {y}" fill="none" stroke="{BACK_LT}" stroke-width="1.1"/>'
+        body += f'<path d="M{x - 6} {y} A6 6 0 0 1 {x + 6} {y} Z" fill="{fill}"/>'
+        body += ''.join(f'<path d="M{x - r} {y} A{r} {r} 0 0 1 {x + r} {y}" fill="none" stroke="{arc}" stroke-width="1.1"/>'
                         for r in (5.2, 3.4, 1.6))
-    return f'<pattern id="waves" width="12" height="12" patternUnits="userSpaceOnUse">{body}</pattern>'
+    return f'<pattern id="{pid}" width="12" height="12" patternUnits="userSpaceOnUse">{body}</pattern>'
+
+def target_bands():
+    """The target's bands as one even-odd path of annuli."""
+    circle = lambda r, sweep: (f'M{BACK_CX - r} {BACK_CY} A{r} {r} 0 1 {sweep} {BACK_CX + r} {BACK_CY} '
+                               f'A{r} {r} 0 1 {sweep} {BACK_CX - r} {BACK_CY} Z ')
+    return ''.join(circle(b, 0) + (circle(a, 1) if a else '') for a, b in TARGET_BANDS)
+
+def tone_filter(fid, lo, hi, alpha):
+    """Recolour art as a duotone between lo (shadows) and hi (lights)."""
+    ch = lambda c, i: int(c[1 + 2 * i:3 + 2 * i], 16) / 255
+    funcs = ''.join(f'<feFunc{n} type="linear" slope="{ch(hi, i) - ch(lo, i):.3f}" intercept="{ch(lo, i):.3f}"/>'
+                    for i, n in enumerate('RGB'))
+    return (f'<filter id="{fid}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/>'
+            f'<feComponentTransfer>{funcs}<feFuncA type="linear" slope="{alpha}"/></feComponentTransfer></filter>')
 
 def back_svg():
-    knot = ''.join(f'<ellipse cx="50" cy="63" rx="5.5" ry="11" fill="{CREAM}" transform="rotate({a} 50 75)"/>'
-                   for a in (0, 90, 180, 270))
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150">{DEFS.replace('</defs>', wave_pattern() + '</defs>')}'
+    phoenix = art['phoenix']
+    phoenix = phoenix[phoenix.index('</defs>') + 7:phoenix.rindex('</svg>')]
+    size = 74
+    defs = (wave_pattern('waves', BACK_DK, '#B4503F') + wave_pattern('waves-band', '#A63E32', '#D9705C')
+            + tone_filter('watermark', '#5E1E18', '#F0A890', 0.75)
+            + '<clipPath id="panel"><rect x="12" y="12" width="76" height="126" rx="4"/></clipPath>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150">{DEFS.replace('</defs>', defs + '</defs>')}'
             f'<g filter="url(#paper)" stroke-linejoin="round" stroke-linecap="round">'
             f'<rect width="100" height="150" fill="{BACK}"/>'
             + layer(f'<rect x="8" y="8" width="84" height="134" rx="6" fill="{CREAM}" stroke="{INK}" stroke-width="1.6"/>')
             + layer(f'<rect x="12" y="12" width="76" height="126" rx="4" fill="{BACK_DK}" stroke="{INK}" stroke-width="1.2"/>'
-                    f'<rect x="12" y="12" width="76" height="126" rx="4" fill="url(#waves)"/>')
-            + layer(f'<circle cx="50" cy="75" r="23" fill="{OCHRE}" stroke="{INK}" stroke-width="1.8"/>'
-                    f'<circle cx="50" cy="75" r="18.5" fill="{BACK}" stroke="{OCHRE_DK}" stroke-width="1.4"/>')
-            + layer(f'<g stroke="{INK}" stroke-width="1.4">{knot}</g>'
-                    f'<circle cx="50" cy="75" r="4.2" fill="{OCHRE}" stroke="{INK}" stroke-width="1.4"/>')
-            + ''.join(layer(f'<circle cx="{x}" cy="{y}" r="3" fill="{OCHRE}" stroke="{INK}" stroke-width="1.2"/>')
-                      for x, y in ((20, 20), (80, 20), (20, 130), (80, 130)))
+                    f'<g clip-path="url(#panel)">'
+                    f'<rect x="12" y="12" width="76" height="126" fill="url(#waves)"/>'
+                    f'<path d="{target_bands()}" fill="url(#waves-band)" fill-rule="evenodd"/>'
+                    f'<g filter="url(#watermark)"><g transform="translate({BACK_CX - size / 2} {BACK_CY - size / 2 - 2}) scale({size / 100})">'
+                    f'{phoenix}</g></g></g>')
             + '</g></svg>\n')
 art['back'] = back_svg()
 
