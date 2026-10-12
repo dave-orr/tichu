@@ -253,6 +253,96 @@ pips['pagoda'] = pip_svg(
     + f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>' + pip_eave(48, 38)
     + f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>' + pip_eave(28, 30), 5)
 
+
+# ===== Royals: papercraft court portraits for J / Q / K =====
+# After the standard deck's East Asian court theme: the King an emperor in a
+# mian crown, the Queen an empress in a phoenix headdress, the Jack a
+# scholar-official in a winged hat. Each wears a robe in its suit's colour
+# with the suit emblem on a gold chest medallion. Portrait (100x150), drawn
+# to fill the gold frame on the card face.
+ROBES = {  # suit: (robe, robe dark, backdrop tint)
+    'star': ('#D93A3A', '#9E2323', '#FBE4E0'),
+    'jade': ('#2F8A55', '#1E6440', '#E1F2E6'),
+    'pagoda': ('#3B6FD6', '#24489A', '#E2EAF9'),
+    'sword': ('#5B6472', '#3A414C', '#ECEEF1'),
+}
+HAIR_BLACK = '#2A2230'
+SKIN = '#F1C9A0'
+
+def royal_svg(body):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150">{DEFS}'
+            f'<g filter="url(#paper)" stroke="{INK}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">{body}</g></svg>\n')
+
+def emblem(suit):
+    """The suit emblem, drawn in a 100-unit box (scaled onto the medallion)."""
+    if suit == 'star':
+        return f'<path d="{star}" fill="{RED}" stroke-width="6"/>'
+    if suit == 'jade':
+        return f'<path d="{FA}" fill="{INK}" stroke="{INK}" stroke-width="5"/><path d="{FA}" fill="{JADE}" stroke="none"/>'
+    if suit == 'sword':
+        return f'<g stroke-width="6">{pip_jian(-38)}{pip_jian(38)}</g>'
+    return (f'<g stroke-width="6"><rect x="36" y="72" width="28" height="22" fill="{CREAM}"/>{pip_eave(70, 46)}'
+            f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>{pip_eave(48, 38)}'
+            f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>{pip_eave(28, 30)}</g>')
+
+def royal(rank, suit):
+    robe, robe_dk, tint = ROBES[suit]
+    back = layer(f'<rect x="0" y="0" width="100" height="150" fill="{tint}" stroke="none"/>',
+                 f'<circle cx="50" cy="66" r="36" fill="#F6E3B4" stroke="none" opacity="0.9"/>')
+    # Robe, cross collar, gold collar band and the chest medallion.
+    robe_layer = layer(
+        f'<path d="M4 152 Q6 112 50 102 Q94 112 96 152 Z" fill="{robe}"/>'
+        f'<path d="M24 120 Q30 136 28 152 M76 120 Q70 136 72 152" fill="none" stroke="{robe_dk}" stroke-width="2.4"/>'
+        f'<path d="M38 103 L58 146 L50 150 L33 107 Z" fill="{CREAM}"/>'
+        f'<path d="M62 103 L46 136 L42 132 L57 102 Z" fill="{CREAM}"/>'
+        f'<path d="M28 106 Q50 120 72 106 L75 112 Q50 129 25 112 Z" fill="{OCHRE}"/>')
+    medal = layer(f'<circle cx="50" cy="136" r="11" fill="{OCHRE}"/><circle cx="50" cy="136" r="8.5" fill="{WHITE}" stroke-width="1.2"/>'
+                  f'<g transform="translate(43 129) scale(0.14)">{emblem(suit)}</g>')
+    neck = layer(f'<path d="M43 86 L57 86 L58 104 L42 104 Z" fill="{SKIN}"/>')
+    face = (f'<ellipse cx="50" cy="72" rx="17" ry="19" fill="{SKIN}"/>'
+            f'<ellipse cx="33.5" cy="74" rx="3" ry="4.5" fill="{SKIN}"/><ellipse cx="66.5" cy="74" rx="3" ry="4.5" fill="{SKIN}"/>'
+            f'<circle cx="41" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>'
+            f'<circle cx="59" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>')
+    if rank == 13:  # King: emperor, mian crown with bead tassels, long moustache and beard
+        hair = f'<path d="M33 70 Q33 54 50 53 Q67 54 67 70 Q62 61 50 60 Q38 61 33 70 Z" fill="{HAIR_BLACK}"/>'
+        eyes = (f'<path d="M40 72 q3 -2 6 0" fill="none" stroke-width="2"/><path d="M54 72 q3 -2 6 0" fill="none" stroke-width="2"/>'
+                f'<path d="M39 67 l7 -1.5 M61 67 l-7 -1.5" stroke-width="2.4"/>')
+        beard = (f'<path d="M50 83 Q42 81 35 89 Q41 86 46 86 Q48 88 50 88 Q52 88 54 86 Q59 86 65 89 Q58 81 50 83 Z" fill="{HAIR_BLACK}"/>'
+                 f'<path d="M45 90 Q50 112 55 90 Q50 93 45 90 Z" fill="{HAIR_BLACK}"/>')
+        tassels = ''.join(f'<path d="M{x} 41 L{x} 52" stroke="{OCHRE_DK}" stroke-width="1.4"/>'
+                          f'<circle cx="{x}" cy="46" r="1.4" fill="{RED}" stroke="none"/><circle cx="{x}" cy="52" r="1.6" fill="{OCHRE}" stroke-width="0.8"/>'
+                          for x in range(27, 76, 8))
+        head = layer(f'<path d="M38 42 L62 42 L60 56 L40 56 Z" fill="{HAIR_BLACK}"/>'
+                     f'<rect x="20" y="36" width="60" height="6" rx="1" fill="{HAIR_BLACK}"/>'
+                     f'<path d="M20 36 L80 36" stroke="{OCHRE}" stroke-width="2"/>' + tassels)
+        return royal_svg(back + robe_layer + medal + neck + layer(face, hair, eyes, beard) + head)
+    if rank == 12:  # Queen: empress, black hair in a bun, gold phoenix headdress
+        hair = (f'<ellipse cx="50" cy="45" rx="15" ry="10" fill="{HAIR_BLACK}"/>'
+                f'<path d="M32 78 Q28 54 50 51 Q72 54 68 78 Q66 62 50 60 Q34 62 32 78 Z" fill="{HAIR_BLACK}"/>')
+        eyes = (f'<path d="M40 73 q3 2 6 0" fill="none" stroke-width="2"/><path d="M54 73 q3 2 6 0" fill="none" stroke-width="2"/>'
+                f'<path d="M46 72 l1.6 -1.6 M54 72 l-1.6 -1.6" stroke-width="1.4"/>')
+        lips = f'<path d="M46.5 84 Q50 86.5 53.5 84 Q50 82.5 46.5 84 Z" fill="{RED}" stroke-width="1"/>'
+        crown = (f'<path d="M30 56 Q50 30 70 56 L65 57 Q50 39 35 57 Z" fill="{OCHRE}"/>'
+                 f'<path d="M50 30 C44 34 40 40 42 46 C46 42 48 40 50 40 C52 40 54 42 58 46 C60 40 56 34 50 30 Z" fill="{OCHRE}"/>'
+                 f'<circle cx="50" cy="44" r="3" fill="{RED}" stroke-width="1"/>'
+                 f'<circle cx="36" cy="50" r="2" fill="{RED}" stroke-width="0.8"/><circle cx="64" cy="50" r="2" fill="{RED}" stroke-width="0.8"/>'
+                 + ''.join(f'<path d="M{x} 56 L{x2} 74" stroke="{OCHRE_DK}" stroke-width="1.3"/><circle cx="{x2}" cy="75.5" r="1.8" fill="{OCHRE}" stroke-width="0.8"/>'
+                           for x, x2 in [(31, 29), (69, 71)]))
+        return royal_svg(back + robe_layer + medal + neck + layer(hair) + layer(face, eyes, lips) + layer(crown))
+    # Jack: scholar-official in the black winged hat (wusha mao), holding a scroll
+    hair = f'<path d="M34 68 Q34 58 50 57 Q66 58 66 68 Q60 62 50 62 Q40 62 34 68 Z" fill="{HAIR_BLACK}"/>'
+    eyes = (f'<circle cx="43" cy="73" r="2" fill="{INK}" stroke="none"/><circle cx="57" cy="73" r="2" fill="{INK}" stroke="none"/>'
+            f'<path d="M46 83 Q50 85.5 54 83" fill="none" stroke-width="1.6"/>')
+    hat = (f'<ellipse cx="22" cy="55" rx="15" ry="3.6" fill="{HAIR_BLACK}"/><ellipse cx="78" cy="55" rx="15" ry="3.6" fill="{HAIR_BLACK}"/>'
+           f'<path d="M35 61 Q35 44 50 44 Q65 44 65 61 Z" fill="{HAIR_BLACK}"/>'
+           f'<path d="M35 58 L65 58" stroke="{OCHRE}" stroke-width="1.8"/>')
+    scroll = (f'<g transform="rotate(-14 50 118)"><rect x="32" y="112" width="36" height="11" rx="2" fill="{CREAM}"/>'
+              f'<path d="M37 117.5 L63 117.5" stroke="{robe_dk}" stroke-width="1.2"/>'
+              f'<rect x="28" y="110" width="6" height="15" rx="2" fill="{OCHRE}"/><rect x="66" y="110" width="6" height="15" rx="2" fill="{OCHRE}"/></g>')
+    return royal_svg(back + robe_layer + medal + neck + layer(face, hair, eyes) + layer(hat) + layer(scroll))
+
+royals = {f'{"JQK"[r - 11]}-{suit}': royal(r, suit) for r in (11, 12, 13) for suit in ROBES}
+
 # ===== Animation sprites (side view, facing right; two frames each) =====
 anim = {}
 
@@ -385,6 +475,8 @@ for k, v in suits.items():
     open(os.path.join(out, f'suit-{k}.svg'), 'w').write(v)
 for k, v in pips.items():
     open(os.path.join(out, f'pip-{k}.svg'), 'w').write(v)
+for k, v in royals.items():
+    open(os.path.join(out, f'royal-{k}.svg'), 'w').write(v)
 for k, v in anim.items():
     open(os.path.join(out, f'anim-{k}.svg'), 'w').write(v)
-print('wrote', len(art) + len(suits) + len(pips) + len(anim))
+print('wrote', len(art) + len(suits) + len(pips) + len(royals) + len(anim))

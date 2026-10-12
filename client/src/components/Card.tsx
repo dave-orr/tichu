@@ -100,10 +100,20 @@ export default function CardComponent({ card, selected, onClick, small, large, d
           }, k);
         })
       ) : (
-        <>
-          {isCourt && <div className="absolute inset-[18%] rounded-md border-2 border-yellow-500/50 pointer-events-none" />}
-          {suitImg(g.centre, undefined, undefined, suitSrc)}
-        </>
+        isCourt ? (
+          // Court cards: a papercraft royal portrait inside a gold frame.
+          <>
+            <img
+              src={`${import.meta.env.BASE_URL}cards/royal-${'JQK'[card.rank - 11]}-${card.suit}.svg`}
+              alt=""
+              draggable={false}
+              className="absolute inset-[18%] w-[64%] h-[64%] rounded-md object-cover pointer-events-none select-none"
+            />
+            <div className="absolute inset-[18%] rounded-md border-2 border-yellow-500/70 pointer-events-none" />
+          </>
+        ) : (
+          suitImg(g.centre, undefined, undefined, suitSrc)
+        )
       )}
     </div>
   );
