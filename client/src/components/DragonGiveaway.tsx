@@ -17,8 +17,8 @@ export default function DragonGiveaway({ mySeat, players, onGive }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full">
-        <h3 className="text-4xl font-bold text-center mb-4 text-purple-400">
+      <div className="bg-gray-800 ring-1 ring-cream/10 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+        <h3 className="text-4xl font-bold text-center mb-4 text-[#8FCB9B]">
           Dragon Won the Trick
         </h3>
         <p className="text-gray-300 text-3xl text-center mb-4">
@@ -29,10 +29,10 @@ export default function DragonGiveaway({ mySeat, players, onGive }: Props) {
             <button
               key={opp.seat}
               onClick={() => onGive(opp.seat)}
-              className="py-3 px-6 bg-purple-700 hover:bg-purple-600 rounded-lg font-bold transition-colors flex flex-col items-center"
+              className="py-3 px-6 btn btn-pass flex flex-col items-center"
             >
               <span>{opp.name}</span>
-              <span className="text-sm text-purple-300 font-normal">
+              <span className="text-sm text-ink/60 font-semibold">
                 {i === 0 ? '← Left' : 'Right →'}
               </span>
             </button>

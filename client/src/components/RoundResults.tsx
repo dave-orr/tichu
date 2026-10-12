@@ -364,7 +364,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className={`bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-h-[90%] overflow-y-auto ${isGameOver ? 'max-w-6xl' : 'max-w-2xl'}`}>
+      <div className={`bg-gray-800 ring-1 ring-cream/10 p-8 rounded-2xl shadow-2xl w-full max-h-[90%] overflow-y-auto ${isGameOver ? 'max-w-6xl' : 'max-w-2xl'}`}>
         <h2 className="text-4xl font-bold text-center mb-4 text-yellow-400">
           {isGameOver
             ? `Game Over — ${result.totalScores[0] > result.totalScores[1]
@@ -395,13 +395,13 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
             <div className="mt-4 flex justify-center gap-3">
               <button
                 onClick={onPlayAgain}
-                className="py-3 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
+                className="py-3 px-8 btn btn-primary text-lg"
               >
                 Play Again
               </button>
               <button
                 onClick={onLeave}
-                className="py-3 px-8 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-lg transition-colors"
+                className="py-3 px-8 btn btn-quiet text-lg"
               >
                 Back to Lobby
               </button>
@@ -424,7 +424,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
             ) : (
               <button
                 onClick={onNextRound}
-                className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
+                className="w-full py-3 btn btn-primary text-lg"
               >
                 Next Round
               </button>

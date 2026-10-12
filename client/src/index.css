@@ -6,60 +6,116 @@
   box-sizing: border-box;
 }
 
+/* Paper grain: a faint warm fibre noise laid over card stock and the table
+   felt, so surfaces read as paper rather than flat fills. */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .35 0 0 0 0 .2 0 0 0 .1 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --felt-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 .05 0 0 0 0 .02 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 body {
   margin: 0;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  @apply font-sans bg-felt-dark;
 }
+
+h1, h2, h3 {
+  @apply font-display font-semibold;
+}
+
+/* The table: green felt with a soft pool of light in the middle. */
+.table-felt {
+  background-color: theme('colors.felt-dark');
+  background-image:
+    var(--felt-grain),
+    radial-gradient(ellipse 75% 65% at 50% 42%, #33775420 0%, transparent 100%),
+    radial-gradient(ellipse 80% 70% at 50% 40%, theme('colors.felt') 0%, theme('colors.felt-dark') 100%);
+}
+
+/* Chrome surfaces (score box, menus, popovers): one ink-glass style. */
+.surface {
+  @apply rounded-2xl bg-black/30 ring-1 ring-cream/10 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.5)] backdrop-blur-[1px];
+}
+
+/* Paper buttons: a coloured card with a darker edge underneath that it
+   presses down into. */
+.btn {
+  @apply rounded-xl font-extrabold tracking-wide transition-[transform,box-shadow,background-color] duration-100 select-none;
+  box-shadow: 0 4px 0 var(--edge, rgba(0, 0, 0, 0.35)), 0 6px 12px -4px rgba(0, 0, 0, 0.45);
+}
+.btn:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--edge, rgba(0, 0, 0, 0.35)), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+}
+.btn:disabled {
+  @apply cursor-not-allowed bg-white/10 text-cream/35;
+  box-shadow: none;
+}
+.btn-play { @apply bg-sap text-cream hover:bg-[#6CA25D]; --edge: theme('colors.sap.dark'); }
+.btn-pass { @apply bg-paper text-ink hover:bg-cream; --edge: #B9AC93; }
+.btn-primary { @apply bg-ochre text-ink hover:bg-ochre-light; --edge: theme('colors.ochre.dark'); }
+.btn-tichu { @apply bg-clay text-cream hover:bg-[#E2876A]; --edge: theme('colors.clay.dark'); }
+.btn-bomb { @apply bg-brick text-cream hover:bg-[#D65247]; --edge: theme('colors.brick.dark'); }
+.btn-quiet { @apply bg-white/10 text-cream/80 hover:bg-white/20; --edge: rgba(0, 0, 0, 0.3); }
 
 /* Card styles. Size (w/h) comes from the component's small/default/large
    classes: set here it would override them, since this rule sits after the
-   Tailwind utilities. */
+   Tailwind utilities. Cards are cream stock with a fine grain, a hairline
+   edge and a two-part shadow (contact + soft drop) so they sit on the felt. */
 .card {
-  @apply relative rounded-lg border-2 border-gray-300 bg-white shadow-md flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
+  @apply relative rounded-[10px] flex flex-col items-center justify-center cursor-pointer select-none transition-all duration-150;
+  background-color: #FFF9EE;
+  background-image: var(--grain), linear-gradient(160deg, #FFFDF7 0%, #FBF1DE 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 96, 58, 0.28),
+    inset 0 1px 0 1px rgba(255, 255, 255, 0.6),
+    0 1px 1px rgba(30, 24, 18, 0.3),
+    -2px 0 4px -2px rgba(40, 28, 16, 0.3),
+    0 4px 8px -3px rgba(16, 24, 18, 0.45);
 }
 
 .card:hover {
-  @apply -translate-y-1 shadow-lg;
+  @apply -translate-y-1;
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 96, 58, 0.28),
+    inset 0 1px 0 1px rgba(255, 255, 255, 0.6),
+    0 2px 2px rgba(30, 24, 18, 0.25),
+    0 10px 16px -6px rgba(16, 24, 18, 0.5);
 }
 
 .card.selected {
-  @apply -translate-y-3 border-yellow-400 shadow-yellow-200 shadow-lg;
+  @apply -translate-y-3;
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 96, 58, 0.28),
+    0 0 0 3px theme('colors.ochre.DEFAULT'),
+    0 3px 3px rgba(30, 24, 18, 0.25),
+    0 14px 20px -6px rgba(16, 24, 18, 0.55);
 }
 
-.card.suit-jade {
-  @apply text-green-700;
+/* Ranks: soft Fraunces, tracked in a touch so "10" stays compact. */
+.card-rank {
+  @apply font-display;
+  font-weight: 700;
+  font-variation-settings: 'SOFT' 100;
+  letter-spacing: -0.05em;
 }
 
-.card.suit-sword {
-  @apply text-gray-800;
-}
+.card.suit-jade { color: #2F8A55; }
+.card.suit-sword { color: theme('colors.ink'); }
+.card.suit-pagoda { color: #3B6FD6; }
+.card.suit-star { color: #D93A3A; }
 
-.card.suit-pagoda {
-  @apply text-blue-600;
-}
+/* Special cards: tinted stock with a matching edge. */
+.card.special-mahjong { background-color: #FFF4D6; color: #9A6A12; }
+.card.special-dog { background-color: #EEF2F8; color: #3F5B86; }
+.card.special-phoenix { background-color: #FFEDE0; color: #C2532A; }
+.card.special-dragon { background-color: #EAF4E6; color: #2F7A47; }
+.card[class*='special-'] { background-blend-mode: multiply; }
 
-.card.suit-star {
-  @apply text-red-600;
-}
-
-.card.special-mahjong {
-  @apply bg-yellow-50 border-yellow-500 text-yellow-700;
-}
-
-.card.special-dog {
-  @apply bg-gray-100 border-gray-500 text-gray-600;
-}
-
-.card.special-phoenix {
-  @apply bg-gradient-to-br from-red-100 to-orange-100 border-orange-400 text-orange-600;
-}
-
-.card.special-dragon {
-  @apply bg-gradient-to-br from-purple-100 to-indigo-100 border-purple-500 text-purple-700;
-}
-
+/* Papercraft card back (art: scripts/gen-card-art.py). */
 .card-back {
-  @apply w-10 h-14 rounded-md bg-gradient-to-br from-red-700 to-red-900 border border-red-600 shadow-sm;
+  @apply w-10 h-14 rounded-md;
+  background: url('/cards/back.svg') center / cover;
+  box-shadow: inset 0 0 0 1px rgba(60, 20, 15, 0.35), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
 }
 
 /* Animations */
@@ -73,8 +129,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(234, 179, 8, 0.5), 0 0 16px rgba(234, 179, 8, 0.2); }
-  50% { box-shadow: 0 0 25px rgba(234, 179, 8, 0.8), 0 0 50px rgba(234, 179, 8, 0.3); }
+  0%, 100% { box-shadow: 0 0 8px rgba(232, 170, 56, 0.5), 0 0 16px rgba(232, 170, 56, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(232, 170, 56, 0.8), 0 0 50px rgba(232, 170, 56, 0.3); }
 }
 
 .pulse-glow {
@@ -82,8 +138,8 @@ body {
 }
 
 @keyframes my-turn-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.4), 0 0 20px rgba(234, 179, 8, 0.2); }
-  50% { box-shadow: 0 0 30px rgba(234, 179, 8, 0.7), 0 0 60px rgba(234, 179, 8, 0.3); }
+  0%, 100% { box-shadow: 0 0 10px rgba(232, 170, 56, 0.4), 0 0 20px rgba(232, 170, 56, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(232, 170, 56, 0.7), 0 0 60px rgba(232, 170, 56, 0.3); }
 }
 
 .my-turn-glow {

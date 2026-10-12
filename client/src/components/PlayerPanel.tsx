@@ -8,7 +8,6 @@ import { SeatBubbles, seatGlow, type GameEvent } from './GameAnnouncement.js';
 type Props = {
   player: { name: string; cardCount: number; isOut: boolean; tichuCall: TichuCall; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
-  isMe?: boolean;
   label?: string;
   showPoints?: boolean;
   disconnected?: boolean;
@@ -37,47 +36,63 @@ type Props = {
  * on one screen without scrolling.
  */
 export default function PlayerPanel({
-  player, isCurrentTurn, isMe, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed, mirror, sweepOffset,
+  player, isCurrentTurn, label, showPoints, disconnected, play, isTopOfTrick, combo, tichuStatus, passed, mirror, sweepOffset,
   seat, announcements = [], bubbleSide = 'above',
 }: Props) {
   const glow = seatGlow(announcements);
+  // Attention: panels are deliberately quiet so the cards (hand, trick) carry
+  // the table; whoever is to play gets the one strong signal, an ochre ring
+  // plus a "to play" tab.
   return (
     <div
       data-seat-panel={seat}
-      className={`relative flex items-center gap-4 rounded-xl px-4 py-3 min-h-[140px] min-w-[440px] transition-shadow ${
+      className={`relative flex items-center gap-4 rounded-2xl px-4 py-3 min-h-[140px] min-w-[440px] transition-[box-shadow,background-color] duration-300 ${
         mirror ? 'flex-row-reverse' : ''
       } ${
         glow
-          ? `bg-black/45 ${glow}`
+          ? `bg-black/25 ${glow}`
           : isCurrentTurn
-          ? 'bg-black/45 ring-2 ring-yellow-400 shadow-[0_0_18px_rgba(250,204,21,0.4)]'
-          : `bg-black/35 ring-1 ${isMe ? 'ring-sky-400/50' : 'ring-white/15'}`
+          ? 'bg-ochre/10 ring-[3px] ring-ochre shadow-[0_0_0_8px_rgba(232,170,56,0.14),0_12px_28px_-10px_rgba(0,0,0,0.55)]'
+          : 'bg-black/15 ring-1 ring-cream/10'
       }`}
     >
+      {isCurrentTurn && (
+        <div
+          className={`absolute -top-3.5 ${mirror ? 'right-6' : 'left-6'} rounded-full bg-ochre px-3 py-0.5 text-lg font-extrabold uppercase tracking-[0.15em] text-ink shadow-[0_2px_0_theme(colors.ochre.dark)]`}
+        >
+          To play
+        </div>
+      )}
       {/* Identity */}
       <div className={`shrink-0 w-52 ${mirror ? 'text-right' : 'text-left'}`}>
-        {label && <div className="text-3xl uppercase tracking-wide text-gray-200 font-semibold">{label}</div>}
+        {label && <div className="text-xl uppercase tracking-[0.2em] text-cream/55 font-bold">{label}</div>}
         <div className={`flex items-center gap-1 min-w-0 ${mirror ? 'justify-end' : ''}`}>
-          <span className={`font-bold text-4xl leading-tight truncate ${isCurrentTurn ? 'text-yellow-200' : 'text-white'}`}>
+          <span className={`font-display font-semibold text-4xl leading-tight truncate ${isCurrentTurn ? 'text-ochre-light' : 'text-cream'}`}>
             {player.name}
           </span>
           <TichuBadge call={player.tichuCall} status={tichuStatus} />
         </div>
         {disconnected && (
-          <div className="mt-0.5 inline-flex items-center gap-1 text-2xl font-semibold text-amber-300" title="Disconnected — waiting to reconnect">
-            <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+          <div className="mt-0.5 inline-flex items-center gap-1 text-2xl font-semibold text-ochre-light" title="Disconnected — waiting to reconnect">
+            <span className="inline-block h-2 w-2 rounded-full bg-ochre animate-pulse" />
             Disconnected
           </div>
         )}
-        <div className={`flex items-center gap-3 text-3xl mt-1 font-semibold ${mirror ? 'justify-end' : ''}`}>
+        <div className={`flex items-center gap-4 text-2xl mt-1 font-bold text-cream/75 ${mirror ? 'justify-end' : ''}`}>
           {player.isOut ? (
-            <span className="text-gray-200 italic">Out</span>
+            <span className="italic text-cream/60">Out</span>
           ) : (
-            <span className="text-gray-100" title="cards in hand">✋ {player.cardCount}</span>
+            <span className="inline-flex items-center gap-1.5" title="cards in hand">
+              <img src={`${import.meta.env.BASE_URL}cards/icon-hand.svg`} alt="" className="w-8 h-8" />
+              {player.cardCount}
+            </span>
           )}
-          <span className="text-yellow-300" title="tricks won">⭐ {player.trickCount}</span>
+          <span className="inline-flex items-center gap-1.5" title="tricks won">
+            <img src={`${import.meta.env.BASE_URL}cards/icon-tricks.svg`} alt="" className="w-8 h-8" />
+            {player.trickCount}
+          </span>
           {showPoints && player.capturedPoints !== 0 && (
-            <span className="text-green-300" title="card points captured">{player.capturedPoints}p</span>
+            <span className="text-[#A9CF8A]" title="card points captured">{player.capturedPoints}p</span>
           )}
         </div>
       </div>
@@ -98,7 +113,7 @@ export default function PlayerPanel({
           </div>
         )}
         {passed && (
-          <span className="text-2xl font-semibold text-gray-300 bg-gray-700/70 rounded px-2 py-0.5 uppercase tracking-wide">
+          <span className="text-xl font-bold text-cream/60 bg-black/25 rounded-full px-3 py-0.5 uppercase tracking-[0.15em]">
             Passed
           </span>
         )}

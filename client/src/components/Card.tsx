@@ -70,8 +70,8 @@ export default function CardComponent({ card, selected, onClick, small, large, d
     />
   );
   const index = (
-    <div className={`${g.corner} font-bold leading-none flex flex-col items-center gap-0.5`}>
-      <span>{RANK_NAMES[card.rank]}</span>
+    <div className={`${g.corner} leading-none flex flex-col items-center gap-0.5`}>
+      <span className="card-rank">{RANK_NAMES[card.rank]}</span>
       {suitImg(g.index)}
     </div>
   );
@@ -109,7 +109,7 @@ export default function CardComponent({ card, selected, onClick, small, large, d
               draggable={false}
               className="absolute inset-[18%] w-[64%] h-[64%] rounded-md object-cover pointer-events-none select-none"
             />
-            <div className="absolute inset-[18%] rounded-md border-2 border-yellow-500/70 pointer-events-none" />
+            <div className="absolute inset-[18%] rounded-md border-2 border-[#C99A3B]/80 pointer-events-none" />
           </>
         ) : (
           suitImg(g.centre, undefined, undefined, suitSrc)
@@ -125,14 +125,14 @@ function SpecialCardContent({ name, small, large }: { name: SpecialCardName; sma
   const labelClass = large ? 'text-base' : 'text-xs';
   return (
     <>
-      {name === 'mahjong' && <div className={`${cornerClass} font-bold absolute top-1 left-1.5`}>1</div>}
+      {name === 'mahjong' && <div className={`${cornerClass} card-rank absolute top-1 left-1.5`}>1</div>}
       <img
         src={`${import.meta.env.BASE_URL}cards/${name}.svg`}
         alt=""
         draggable={false}
         className={`${artClass} pointer-events-none`}
       />
-      <div className={`${labelClass} font-semibold leading-tight`}>{SPECIAL_NAMES[name]}</div>
+      <div className={`${labelClass} font-display font-semibold leading-tight`}>{SPECIAL_NAMES[name]}</div>
     </>
   );
 }

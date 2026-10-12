@@ -504,6 +504,47 @@ def dragon_fly(up):
 anim['dragon-fly-1'] = dragon_fly(True)
 anim['dragon-fly-2'] = dragon_fly(False)
 
+# Card back: clay-red stock with a cut-paper frame, a seigaiha (wave) field
+# and an ochre medallion holding a cream four-petal knot.
+BACK, BACK_DK, BACK_LT = '#B8473A', '#8E3229', '#CC6150'
+def wave_pattern():
+    # Rows overlap: draw each scale's fill then its arcs, back to front.
+    body = ''
+    for x, y in ((0, 6), (12, 6), (6, 12), (18, 12), (0, 18), (12, 18)):
+        body += f'<path d="M{x - 6} {y} A6 6 0 0 1 {x + 6} {y} Z" fill="{BACK_DK}"/>'
+        body += ''.join(f'<path d="M{x - r} {y} A{r} {r} 0 0 1 {x + r} {y}" fill="none" stroke="{BACK_LT}" stroke-width="1.1"/>'
+                        for r in (5.2, 3.4, 1.6))
+    return f'<pattern id="waves" width="12" height="12" patternUnits="userSpaceOnUse">{body}</pattern>'
+
+def back_svg():
+    knot = ''.join(f'<ellipse cx="50" cy="63" rx="5.5" ry="11" fill="{CREAM}" transform="rotate({a} 50 75)"/>'
+                   for a in (0, 90, 180, 270))
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150">{DEFS.replace('</defs>', wave_pattern() + '</defs>')}'
+            f'<g filter="url(#paper)" stroke-linejoin="round" stroke-linecap="round">'
+            f'<rect width="100" height="150" fill="{BACK}"/>'
+            + layer(f'<rect x="8" y="8" width="84" height="134" rx="6" fill="{CREAM}" stroke="{INK}" stroke-width="1.6"/>')
+            + layer(f'<rect x="12" y="12" width="76" height="126" rx="4" fill="{BACK_DK}" stroke="{INK}" stroke-width="1.2"/>'
+                    f'<rect x="12" y="12" width="76" height="126" rx="4" fill="url(#waves)"/>')
+            + layer(f'<circle cx="50" cy="75" r="23" fill="{OCHRE}" stroke="{INK}" stroke-width="1.8"/>'
+                    f'<circle cx="50" cy="75" r="18.5" fill="{BACK}" stroke="{OCHRE_DK}" stroke-width="1.4"/>')
+            + layer(f'<g stroke="{INK}" stroke-width="1.4">{knot}</g>'
+                    f'<circle cx="50" cy="75" r="4.2" fill="{OCHRE}" stroke="{INK}" stroke-width="1.4"/>')
+            + ''.join(layer(f'<circle cx="{x}" cy="{y}" r="3" fill="{OCHRE}" stroke="{INK}" stroke-width="1.2"/>')
+                      for x, y in ((20, 20), (80, 20), (20, 130), (80, 130)))
+            + '</g></svg>\n')
+art['back'] = back_svg()
+
+# Table icons: cards in hand (a fan of backs) and tricks won (a squared pile).
+def mini_back(x, y, rot=0, cx=20, cy=36):
+    return (f'<g transform="rotate({rot} {cx} {cy})">'
+            f'<rect x="{x}" y="{y}" width="15" height="22" rx="2.5" fill="{BACK}" stroke="{INK}" stroke-width="1.5"/>'
+            f'<rect x="{x + 3}" y="{y + 3}" width="9" height="16" rx="1.2" fill="none" stroke="{CREAM}" stroke-width="1.3"/>'
+            f'<circle cx="{x + 7.5}" cy="{y + 11}" r="2.2" fill="{OCHRE}" stroke="none"/></g>')
+def icon_svg(body):
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 3 34 34">{body}</svg>\n'
+art['icon-hand'] = icon_svg(''.join(mini_back(12.5, 9, r) for r in (-24, 0, 24)))
+art['icon-tricks'] = icon_svg(''.join(mini_back(9 + 4 * i, 5 + 4 * i, 0) for i in range(3)))
+
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for k, v in art.items():

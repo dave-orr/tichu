@@ -614,7 +614,7 @@ export default function Game({ socket, auth }: Props) {
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
           <button
             onClick={socket.resetRoom}
-            className="py-2 px-6 bg-gray-700/90 hover:bg-gray-600 rounded-lg font-bold text-base shadow-lg transition-colors"
+            className="btn btn-pass py-2 px-6 text-base"
           >
             Back to Lobby
           </button>
@@ -631,7 +631,7 @@ export default function Game({ socket, auth }: Props) {
             onClick={() => setShowRoomMenu(v => !v)}
             title="Room & invite"
             aria-label="Room and invite options"
-            className="p-2 bg-black/25 hover:bg-black/50 text-gray-400 hover:text-white rounded-lg transition-colors"
+            className="p-2 bg-black/20 hover:bg-black/40 text-cream/50 hover:text-cream rounded-xl transition-colors"
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3" />
@@ -639,7 +639,7 @@ export default function Game({ socket, auth }: Props) {
             </svg>
           </button>
           {showRoomMenu && (
-            <div className="absolute right-0 mt-2 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 min-w-[200px]">
+            <div className="surface !bg-[#14261d]/95 absolute right-0 mt-2 p-3 flex flex-col gap-2 min-w-[200px]">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">Room</span>
                 <span className="font-mono font-bold tracking-widest text-yellow-400 text-lg">{socket.roomCode}</span>
@@ -771,18 +771,18 @@ export default function Game({ socket, auth }: Props) {
           />
 
           {/* Center: wish + what's on the table */}
-          <div className="flex flex-col items-center justify-center gap-2 px-2 min-w-[180px] max-w-[260px] [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]">
+          <div className="flex flex-col items-center justify-center gap-1 px-2 min-w-[180px] max-w-[260px]">
             <WishDisplay wish={gameState.mahJongWish} />
             {currentTrick && lastPlayedBy !== null ? (
               <div className="text-center">
-                <div className="text-3xl uppercase tracking-wide text-gray-200 font-semibold">To beat</div>
-                <div className="text-yellow-200 font-bold text-4xl">{comboLabel(currentTrick)}</div>
+                <div className="text-lg uppercase tracking-[0.2em] text-cream/50 font-bold">To beat</div>
+                <div className="font-display text-cream/85 font-semibold text-3xl">{comboLabel(currentTrick)}</div>
               </div>
             ) : (
-              <div className="text-4xl text-gray-200 italic">Waiting for lead</div>
+              <div className="font-display text-3xl text-cream/50 italic">Waiting for lead</div>
             )}
             <div
-              className="text-3xl text-gray-500/80 select-none"
+              className="text-3xl text-cream/30 select-none"
               title={gameState.settings.clockwise ? 'Play passes clockwise' : 'Play passes counterclockwise'}
               aria-hidden="true"
             >
@@ -815,7 +815,6 @@ export default function Game({ socket, auth }: Props) {
             isCurrentTurn={isMyTurn}
             tichuStatus={tichuStatusFor(myPlayer)}
             passed={gameState.passedSeats.includes(mySeat)}
-            isMe
             showPoints={gameState.settings.countPoints}
             play={displayPlayFor(mySeat)}
             isTopOfTrick={lastPlayedBy === mySeat}
@@ -832,7 +831,7 @@ export default function Game({ socket, auth }: Props) {
       {/* Toast notification */}
       {(toast || autoSkippedSeat !== null || socket.concedeDeclined) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="toast-notification bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg shadow-lg text-3xl font-medium">
+          <div className="toast-notification surface !bg-[#14261d]/95 text-cream px-5 py-2 text-3xl font-semibold">
             {socket.concedeDeclined
               ? socket.concedeDeclined.seat === mySeat
                 ? 'You declined the concession — play on'
@@ -847,7 +846,7 @@ export default function Game({ socket, auth }: Props) {
       )}
 
       {/* Bottom area: player's hand and controls */}
-      <div className={`shrink-0 p-2 bg-gray-900/50 ${isMyTurn ? 'my-turn-glow rounded-t-xl' : ''}`}>
+      <div className={`shrink-0 p-2 bg-black/25 border-t border-cream/10 ${isMyTurn ? 'my-turn-glow rounded-t-2xl' : ''}`}>
         {/* Cards seen tracker */}
         {gameState.settings.cardsSeen && phase === 'playing' && (
           <div className="mb-1 max-w-3xl mx-auto">
@@ -861,7 +860,7 @@ export default function Game({ socket, auth }: Props) {
               mirroring the outgoing diamond on the right. */}
           {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
-              <div className="text-lg text-gray-400/90 uppercase tracking-wider">Received</div>
+              <div className="text-lg text-cream/50 font-bold uppercase tracking-[0.15em]">Received</div>
               {/* A row instead of a diamond keeps the group no taller than the
                   hand, so the cards can be bigger: left opponent / partner
                   (raised, echoing the table) / right opponent. */}
@@ -883,7 +882,7 @@ export default function Game({ socket, auth }: Props) {
               the cards around when it appears. */}
           <div className="relative">
             {isMyTurn && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-10 pointer-events-none whitespace-nowrap text-yellow-300 font-bold animate-pulse text-4xl [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-10 pointer-events-none whitespace-nowrap rounded-full bg-ochre px-5 py-1 font-display font-semibold text-ink text-3xl shadow-[0_3px_0_theme(colors.ochre.dark),0_8px_18px_-6px_rgba(0,0,0,0.6)]">
                 Your turn!
               </div>
             )}
@@ -900,7 +899,7 @@ export default function Game({ socket, auth }: Props) {
               opponent / partner (raised) / right opponent. */}
           {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
-              <div className="text-lg text-gray-400/90 uppercase tracking-wider">Passed</div>
+              <div className="text-lg text-cream/50 font-bold uppercase tracking-[0.15em]">Passed</div>
               <div className="grid grid-cols-3 gap-1 items-start">
                 <div>{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
                 <div className="-translate-y-2">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
@@ -922,7 +921,7 @@ export default function Game({ socket, auth }: Props) {
                 message={`${players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
                   `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`).join(', ')}. Still call?`}
                 confirmLabel="Yes, Call Tichu!"
-                confirmClass="bg-orange-600 hover:bg-orange-500"
+                confirmClass="btn-tichu"
                 onConfirm={() => { socket.callSmallTichu(); setShowTichuConfirm(false); }}
                 onCancel={() => setShowTichuConfirm(false)}
               />
@@ -931,7 +930,7 @@ export default function Game({ socket, auth }: Props) {
               <ConfirmPopover
                 message="Offer to concede? If your opponents accept, the round ends and your hand goes to them."
                 confirmLabel="Offer to Concede"
-                confirmClass="bg-red-600 hover:bg-red-500"
+                confirmClass="btn-bomb"
                 onConfirm={handleConcede}
                 onCancel={() => setShowConcedeConfirm(false)}
               />
@@ -950,13 +949,13 @@ export default function Game({ socket, auth }: Props) {
                     <button
                       onClick={confirmBomb}
                       disabled={!canBombNow}
-                      className="py-2 px-6 bg-red-600 hover:bg-red-500 disabled:bg-red-900 disabled:text-red-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                      className="btn btn-bomb py-2 px-6"
                     >
                       Confirm Bomb
                     </button>
                     <button
                       onClick={cancelBombMode}
-                      className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+                      className="btn btn-quiet py-2 px-6"
                     >
                       Cancel
                     </button>
@@ -966,7 +965,7 @@ export default function Game({ socket, auth }: Props) {
                     <button
                       onClick={handlePlay}
                       disabled={!canPlayNow}
-                      className="py-2 px-8 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                      className="btn btn-play py-2 px-8"
                     >
                       Play
                     </button>
@@ -974,9 +973,7 @@ export default function Game({ socket, auth }: Props) {
                       onClick={handlePassClick}
                       disabled={passDisabled}
                       title={passTitle}
-                      className={`py-2 px-8 rounded-lg font-bold transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed ${
-                        passQueued ? 'bg-yellow-600 hover:bg-yellow-500 text-yellow-100' : 'bg-gray-600 hover:bg-gray-500'
-                      }`}
+                      className={`btn py-2 px-8 ${passQueued ? 'btn-primary' : 'btn-pass'}`}
                     >
                       {passQueued ? 'Pass ✓' : 'Pass'}
                     </button>
@@ -991,7 +988,7 @@ export default function Game({ socket, auth }: Props) {
                     onClick={enterBombMode}
                     disabled={bombDisabled}
                     title={bombDisabled ? 'Wait for a card to be played' : undefined}
-                    className="py-2 px-5 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg font-bold transition-colors"
+                    className="btn btn-bomb py-2 px-5"
                   >
                     Bomb!
                   </button>
@@ -999,7 +996,7 @@ export default function Game({ socket, auth }: Props) {
                 {canCallTichu && !bombMode && (
                   <button
                     onClick={handleTichuClick}
-                    className="py-2 px-4 bg-orange-600 hover:bg-orange-500 rounded-lg font-bold transition-colors"
+                    className="btn btn-tichu py-2 px-4"
                   >
                     Call Tichu!
                   </button>
@@ -1007,7 +1004,7 @@ export default function Game({ socket, auth }: Props) {
                 {partnerIsOut && !bombMode && (
                   <button
                     onClick={() => setShowConcedeConfirm(true)}
-                    className="py-1.5 px-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-base transition-colors"
+                    className="btn btn-quiet py-1.5 px-3 text-base"
                   >
                     Concede
                   </button>
@@ -1034,17 +1031,17 @@ function ConfirmPopover({ message, confirmLabel, confirmClass, onConfirm, onCanc
   onCancel: () => void;
 }) {
   return (
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 max-w-3xl bg-gray-900/95 border border-gray-700 rounded-xl shadow-xl px-4 py-3 flex items-center gap-3">
-      <span className="text-2xl text-yellow-400">{message}</span>
+    <div className="surface !bg-[#14261d]/95 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 max-w-3xl px-4 py-3 flex items-center gap-3">
+      <span className="text-2xl text-cream">{message}</span>
       <button
         onClick={onConfirm}
-        className={`shrink-0 py-1 px-4 rounded-lg text-base font-bold transition-colors ${confirmClass}`}
+        className={`btn shrink-0 py-1 px-4 text-base ${confirmClass}`}
       >
         {confirmLabel}
       </button>
       <button
         onClick={onCancel}
-        className="shrink-0 py-1 px-4 bg-gray-600 hover:bg-gray-500 rounded-lg text-base transition-colors"
+        className="btn btn-quiet shrink-0 py-1 px-4 text-base"
       >
         Cancel
       </button>
