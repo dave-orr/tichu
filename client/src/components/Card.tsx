@@ -29,9 +29,12 @@ const PIPS: Record<number, [number, number][]> = {
 // symbol for courts and Aces. Pips and index symbols reuse the same few suit
 // images, which the browser draws once and then just repeats.
 const SIZES = {
-  small: { w: 64, h: 96, corner: 'text-sm', index: 11, pip: 13, centre: 34 },
-  default: { w: 96, h: 144, corner: 'text-base', index: 15, pip: 19, centre: 52 },
-  large: { w: 144, h: 216, corner: 'text-2xl', index: 22, pip: 28, centre: 76 },
+  // padX: the pip columns' inset from each side (fraction of the width).
+  // As wide as the corner index allows, so the layouts read like a real
+  // deck's instead of bunching into a narrow column.
+  small: { w: 64, h: 96, corner: 'text-sm', index: 11, pip: 13, centre: 34, padX: 0.36 },
+  default: { w: 96, h: 144, corner: 'text-base', index: 15, pip: 19, centre: 52, padX: 0.31 },
+  large: { w: 144, h: 216, corner: 'text-2xl', index: 22, pip: 28, centre: 76, padX: 0.3 },
 } as const;
 
 export default function CardComponent({ card, selected, onClick, small, large, draggable, onDragStart }: Props) {
@@ -78,7 +81,7 @@ export default function CardComponent({ card, selected, onClick, small, large, d
   const pips = PIPS[card.rank];
   const isCourt = card.rank >= 11 && card.rank <= 13;
   // Pip box: the middle of the card, clear of the corner indices.
-  const box = { left: g.w * 0.36, right: g.w * 0.64, top: g.h * 0.18, bottom: g.h * 0.82 };
+  const box = { left: g.w * g.padX, right: g.w * (1 - g.padX), top: g.h * 0.18, bottom: g.h * 0.82 };
 
   return (
     <div
