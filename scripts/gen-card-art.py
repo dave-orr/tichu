@@ -291,7 +291,7 @@ def emblem(suit):
 # faces.
 FACING = {'jade': -1, 'pagoda': -1, 'sword': 1, 'star': 1}
 
-def suit_prop(suit, hx, hy, robe):
+def suit_prop(suit, hx, hy, robe, d):
     """A small suit item held in a hand at (hx, hy), plus the hand and cuff."""
     hand = (f'<path d="M{hx - 7} {hy + 4} L{hx + 7} {hy + 4} L{hx + 6} {hy + 12} L{hx - 6} {hy + 12} Z" fill="{robe}"/>'
             f'<ellipse cx="{hx}" cy="{hy + 2}" rx="5" ry="4.2" fill="{SKIN}"/>')
@@ -308,12 +308,13 @@ def suit_prop(suit, hx, hy, robe):
                 f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>{pip_eave(48, 38)}'
                 f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>{pip_eave(28, 30)}'
                 f'<path d="M50 4 L50 22" stroke="{OCHRE_DK}" stroke-width="9"/></g>')
-    else:                   # a gold staff topped with a star
+    else:                   # a gold staff topped with a star, leaning out (the jian stands upright)
         sp = [(hx + (7 if k % 2 == 0 else 3) * math.cos(-math.pi / 2 + k * math.pi / 5),
-               hy - 46 + (7 if k % 2 == 0 else 3) * math.sin(-math.pi / 2 + k * math.pi / 5)) for k in range(10)]
-        item = (f'<path d="M{hx} {hy + 16} L{hx} {hy - 40}" stroke="{INK}" stroke-width="5"/>'
-                f'<path d="M{hx} {hy + 16} L{hx} {hy - 40}" stroke="{OCHRE}" stroke-width="2.6"/>'
-                f'<path d="M{" L".join(f"{x:.1f} {y:.1f}" for x, y in sp)} Z" fill="{OCHRE}" stroke-width="1.4"/>')
+               hy - 42 + (7 if k % 2 == 0 else 3) * math.sin(-math.pi / 2 + k * math.pi / 5)) for k in range(10)]
+        item = (f'<g transform="rotate({16 * d} {hx} {hy})">'
+                f'<path d="M{hx} {hy + 14} L{hx} {hy - 36}" stroke="{INK}" stroke-width="5"/>'
+                f'<path d="M{hx} {hy + 14} L{hx} {hy - 36}" stroke="{OCHRE}" stroke-width="2.6"/>'
+                f'<path d="M{" L".join(f"{x:.1f} {y:.1f}" for x, y in sp)} Z" fill="{OCHRE}" stroke-width="1.4"/></g>')
     return layer(item) + layer(hand)
 
 def royal(rank, suit):
@@ -337,7 +338,8 @@ def royal(rank, suit):
             f'<circle cx="{59 + dx}" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>'
             f'<path d="M{50 + dx} 75 q{1.5 * d} 3 0 4" fill="none" stroke-width="1.3"/>')   # nose, turned
     tilt = f'rotate({4 * d} 50 92)'
-    prop = suit_prop(suit, 50 + 27 * d, 118, robe)
+    # The leaning staff needs a little more room at the top than the others.
+    prop = suit_prop(suit, 50 + (28 if suit == 'star' else 33) * d, 120, robe, d)
     if rank == 13:  # King: emperor, mian crown with bead tassels, long moustache and beard
         hair = f'<path d="M33 70 Q33 54 50 53 Q67 54 67 70 Q62 61 50 60 Q38 61 33 70 Z" fill="{HAIR_BLACK}"/>'
         eyes = (f'<path d="M{40 + dx} 72 q3 -2 6 0" fill="none" stroke-width="2"/><path d="M{54 + dx} 72 q3 -2 6 0" fill="none" stroke-width="2"/>'
