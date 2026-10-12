@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Seat, ClientGameState, InvitablePlayer, RoomElos } from '@tichu/shared';
+import type { Seat, ClientGameState, GameSettings, InvitablePlayer, RoomElos } from '@tichu/shared';
 import InvitePanel from './InvitePanel.js';
 import TargetScoreInput from './TargetScoreInput.js';
+import ThemePicker from './ThemePicker.js';
 
 const SEAT_NAMES = ['North', 'East', 'South', 'West'];
 
@@ -14,7 +15,7 @@ type Props = {
   aiOpenSeats: number[];
   disconnectedSeats: number[];
   onSwapSeats: (from: Seat, to: Seat) => void;
-  onUpdateSettings: (settings: Record<string, boolean | number>) => void;
+  onUpdateSettings: (settings: Partial<GameSettings>) => void;
   onUpdateRandomPartners: (randomPartners: boolean) => void;
   onStartGame: () => void;
   onCancelRoom: () => void;
@@ -357,6 +358,13 @@ export default function WaitingRoom({
                 className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white text-xl disabled:opacity-50"
               />
             </div>
+
+            <ThemePicker
+              compact
+              value={gameState.settings.theme ?? 'papercraft'}
+              onChange={theme => isOrganizer && onUpdateSettings({ theme })}
+              disabled={!isOrganizer}
+            />
 
             <div className="mt-auto pt-2">
               {playerCount === 4 && isOrganizer && (

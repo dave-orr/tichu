@@ -1,6 +1,7 @@
 import TargetScoreInput from './TargetScoreInput.js';
+import ThemePicker from './ThemePicker.js';
 import { useState } from 'react';
-import type { GameSettings } from '@tichu/shared';
+import type { GameSettings, Theme } from '@tichu/shared';
 
 type Props = {
   initialSettings?: Partial<GameSettings>;
@@ -16,6 +17,7 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
   const [showPassedCards, setShowPassedCards] = useState(initialSettings?.showPassedCards ?? false);
   const [clockwise, setClockwise] = useState(initialSettings?.clockwise ?? false);
   const [targetScore, setTargetScore] = useState(initialSettings?.targetScore ?? 1000);
+  const [theme, setTheme] = useState<Theme>(initialSettings?.theme ?? 'papercraft');
 
   return (
     <div className="space-y-4">
@@ -90,9 +92,10 @@ export default function CreateRoomForm({ initialSettings, initialRandomPartners,
           className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white"
         />
       </div>
+      <ThemePicker value={theme} onChange={setTheme} />
       <button
         onClick={() => {
-          const settings = { countPoints, cardsSeen, showPassedCards, clockwise, targetScore };
+          const settings = { countPoints, cardsSeen, showPassedCards, clockwise, targetScore, theme };
           onCreateRoom(randomPartners, settings);
         }}
         className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"

@@ -24,11 +24,11 @@ h1, h2, h3 {
 
 /* The table: green felt with a soft pool of light in the middle. */
 .table-felt {
-  background-color: theme('colors.felt-dark');
+  background-color: rgb(var(--c-felt-dark));
   background-image:
     var(--felt-grain),
     radial-gradient(ellipse 75% 65% at 50% 42%, #33775420 0%, transparent 100%),
-    radial-gradient(ellipse 80% 70% at 50% 40%, theme('colors.felt') 0%, theme('colors.felt-dark') 100%);
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgb(var(--c-felt)) 0%, rgb(var(--c-felt-dark)) 100%);
 }
 
 /* Chrome surfaces (score box, menus, popovers): one ink-glass style. */
@@ -50,11 +50,11 @@ h1, h2, h3 {
   @apply cursor-not-allowed bg-white/10 text-cream/35;
   box-shadow: none;
 }
-.btn-play { @apply bg-sap text-cream hover:bg-[#6CA25D]; --edge: theme('colors.sap.dark'); }
-.btn-pass { @apply bg-paper text-ink hover:bg-cream; --edge: #B9AC93; }
-.btn-primary { @apply bg-ochre text-ink hover:bg-ochre-light; --edge: theme('colors.ochre.dark'); }
-.btn-tichu { @apply bg-clay text-cream hover:bg-[#E2876A]; --edge: theme('colors.clay.dark'); }
-.btn-bomb { @apply bg-brick text-cream hover:bg-[#D65247]; --edge: theme('colors.brick.dark'); }
+.btn-play { @apply bg-sap text-cream hover:bg-sap-hover; --edge: rgb(var(--c-sap-dark)); }
+.btn-pass { @apply bg-paper text-ink hover:brightness-105; --edge: #B9AC93; }
+.btn-primary { @apply bg-ochre text-ink hover:brightness-110; --edge: rgb(var(--c-ochre-dark)); }
+.btn-tichu { @apply bg-clay text-cream hover:bg-clay-hover; --edge: rgb(var(--c-clay-dark)); }
+.btn-bomb { @apply bg-brick text-cream hover:bg-brick-hover; --edge: rgb(var(--c-brick-dark)); }
 .btn-quiet { @apply bg-white/10 text-cream/80 hover:bg-white/20; --edge: rgba(0, 0, 0, 0.3); }
 
 /* Card styles. Size (w/h) comes from the component's small/default/large
@@ -91,7 +91,7 @@ h1, h2, h3 {
   @apply -translate-y-3;
   box-shadow:
     inset 0 0 0 1px rgba(122, 96, 58, 0.28),
-    0 0 0 3px theme('colors.ochre.DEFAULT'),
+    0 0 0 3px rgb(var(--c-ochre)),
     0 3px 3px rgba(30, 24, 18, 0.25),
     0 14px 20px -6px rgba(16, 24, 18, 0.55);
 }
@@ -106,7 +106,7 @@ h1, h2, h3 {
 }
 
 .card.suit-jade { color: #2F8A55; }
-.card.suit-sword { color: theme('colors.ink'); }
+.card.suit-sword { color: rgb(var(--c-ink)); }
 .card.suit-pagoda { color: #3B6FD6; }
 .card.suit-star { color: #D93A3A; }
 
@@ -124,6 +124,43 @@ h1, h2, h3 {
   box-shadow: inset 0 0 0 1px rgba(60, 20, 15, 0.35), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
 }
 
+/* ===== Kawaii theme =====
+   Colours come from the variables in tailwind.config.js; these are the
+   surfaces that differ in kind: a polka-dot pastel table, smooth white card
+   stock with a soft "sticker" edge, pastel suits and special-card tints. */
+[data-theme="kawaii"] .table-felt {
+  background-color: rgb(var(--c-felt-dark));
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.55) 1.6px, transparent 1.9px),
+    radial-gradient(ellipse 80% 70% at 50% 38%, #EEF9F3 0%, rgb(var(--c-felt)) 55%, rgb(var(--c-felt-dark)) 100%);
+  background-size: 28px 28px, auto;
+}
+[data-theme="kawaii"] h1, [data-theme="kawaii"] h2, [data-theme="kawaii"] h3 { font-weight: 800; }
+[data-theme="kawaii"] .surface { background-color: rgb(255 255 255 / 0.8); box-shadow: 0 5px 0 #EADCF0, 0 10px 22px -8px rgb(120 150 135 / 0.35); }
+[data-theme="kawaii"] [data-seat-panel] { background-color: rgb(255 255 255 / 0.62); }
+[data-theme="kawaii"] .card {
+  border-radius: 14px;
+  background-color: #FFFDFB;
+  background-image: none;
+  box-shadow: inset 0 0 0 2px #F1E4F4, 0 3px 0 #EADCF0, -2px 0 4px -2px rgb(150 120 160 / 0.25), 0 6px 12px -4px rgb(110 150 130 / 0.35);
+}
+[data-theme="kawaii"] .card:hover {
+  box-shadow: inset 0 0 0 2px #F1E4F4, 0 3px 0 #EADCF0, 0 12px 18px -6px rgb(110 150 130 / 0.45);
+}
+[data-theme="kawaii"] .card.selected {
+  box-shadow: inset 0 0 0 2px #F1E4F4, 0 0 0 3px rgb(var(--c-ochre)), 0 3px 0 #F49AB0, 0 14px 20px -6px rgb(110 150 130 / 0.5);
+}
+[data-theme="kawaii"] .card.suit-jade { color: #2E9A6A; }
+[data-theme="kawaii"] .card.suit-sword { color: #6A548A; }
+[data-theme="kawaii"] .card.suit-pagoda { color: #4F72D6; }
+[data-theme="kawaii"] .card.suit-star { color: #E5587A; }
+[data-theme="kawaii"] .card.special-mahjong { background-color: #FFF6D6; color: #C98A1A; }
+[data-theme="kawaii"] .card.special-dog { background-color: #FFF1E4; color: #C87A3E; }
+[data-theme="kawaii"] .card.special-phoenix { background-color: #FFEFF3; color: #E5587A; }
+[data-theme="kawaii"] .card.special-dragon { background-color: #EAFBF2; color: #2E9A6A; }
+[data-theme="kawaii"] .court-frame { border-color: #F6C9D8; }
+[data-theme="kawaii"] .card-back { background-image: url('/cards/kawaii/back.svg'); }
+
 /* Animations */
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }
@@ -135,8 +172,8 @@ h1, h2, h3 {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(232, 170, 56, 0.5), 0 0 16px rgba(232, 170, 56, 0.2); }
-  50% { box-shadow: 0 0 25px rgba(232, 170, 56, 0.8), 0 0 50px rgba(232, 170, 56, 0.3); }
+  0%, 100% { box-shadow: 0 0 8px rgb(var(--c-ochre) / 0.5), 0 0 16px rgb(var(--c-ochre) / 0.2); }
+  50% { box-shadow: 0 0 25px rgb(var(--c-ochre) / 0.8), 0 0 50px rgb(var(--c-ochre) / 0.3); }
 }
 
 .pulse-glow {
@@ -144,8 +181,8 @@ h1, h2, h3 {
 }
 
 @keyframes my-turn-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(232, 170, 56, 0.4), 0 0 20px rgba(232, 170, 56, 0.2); }
-  50% { box-shadow: 0 0 30px rgba(232, 170, 56, 0.7), 0 0 60px rgba(232, 170, 56, 0.3); }
+  0%, 100% { box-shadow: 0 0 10px rgb(var(--c-ochre) / 0.4), 0 0 20px rgb(var(--c-ochre) / 0.2); }
+  50% { box-shadow: 0 0 30px rgb(var(--c-ochre) / 0.7), 0 0 60px rgb(var(--c-ochre) / 0.3); }
 }
 
 .my-turn-glow {

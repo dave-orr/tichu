@@ -14,16 +14,16 @@ export default function TichuBadge({ call, status = 'pending' }: { call: TichuCa
         className={`inline-flex items-center text-lg font-extrabold rounded-md px-1.5 py-0.5 leading-none tracking-wide text-cream ${
           isGrand
             ? 'bg-[#3B6FD6] shadow-[0_2px_0_#24489A]'
-            : 'bg-sap shadow-[0_2px_0_theme(colors.sap.dark)]'
+            : 'bg-sap shadow-[0_2px_0_rgb(var(--c-sap-dark))]'
         }`}
       >
         {isGrand ? 'GT' : 'T'}
       </span>
       {status === 'made' && (
-        <span className="text-[#A9CF8A] text-2xl font-black leading-none" title="Completed">✓</span>
+        <span className="text-good text-2xl font-black leading-none" title="Completed">✓</span>
       )}
       {status === 'failed' && (
-        <span className="text-[#F08A7E] text-2xl font-black leading-none" title="Failed">✗</span>
+        <span className="text-bad text-2xl font-black leading-none" title="Failed">✗</span>
       )}
     </span>
   );

@@ -1,5 +1,5 @@
 import type { Card, Seat, NormalRank, GameSettings } from '@tichu/shared';
-import { cardId } from '@tichu/shared';
+import { cardId, THEMES } from '@tichu/shared';
 
 const VALID_SUITS = new Set(['jade', 'sword', 'pagoda', 'star']);
 const VALID_SPECIAL_NAMES = new Set(['mahjong', 'dog', 'phoenix', 'dragon']);
@@ -69,6 +69,9 @@ export function sanitizeSettings(input: unknown): Partial<GameSettings> {
   const raw = input as Record<string, unknown>;
   for (const key of BOOLEAN_SETTINGS) {
     if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
+  }
+  if (typeof raw.theme === 'string' && THEMES.some(t => t.id === raw.theme)) {
+    out.theme = raw.theme as GameSettings['theme'];
   }
   if (typeof raw.targetScore === 'number' && Number.isFinite(raw.targetScore)) {
     out.targetScore = Math.max(TARGET_SCORE_MIN, Math.min(TARGET_SCORE_MAX, Math.round(raw.targetScore)));

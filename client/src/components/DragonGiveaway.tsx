@@ -18,7 +18,7 @@ export default function DragonGiveaway({ mySeat, players, onGive }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-800 ring-1 ring-cream/10 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
-        <h3 className="text-4xl font-bold text-center mb-4 text-[#8FCB9B]">
+        <h3 className="text-4xl font-bold text-center mb-4 text-dragon">
           Dragon Won the Trick
         </h3>
         <p className="text-gray-300 text-3xl text-center mb-4">

@@ -56,7 +56,7 @@ export default function ScoreBoard({ gameState }: Props) {
           {players.filter(p => p.tichuCall !== 'none').map(p => (
             <div key={p.seat} className="text-2xl text-center">
               <span className="text-cream/80">{p.name}</span>:{' '}
-              <span className={p.tichuCall === 'grand' ? 'text-[#8FB0F0] font-bold' : 'text-[#A9CF8A] font-semibold'}>
+              <span className={p.tichuCall === 'grand' ? 'text-grand font-bold' : 'text-good font-semibold'}>
                 {p.tichuCall === 'grand' ? 'GRAND TICHU' : 'Tichu'}
               </span>
             </div>

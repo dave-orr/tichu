@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import type { Card as CardType, Combo, TichuCall } from '@tichu/shared';
 import { cardId } from '@tichu/shared';
 import SeatPlay from './SeatPlay.js';
+import { cardArt, useTheme } from '../theme.js';
 import TichuBadge, { type TichuStatus } from './TichuBadge.js';
 import { SeatBubbles, seatGlow, type GameEvent } from './GameAnnouncement.js';
 
@@ -40,6 +41,7 @@ export default function PlayerPanel({
   seat, announcements = [], bubbleSide = 'above',
 }: Props) {
   const glow = seatGlow(announcements);
+  const theme = useTheme();
   // Attention: panels are deliberately quiet so the cards (hand, trick) carry
   // the table; whoever is to play gets the one strong signal, an ochre ring
   // plus a "to play" tab.
@@ -58,7 +60,7 @@ export default function PlayerPanel({
     >
       {isCurrentTurn && (
         <div
-          className={`absolute -top-3.5 ${mirror ? 'right-6' : 'left-6'} rounded-full bg-ochre px-3 py-0.5 text-lg font-extrabold uppercase tracking-[0.15em] text-ink shadow-[0_2px_0_theme(colors.ochre.dark)]`}
+          className={`absolute -top-3.5 ${mirror ? 'right-6' : 'left-6'} rounded-full bg-ochre px-3 py-0.5 text-lg font-extrabold uppercase tracking-[0.15em] text-ink shadow-[0_2px_0_rgb(var(--c-ochre-dark))]`}
         >
           To play
         </div>
@@ -83,16 +85,16 @@ export default function PlayerPanel({
             <span className="italic text-cream/60">Out</span>
           ) : (
             <span className="inline-flex items-center gap-1.5" title="cards in hand">
-              <img src={`${import.meta.env.BASE_URL}cards/icon-hand.svg`} alt="" className="w-8 h-8" />
+              <img src={cardArt(theme, 'icon-hand.svg')} alt="" className="w-8 h-8" />
               {player.cardCount}
             </span>
           )}
           <span className="inline-flex items-center gap-1.5" title="tricks won">
-            <img src={`${import.meta.env.BASE_URL}cards/icon-tricks.svg`} alt="" className="w-8 h-8" />
+            <img src={cardArt(theme, 'icon-tricks.svg')} alt="" className="w-8 h-8" />
             {player.trickCount}
           </span>
           {showPoints && player.capturedPoints !== 0 && (
-            <span className="text-[#A9CF8A]" title="card points captured">{player.capturedPoints}p</span>
+            <span className="text-good" title="card points captured">{player.capturedPoints}p</span>
           )}
         </div>
       </div>
