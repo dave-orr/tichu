@@ -285,11 +285,43 @@ def emblem(suit):
             f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>{pip_eave(48, 38)}'
             f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>{pip_eave(28, 30)}</g>')
 
+# Like a real deck, the suits differ in pose: jade and pagoda royals turn to
+# their left, sword and star royals to their right (Queens face the other way
+# from their King and Jack), and each holds a small suit item on the side it
+# faces.
+FACING = {'jade': -1, 'pagoda': -1, 'sword': 1, 'star': 1}
+
+def suit_prop(suit, hx, hy, robe):
+    """A small suit item held in a hand at (hx, hy), plus the hand and cuff."""
+    hand = (f'<path d="M{hx - 7} {hy + 4} L{hx + 7} {hy + 4} L{hx + 6} {hy + 12} L{hx - 6} {hy + 12} Z" fill="{robe}"/>'
+            f'<ellipse cx="{hx}" cy="{hy + 2}" rx="5" ry="4.2" fill="{SKIN}"/>')
+    if suit == 'jade':      # a jade disc (bi), held up
+        item = (f'<circle cx="{hx}" cy="{hy - 9}" r="8" fill="{JADE}"/>'
+                f'<circle cx="{hx}" cy="{hy - 9}" r="2.8" fill="{CREAM}" stroke-width="1.4"/>'
+                f'<path d="M{hx - 4} {hy - 14} Q{hx} {hy - 16} {hx + 4} {hy - 14}" fill="none" stroke="#7CC79A" stroke-width="1.6"/>')
+    elif suit == 'sword':   # an upright jian
+        item = (f'<path d="M{hx} {hy - 50} L{hx + 3} {hy - 45} L{hx + 3} {hy - 6} L{hx - 3} {hy - 6} L{hx - 3} {hy - 45} Z" fill="{STEEL}"/>'
+                f'<path d="M{hx - 8} {hy - 6} L{hx + 8} {hy - 6} L{hx + 7} {hy - 2} L{hx - 7} {hy - 2} Z" fill="{OCHRE}"/>')
+    elif suit == 'pagoda':  # a little pagoda carving
+        item = (f'<g transform="translate({hx - 9} {hy - 22}) scale(0.18)" stroke-width="8">'
+                f'<rect x="36" y="72" width="28" height="22" fill="{CREAM}"/>{pip_eave(70, 46)}'
+                f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>{pip_eave(48, 38)}'
+                f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>{pip_eave(28, 30)}'
+                f'<path d="M50 4 L50 22" stroke="{OCHRE_DK}" stroke-width="9"/></g>')
+    else:                   # a gold staff topped with a star
+        sp = [(hx + (7 if k % 2 == 0 else 3) * math.cos(-math.pi / 2 + k * math.pi / 5),
+               hy - 46 + (7 if k % 2 == 0 else 3) * math.sin(-math.pi / 2 + k * math.pi / 5)) for k in range(10)]
+        item = (f'<path d="M{hx} {hy + 16} L{hx} {hy - 40}" stroke="{INK}" stroke-width="5"/>'
+                f'<path d="M{hx} {hy + 16} L{hx} {hy - 40}" stroke="{OCHRE}" stroke-width="2.6"/>'
+                f'<path d="M{" L".join(f"{x:.1f} {y:.1f}" for x, y in sp)} Z" fill="{OCHRE}" stroke-width="1.4"/>')
+    return layer(item) + layer(hand)
+
 def royal(rank, suit):
     robe, robe_dk, tint = ROBES[suit]
+    d = FACING[suit] * (-1 if rank == 12 else 1)   # +1: turned to the viewer's right
+    dx = 3 * d                                      # features shift toward the facing side
     back = layer(f'<rect x="0" y="0" width="100" height="150" fill="{tint}" stroke="none"/>',
                  f'<circle cx="50" cy="66" r="36" fill="#F6E3B4" stroke="none" opacity="0.9"/>')
-    # Robe, cross collar, gold collar band and the chest medallion.
     robe_layer = layer(
         f'<path d="M4 152 Q6 112 50 102 Q94 112 96 152 Z" fill="{robe}"/>'
         f'<path d="M24 120 Q30 136 28 152 M76 120 Q70 136 72 152" fill="none" stroke="{robe_dk}" stroke-width="2.4"/>'
@@ -301,45 +333,48 @@ def royal(rank, suit):
     neck = layer(f'<path d="M43 86 L57 86 L58 104 L42 104 Z" fill="{SKIN}"/>')
     face = (f'<ellipse cx="50" cy="72" rx="17" ry="19" fill="{SKIN}"/>'
             f'<ellipse cx="33.5" cy="74" rx="3" ry="4.5" fill="{SKIN}"/><ellipse cx="66.5" cy="74" rx="3" ry="4.5" fill="{SKIN}"/>'
-            f'<circle cx="41" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>'
-            f'<circle cx="59" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>')
+            f'<circle cx="{41 + dx}" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>'
+            f'<circle cx="{59 + dx}" cy="80" r="3.2" fill="{ROSE}" stroke="none" opacity="0.45"/>'
+            f'<path d="M{50 + dx} 75 q{1.5 * d} 3 0 4" fill="none" stroke-width="1.3"/>')   # nose, turned
+    tilt = f'rotate({4 * d} 50 92)'
+    prop = suit_prop(suit, 50 + 27 * d, 118, robe)
     if rank == 13:  # King: emperor, mian crown with bead tassels, long moustache and beard
         hair = f'<path d="M33 70 Q33 54 50 53 Q67 54 67 70 Q62 61 50 60 Q38 61 33 70 Z" fill="{HAIR_BLACK}"/>'
-        eyes = (f'<path d="M40 72 q3 -2 6 0" fill="none" stroke-width="2"/><path d="M54 72 q3 -2 6 0" fill="none" stroke-width="2"/>'
-                f'<path d="M39 67 l7 -1.5 M61 67 l-7 -1.5" stroke-width="2.4"/>')
-        beard = (f'<path d="M50 83 Q42 81 35 89 Q41 86 46 86 Q48 88 50 88 Q52 88 54 86 Q59 86 65 89 Q58 81 50 83 Z" fill="{HAIR_BLACK}"/>'
-                 f'<path d="M45 90 Q50 112 55 90 Q50 93 45 90 Z" fill="{HAIR_BLACK}"/>')
+        eyes = (f'<path d="M{40 + dx} 72 q3 -2 6 0" fill="none" stroke-width="2"/><path d="M{54 + dx} 72 q3 -2 6 0" fill="none" stroke-width="2"/>'
+                f'<path d="M{39 + dx} 67 l7 -1.5 M{61 + dx} 67 l-7 -1.5" stroke-width="2.4"/>')
+        beard = (f'<g transform="translate({dx} 0)"><path d="M50 83 Q42 81 35 89 Q41 86 46 86 Q48 88 50 88 Q52 88 54 86 Q59 86 65 89 Q58 81 50 83 Z" fill="{HAIR_BLACK}"/>'
+                 f'<path d="M45 90 Q50 112 55 90 Q50 93 45 90 Z" fill="{HAIR_BLACK}"/></g>')
         tassels = ''.join(f'<path d="M{x} 41 L{x} 52" stroke="{OCHRE_DK}" stroke-width="1.4"/>'
                           f'<circle cx="{x}" cy="46" r="1.4" fill="{RED}" stroke="none"/><circle cx="{x}" cy="52" r="1.6" fill="{OCHRE}" stroke-width="0.8"/>'
                           for x in range(27, 76, 8))
-        head = layer(f'<path d="M38 42 L62 42 L60 56 L40 56 Z" fill="{HAIR_BLACK}"/>'
-                     f'<rect x="20" y="36" width="60" height="6" rx="1" fill="{HAIR_BLACK}"/>'
-                     f'<path d="M20 36 L80 36" stroke="{OCHRE}" stroke-width="2"/>' + tassels)
-        return royal_svg(back + robe_layer + medal + neck + layer(face, hair, eyes, beard) + head)
+        head = (f'<path d="M38 42 L62 42 L60 56 L40 56 Z" fill="{HAIR_BLACK}"/>'
+                f'<rect x="20" y="36" width="60" height="6" rx="1" fill="{HAIR_BLACK}"/>'
+                f'<path d="M20 36 L80 36" stroke="{OCHRE}" stroke-width="2"/>' + tassels)
+        return royal_svg(back + robe_layer + medal + neck
+                         + f'<g transform="{tilt}">{layer(face, hair, eyes, beard)}{layer(head)}</g>' + prop)
     if rank == 12:  # Queen: empress, black hair in a bun, gold phoenix headdress
         hair = (f'<ellipse cx="50" cy="45" rx="15" ry="10" fill="{HAIR_BLACK}"/>'
                 f'<path d="M32 78 Q28 54 50 51 Q72 54 68 78 Q66 62 50 60 Q34 62 32 78 Z" fill="{HAIR_BLACK}"/>')
-        eyes = (f'<path d="M40 73 q3 2 6 0" fill="none" stroke-width="2"/><path d="M54 73 q3 2 6 0" fill="none" stroke-width="2"/>'
-                f'<path d="M46 72 l1.6 -1.6 M54 72 l-1.6 -1.6" stroke-width="1.4"/>')
-        lips = f'<path d="M46.5 84 Q50 86.5 53.5 84 Q50 82.5 46.5 84 Z" fill="{RED}" stroke-width="1"/>'
+        eyes = (f'<path d="M{40 + dx} 73 q3 2 6 0" fill="none" stroke-width="2"/><path d="M{54 + dx} 73 q3 2 6 0" fill="none" stroke-width="2"/>'
+                f'<path d="M{46 + dx} 72 l1.6 -1.6 M{54 + dx} 72 l-1.6 -1.6" stroke-width="1.4"/>')
+        lips = f'<path d="M{46.5 + dx} 84 Q{50 + dx} 86.5 {53.5 + dx} 84 Q{50 + dx} 82.5 {46.5 + dx} 84 Z" fill="{RED}" stroke-width="1"/>'
         crown = (f'<path d="M30 56 Q50 30 70 56 L65 57 Q50 39 35 57 Z" fill="{OCHRE}"/>'
                  f'<path d="M50 30 C44 34 40 40 42 46 C46 42 48 40 50 40 C52 40 54 42 58 46 C60 40 56 34 50 30 Z" fill="{OCHRE}"/>'
                  f'<circle cx="50" cy="44" r="3" fill="{RED}" stroke-width="1"/>'
                  f'<circle cx="36" cy="50" r="2" fill="{RED}" stroke-width="0.8"/><circle cx="64" cy="50" r="2" fill="{RED}" stroke-width="0.8"/>'
                  + ''.join(f'<path d="M{x} 56 L{x2} 74" stroke="{OCHRE_DK}" stroke-width="1.3"/><circle cx="{x2}" cy="75.5" r="1.8" fill="{OCHRE}" stroke-width="0.8"/>'
                            for x, x2 in [(31, 29), (69, 71)]))
-        return royal_svg(back + robe_layer + medal + neck + layer(hair) + layer(face, eyes, lips) + layer(crown))
-    # Jack: scholar-official in the black winged hat (wusha mao), holding a scroll
+        return royal_svg(back + robe_layer + medal + neck
+                         + f'<g transform="{tilt}">{layer(hair)}{layer(face, eyes, lips)}{layer(crown)}</g>' + prop)
+    # Jack: scholar-official in the black winged hat (wusha mao)
     hair = f'<path d="M34 68 Q34 58 50 57 Q66 58 66 68 Q60 62 50 62 Q40 62 34 68 Z" fill="{HAIR_BLACK}"/>'
-    eyes = (f'<circle cx="43" cy="73" r="2" fill="{INK}" stroke="none"/><circle cx="57" cy="73" r="2" fill="{INK}" stroke="none"/>'
-            f'<path d="M46 83 Q50 85.5 54 83" fill="none" stroke-width="1.6"/>')
+    eyes = (f'<circle cx="{43 + dx + d}" cy="73" r="2" fill="{INK}" stroke="none"/><circle cx="{57 + dx + d}" cy="73" r="2" fill="{INK}" stroke="none"/>'
+            f'<path d="M{46 + dx} 83 Q{50 + dx} 85.5 {54 + dx} 83" fill="none" stroke-width="1.6"/>')
     hat = (f'<ellipse cx="22" cy="55" rx="15" ry="3.6" fill="{HAIR_BLACK}"/><ellipse cx="78" cy="55" rx="15" ry="3.6" fill="{HAIR_BLACK}"/>'
            f'<path d="M35 61 Q35 44 50 44 Q65 44 65 61 Z" fill="{HAIR_BLACK}"/>'
            f'<path d="M35 58 L65 58" stroke="{OCHRE}" stroke-width="1.8"/>')
-    scroll = (f'<g transform="rotate(-14 50 118)"><rect x="32" y="112" width="36" height="11" rx="2" fill="{CREAM}"/>'
-              f'<path d="M37 117.5 L63 117.5" stroke="{robe_dk}" stroke-width="1.2"/>'
-              f'<rect x="28" y="110" width="6" height="15" rx="2" fill="{OCHRE}"/><rect x="66" y="110" width="6" height="15" rx="2" fill="{OCHRE}"/></g>')
-    return royal_svg(back + robe_layer + medal + neck + layer(face, hair, eyes) + layer(hat) + layer(scroll))
+    return royal_svg(back + robe_layer + medal + neck
+                     + f'<g transform="{tilt}">{layer(face, hair, eyes)}{layer(hat)}</g>' + prop)
 
 royals = {f'{"JQK"[r - 11]}-{suit}': royal(r, suit) for r in (11, 12, 13) for suit in ROBES}
 
