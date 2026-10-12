@@ -647,7 +647,7 @@ export default function Game({ socket, auth }: Props) {
             </svg>
           </button>
           {showRoomMenu && (
-            <div className="surface !bg-[#14261d]/95 absolute right-0 mt-2 p-3 flex flex-col gap-2 min-w-[200px]">
+            <div className="surface !bg-gray-900/95 absolute right-0 mt-2 p-3 flex flex-col gap-2 min-w-[200px]">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">Room</span>
                 <span className="font-mono font-bold tracking-widest text-yellow-400 text-lg">{socket.roomCode}</span>
@@ -839,7 +839,7 @@ export default function Game({ socket, auth }: Props) {
       {/* Toast notification */}
       {(toast || autoSkippedSeat !== null || socket.concedeDeclined) && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="toast-notification surface !bg-[#14261d]/95 text-cream px-5 py-2 text-3xl font-semibold">
+          <div className="toast-notification surface !bg-gray-900/95 text-cream px-5 py-2 text-3xl font-semibold">
             {socket.concedeDeclined
               ? socket.concedeDeclined.seat === mySeat
                 ? 'You declined the concession — play on'
@@ -890,7 +890,7 @@ export default function Game({ socket, auth }: Props) {
               the cards around when it appears. */}
           <div className="relative">
             {isMyTurn && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-10 pointer-events-none whitespace-nowrap rounded-full bg-ochre px-5 py-1 font-display font-semibold text-ink text-3xl shadow-[0_3px_0_theme(colors.ochre.dark),0_8px_18px_-6px_rgba(0,0,0,0.6)]">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-10 pointer-events-none whitespace-nowrap rounded-full bg-ochre px-5 py-1 font-display font-semibold text-ink text-3xl shadow-[0_3px_0_rgb(var(--c-ochre-dark)),0_8px_18px_-6px_rgba(0,0,0,0.6)]">
                 Your turn!
               </div>
             )}
@@ -1040,7 +1040,7 @@ function ConfirmPopover({ message, confirmLabel, confirmClass, onConfirm, onCanc
   onCancel: () => void;
 }) {
   return (
-    <div className="surface !bg-[#14261d]/95 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 max-w-3xl px-4 py-3 flex items-center gap-3">
+    <div className="surface !bg-gray-900/95 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 max-w-3xl px-4 py-3 flex items-center gap-3">
       <span className="text-2xl text-cream">{message}</span>
       <button
         onClick={onConfirm}

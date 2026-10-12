@@ -63,6 +63,7 @@ these files.
 - `shared/src/stats.ts` — Player / partner / pairing stats derived from game history (pure, tested)
 - `shared/src/achievements.ts` — Counting achievements derived from game history (pure, tested); some read the per-round `plays` log / `firstEight`, which only newer round logs carry. The same detector runs live at each round end (`roundAchievements` in `handler.ts`); results ride on `RoundResult.achievements`. Badge art: `scripts/gen-achievement-art.py` → `client/public/achievements/`
 - Card art (special cards + suit symbols, papercraft SVG): `scripts/gen-card-art.py` → `client/public/cards/`, used by `client/src/components/Card.tsx`
+- Themes (`GameSettings.theme`, chosen by the room creator; `ThemePicker`): `client/src/theme.ts` (context + `cardArt()`); colours are CSS variables defined per theme in `client/tailwind.config.js` (Kawaii is a light theme, so it inverts the ramps), theme-specific surfaces under `[data-theme=...]` in `index.css`; Kawaii art: `scripts/gen-kawaii-art.py` → `client/public/cards/kawaii/` (same file names as the papercraft set)
 - `server/src/handler.ts` — All socket event handlers, broadcastState
 - `server/src/rooms.ts` — Room CRUD, game state management, seat swapping/shuffling
 - `server/src/stats.ts` — Round logs, game summaries, Elo, and history-derived stats queries (Firestore)

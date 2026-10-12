@@ -1,4 +1,5 @@
 import { Card as CardType, RANK_NAMES, SPECIAL_NAMES, SpecialCardName } from '@tichu/shared';
+import { cardArt, useTheme } from '../theme.js';
 
 type Props = {
   card: CardType;
@@ -40,6 +41,7 @@ const SIZES = {
 export default function CardComponent({ card, selected, onClick, small, large, draggable, onDragStart }: Props) {
   // Default card is w-24 h-36. `large` is 50% bigger (w-36 h-[216px]) with
   // proportionally scaled glyphs, used for the player's own hand and pass slots.
+  const theme = useTheme();
   const sizeClass = small ? 'w-16 h-24 text-xs' : large ? 'w-36 h-[216px]' : 'w-24 h-36';
 
   if (card.type === 'special') {
@@ -58,8 +60,8 @@ export default function CardComponent({ card, selected, onClick, small, large, d
   const g = SIZES[small ? 'small' : large ? 'large' : 'default'];
   // Full papercraft art for the big centre symbol; the bolder, filter-free
   // pip version for the corner index and pips (crisp small, cheap to draw).
-  const suitSrc = `${import.meta.env.BASE_URL}cards/suit-${card.suit}.svg`;
-  const pipSrc = `${import.meta.env.BASE_URL}cards/pip-${card.suit}.svg`;
+  const suitSrc = cardArt(theme, `suit-${card.suit}.svg`);
+  const pipSrc = cardArt(theme, `pip-${card.suit}.svg`);
   // The 發 reads heavier than the other suits, so draw it a touch smaller.
   const scale = card.suit === 'jade' ? 0.9 : 1;
   const suitImg = (size: number, style?: React.CSSProperties, key?: number, src = pipSrc) => (
@@ -107,12 +109,12 @@ export default function CardComponent({ card, selected, onClick, small, large, d
           // Court cards: a papercraft royal portrait inside a gold frame.
           <>
             <img
-              src={`${import.meta.env.BASE_URL}cards/royal-${'JQK'[card.rank - 11]}-${card.suit}.svg`}
+              src={cardArt(theme, `royal-${'JQK'[card.rank - 11]}-${card.suit}.svg`)}
               alt=""
               draggable={false}
               className="absolute inset-[23%] w-[54%] h-[54%] rounded-md object-cover pointer-events-none select-none"
             />
-            <div className="absolute inset-[23%] rounded-md border-2 border-[#C99A3B]/80 pointer-events-none" />
+            <div className="court-frame absolute inset-[23%] rounded-md border-2 border-[#C99A3B]/80 pointer-events-none" />
           </>
         ) : (
           suitImg(g.centre, undefined, undefined, suitSrc)
@@ -123,6 +125,7 @@ export default function CardComponent({ card, selected, onClick, small, large, d
 }
 
 function SpecialCardContent({ name, small, large }: { name: SpecialCardName; small?: boolean; large?: boolean }) {
+  const theme = useTheme();
   const cornerClass = large ? 'text-2xl' : 'text-base';
   const artClass = small ? 'w-12 h-12' : large ? 'w-28 h-28' : 'w-20 h-20';
   const labelClass = large ? 'text-base' : 'text-xs';
@@ -130,7 +133,7 @@ function SpecialCardContent({ name, small, large }: { name: SpecialCardName; sma
     <>
       {name === 'mahjong' && <div className={`${cornerClass} card-rank absolute top-1 left-1.5`}>1</div>}
       <img
-        src={`${import.meta.env.BASE_URL}cards/${name}.svg`}
+        src={cardArt(theme, `${name}.svg`)}
         alt=""
         draggable={false}
         className={`${artClass} pointer-events-none`}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, type CSSProperties } from 'react';
 import { getPartnerSeat, type ClientGameState, type RoundResult, type Seat } from '@tichu/shared';
+import { cardArt, useTheme } from '../theme.js';
 
 export type GameEvent = {
   id: number;
@@ -347,7 +348,8 @@ const rectCenter = (r: DOMRect): Point => ({ x: r.left + r.width / 2, y: r.top +
 
 /** Two papercraft frames flipping back and forth (legs running, wings flapping). */
 function Sprite({ name, flip, className }: { name: string; flip: boolean; className: string }) {
-  const src = (n: number) => `${import.meta.env.BASE_URL}cards/anim-${name}-${n}.svg`;
+  const theme = useTheme();
+  const src = (n: number) => cardArt(theme, `anim-${name}-${n}.svg`);
   return (
     <div className={`sprite-frames ${className}`} style={flip ? { transform: 'scaleX(-1)' } : undefined}>
       <img src={src(1)} alt="" />
@@ -438,6 +440,7 @@ function DragonArrow({ event }: { event: GameEvent }) {
  */
 function DogDash({ event }: { event: GameEvent }) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
   const [dash, setDash] = useState<{ d: string; sprite: string; flip: boolean; bounce: boolean; prints: Point[] } | null>(null);
 
   useLayoutEffect(() => {
@@ -502,7 +505,7 @@ function DogDash({ event }: { event: GameEvent }) {
             <div className={`relative w-24 h-24 ${dash.bounce ? 'dog-bounce' : ''}`}>
               <Sprite name={dash.sprite} flip={dash.flip} className="dog-running w-24 h-24" />
               <img
-                src={`${import.meta.env.BASE_URL}cards/anim-doodle-lie.svg`}
+                src={cardArt(theme, 'anim-doodle-lie.svg')}
                 alt=""
                 className="dog-lie absolute inset-0 w-24 h-24"
               />

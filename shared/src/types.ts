@@ -96,12 +96,21 @@ export type EloUpdate = {
 
 // ===== Game Settings =====
 
+/** Look and feel of the table and cards, chosen by the room creator. */
+export type Theme = 'papercraft' | 'kawaii';
+export const THEMES: readonly { id: Theme; name: string; description: string }[] = [
+  { id: 'papercraft', name: 'Papercraft', description: 'Cut-paper cards on green felt' },
+  { id: 'kawaii', name: 'Kawaii', description: 'Pastel table, cute faces on everything' },
+];
+
 export type GameSettings = {
   countPoints: boolean;   // show captured point totals by player names
   cardsSeen: boolean;     // show remaining card counts (cards not yet played)
   showPassedCards: boolean; // show cards you passed during play
   clockwise: boolean;     // play direction: true = clockwise, false = counterclockwise
   targetScore: number;    // score needed to win (default 1000)
+  /** Optional: absent in rooms and saved settings from before themes existed. */
+  theme?: Theme;
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -110,6 +119,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showPassedCards: false,
   clockwise: false,
   targetScore: 1000,
+  theme: 'papercraft',
 };
 
 // ===== Game State =====
