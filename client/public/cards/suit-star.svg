@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>
+<filter id="cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="3" result="w"/>
+  <feDisplacementMap in="SourceGraphic" in2="w" scale="1.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feDropShadow in="d" dx="0.4" dy="1.2" stdDeviation="0.7" flood-color="#2B2233" flood-opacity="0.35"/>
+</filter>
+<filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" result="t"/>
+  <feColorMatrix in="t" type="matrix" values="0 0 0 0 0.33  0 0 0 0 0.25  0 0 0 0 0.17  0.3 0 0 0 -0.12" result="g"/>
+  <feComposite in="g" in2="SourceAlpha" operator="in" result="grain"/>
+  <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+</filter>
+</defs><g filter="url(#paper)" stroke="#2B2233" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><g filter="url(#cut)"><path d="M50.0 12.0 L60.6 39.4 L89.9 41.0 L67.1 59.6 L74.7 88.0 L50.0 72.0 L25.3 88.0 L32.9 59.6 L10.1 41.0 L39.4 39.4 Z" fill="#D93A3A"/><path d="M50 54 L50.0 12.0 L60.6 39.4 Z" fill="#F08A7E" stroke="none" opacity="0.5"/><path d="M50 54 L60.6 39.4 L89.9 41.0 Z" fill="#9E2323" stroke="none" opacity="0.5"/><path d="M50 54 L89.9 41.0 L67.1 59.6 Z" fill="#F08A7E" stroke="none" opacity="0.5"/><path d="M50 54 L67.1 59.6 L74.7 88.0 Z" fill="#9E2323" stroke="none" opacity="0.5"/><path d="M50 54 L74.7 88.0 L50.0 72.0 Z" fill="#F08A7E" stroke="none" opacity="0.5"/><path d="M50 54 L50.0 72.0 L25.3 88.0 Z" fill="#9E2323" stroke="none" opacity="0.5"/><path d="M50 54 L25.3 88.0 L32.9 59.6 Z" fill="#F08A7E" stroke="none" opacity="0.5"/><path d="M50 54 L32.9 59.6 L10.1 41.0 Z" fill="#9E2323" stroke="none" opacity="0.5"/><path d="M50 54 L10.1 41.0 L39.4 39.4 Z" fill="#F08A7E" stroke="none" opacity="0.5"/><path d="M50 54 L39.4 39.4 L50.0 12.0 Z" fill="#9E2323" stroke="none" opacity="0.5"/><path d="M50.0 12.0 L60.6 39.4 L89.9 41.0 L67.1 59.6 L74.7 88.0 L50.0 72.0 L25.3 88.0 L32.9 59.6 L10.1 41.0 L39.4 39.4 Z" fill="none"/></g></g></svg>

@@ -15,13 +15,13 @@ export default function SeatPlay({ cards, isTopOfTrick, combo }: Props) {
     <div
       className={`inline-flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg seat-play ${
         isTopOfTrick
-          ? 'bg-yellow-500/10 ring-1 ring-yellow-400/50 shadow-[0_0_18px_rgba(250,204,21,0.25)]'
-          : 'bg-gray-800/30 ring-1 ring-gray-600/40 opacity-70'
+          ? 'bg-cream/10 ring-1 ring-cream/30 shadow-[0_0_20px_rgba(255,248,236,0.12)]'
+          : 'opacity-55'
       }`}
     >
       <div className="flex">
         {sorted.map((card, i) => (
-          <div key={cardId(card)} style={{ marginLeft: i > 0 ? '-28px' : 0 }}>
+          <div key={cardId(card)} style={{ marginLeft: i > 0 ? '-20px' : 0 }}>
             <CardComponent card={card} small />
           </div>
         ))}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>
+<filter id="cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="3" result="w"/>
+  <feDisplacementMap in="SourceGraphic" in2="w" scale="1.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feDropShadow in="d" dx="0.4" dy="1.2" stdDeviation="0.7" flood-color="#2B2233" flood-opacity="0.35"/>
+</filter>
+<filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" result="t"/>
+  <feColorMatrix in="t" type="matrix" values="0 0 0 0 0.33  0 0 0 0 0.25  0 0 0 0 0.17  0.3 0 0 0 -0.12" result="g"/>
+  <feComposite in="g" in2="SourceAlpha" operator="in" result="grain"/>
+  <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+</filter>
+</defs><g filter="url(#paper)" stroke="#2B2233" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><g filter="url(#cut)"><path d="M4 80 L96 70" stroke="#2B2233" stroke-width="9"/><path d="M4 80 L96 70" stroke="#6E9F58" stroke-width="6"/><path d="M30 74 L31 80 M62 70 L63 77" stroke="#4E7A3E" stroke-width="2.4"/><path d="M64 72 C72 82 84 86 92 84 C84 80 76 76 64 72 Z" fill="#A9CF8A"/><path d="M64 72 C70 88 76 94 80 96 C78 88 72 80 64 72 Z" fill="#6E9F58"/><path d="M30 78 C24 88 16 92 8 92 C14 86 22 82 30 78 Z" fill="#A9CF8A"/></g><g filter="url(#cut)"><path d="M34 62 C24 66 14 66 8 62 C16 60 24 56 30 52 Z" fill="#5A3A2A"/></g><g filter="url(#cut)"><path d="M30 58 C30 44 42 34 56 34 C70 34 76 44 74 54 C72 66 60 72 48 72 C38 72 31 66 30 58 Z" fill="#D97757"/><path d="M48 72 C58 70 68 64 70 56 C62 60 52 62 44 60 C42 66 44 70 48 72 Z" fill="#FFF5E2"/></g><g filter="url(#cut)"><path d="M36 56 C42 46 52 44 60 48 C54 54 46 58 36 56 Z" fill="#5A3A2A"/><path d="M42 53 L52 49 M44 56 L55 52" stroke="#FFF5E2" stroke-width="1.3"/></g><g filter="url(#cut)"><circle cx="64" cy="32" r="12" fill="#D97757"/><path d="M57 22 C61 19 69 19 74 24 C68 24 62 25 57 26 Z" fill="#5A3A2A"/><path d="M75 32 L85 34.5 L75 37 Z" fill="#E8AA38"/><circle cx="69" cy="30" r="2.3" fill="#2B2233" stroke="none"/><circle cx="70" cy="29" r="0.8" fill="#FFFDF7" stroke="none"/><circle cx="62" cy="37" r="2.6" fill="#E27A92" stroke="none" opacity="0.6"/></g><g filter="url(#cut)"><path d="M46 72 L45 77 M54 71 L54 76" stroke="#B9802A" stroke-width="2.4"/><path d="M41 77 Q45 74 49 77 M50 76 Q54 73 58 76" fill="none" stroke="#B9802A" stroke-width="2"/></g></g></svg>

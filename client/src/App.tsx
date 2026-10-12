@@ -37,7 +37,7 @@ export default function App() {
   const inGame = socket.gameState && socket.gameState.phase !== 'waiting';
 
   return (
-    <div className="min-h-screen bg-felt-dark text-white">
+    <div className="min-h-screen table-felt text-white">
       {socket.connectionState === 'disconnected' && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-red-800 text-white text-center py-2 px-4 text-2xl font-medium shadow-lg">
           Disconnected from server — reconnecting…

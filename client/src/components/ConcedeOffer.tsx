@@ -9,7 +9,7 @@ type Props = {
 export default function ConcedeOffer({ concederName, cardCount, alreadyAccepted, onRespond }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-md w-full">
+      <div className="bg-gray-800 ring-1 ring-cream/10 p-6 rounded-2xl shadow-2xl max-w-md w-full">
         <h3 className="text-4xl font-bold text-center mb-4 text-yellow-400">
           Concession Offered
         </h3>
@@ -25,13 +25,13 @@ export default function ConcedeOffer({ concederName, cardCount, alreadyAccepted,
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => onRespond(true)}
-              className="py-3 px-6 bg-green-600 hover:bg-green-500 rounded-lg font-bold transition-colors"
+              className="py-3 px-6 btn btn-play"
             >
               Accept
             </button>
             <button
               onClick={() => onRespond(false)}
-              className="py-3 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+              className="py-3 px-6 btn btn-quiet"
             >
               Decline
             </button>

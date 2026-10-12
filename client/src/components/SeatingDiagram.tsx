@@ -59,7 +59,7 @@ export default function SeatingDiagram({ gameState }: Props) {
   const partnerSeat = getPartnerSeat(mySeat);
 
   return (
-    <div className="bg-gray-900/80 rounded-lg p-3 flex flex-col items-center">
+    <div className="surface p-3 flex flex-col items-center">
       <h3 className="font-bold text-center mb-2 text-yellow-400 text-3xl">Table</h3>
       <div className="relative w-72 h-40">
         <SeatLabel name={players[partnerSeat].name} gold position="top" />

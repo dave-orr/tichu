@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>
+<filter id="cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="3" result="w"/>
+  <feDisplacementMap in="SourceGraphic" in2="w" scale="1.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feDropShadow in="d" dx="0.4" dy="1.2" stdDeviation="0.7" flood-color="#2B2233" flood-opacity="0.35"/>
+</filter>
+<filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" result="t"/>
+  <feColorMatrix in="t" type="matrix" values="0 0 0 0 0.33  0 0 0 0 0.25  0 0 0 0 0.17  0.3 0 0 0 -0.12" result="g"/>
+  <feComposite in="g" in2="SourceAlpha" operator="in" result="grain"/>
+  <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+</filter>
+</defs><g filter="url(#paper)" stroke="#2B2233" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><g filter="url(#cut)"><path d="M46 54 C40 70 30 82 16 88 C20 78 20 72 24 68 C18 68 14 66 12 62 C20 60 26 56 30 52 Z" fill="#7B5CA8" transform="translate(10 0)"/></g><g filter="url(#cut)"><path d="M28 52 Q14 54 6 44" fill="none" stroke="#2B2233" stroke-width="8.6"/><path d="M28 52 Q14 54 6 44" fill="none" stroke="#6E9F58" stroke-width="6"/><path d="M2 36 L10 44 L2 48 Z" fill="#6E9F58"/></g><g filter="url(#cut)"><path d="M24 52 Q30 40 50 40 Q66 40 72 46 Q70 60 50 62 Q32 62 24 52 Z" fill="#6E9F58"/><path d="M30 56 Q48 64 66 54" fill="none" stroke="#E8AA38" stroke-width="4"/><path d="M34 42 L37 34 L41 41 L45 32 L49 40 L53 32 L57 41 Z" fill="#E8AA38"/><path d="M44 60 L42 68" fill="none" stroke="#2B2233" stroke-width="6.6"/><path d="M44 60 L42 68" fill="none" stroke="#6E9F58" stroke-width="4"/><path d="M58 58 L58 66" fill="none" stroke="#2B2233" stroke-width="6.6"/><path d="M58 58 L58 66" fill="none" stroke="#6E9F58" stroke-width="4"/></g><g filter="url(#cut)"><path d="M46 54 C40 70 30 82 16 88 C20 78 20 72 24 68 C18 68 14 66 12 62 C20 60 26 56 30 52 Z" fill="#7B5CA8"/></g><g filter="url(#cut)"><path d="M66 44 Q70 32 82 32 Q96 34 98 44 Q98 52 86 52 Q72 54 66 44 Z" fill="#6E9F58"/><path d="M84 44 Q96 44 98 48 Q92 53 84 50 Z" fill="#A9CF8A"/><path d="M72 34 L66 24 L76 30 Z M78 32 L76 20 L84 30 Z" fill="#E8AA38"/><circle cx="81" cy="39" r="4" fill="#FFFDF7" stroke-width="1.6"/><circle cx="82.5" cy="39" r="1.8" fill="#2B2233" stroke="none"/><path d="M76.5 35.5 Q81 33 86 35.5" fill="none" stroke-width="2"/><circle cx="95" cy="45" r="1" fill="#2B2233" stroke="none"/><path d="M89 51 L90.5 55 L92 51 Z" fill="#FFFDF7" stroke-width="1"/></g></g></svg>

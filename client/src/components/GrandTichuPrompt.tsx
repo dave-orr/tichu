@@ -56,13 +56,13 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
           <div className="inline-grid grid-cols-2 gap-4">
             <button
               onClick={() => { onDecide(true); setShowConfirm(false); }}
-              className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
+              className="py-2 px-6 btn btn-tichu"
             >
               Yes, Grand Tichu!
             </button>
             <button
               onClick={() => setShowConfirm(false)}
-              className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+              className="py-2 px-6 btn btn-quiet"
             >
               Cancel
             </button>
@@ -72,13 +72,13 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
         <div className="inline-grid grid-cols-2 gap-4 mt-4">
           <button
             onClick={handleCallClick}
-            className="py-2 px-6 bg-red-600 hover:bg-red-500 rounded-lg font-bold transition-colors"
+            className="py-2 px-6 btn btn-tichu"
           >
             Grand Tichu!
           </button>
           <button
             onClick={() => onDecide(false)}
-            className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+            className="py-2 px-6 btn btn-quiet"
           >
             Decline
           </button>

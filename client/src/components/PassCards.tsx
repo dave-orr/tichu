@@ -202,7 +202,7 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
         <div className="text-center">
           <button
             onClick={() => onPass(selections.left!, selections.partner!, selections.right!)}
-            className="py-2 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold transition-colors"
+            className="py-2 px-8 btn btn-primary"
           >
             Confirm Pass
           </button>

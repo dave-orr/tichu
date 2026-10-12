@@ -110,7 +110,7 @@ export default function PassingPhase({
           {canUndo && (
             <button
               onClick={onUndoPass}
-              className="mt-4 py-2 px-8 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold transition-colors"
+              className="mt-4 py-2 px-8 btn btn-quiet"
             >
               Undo Pass
             </button>

@@ -10,7 +10,7 @@ function PlayerAvatar({ player, size = 'sm' }: { player: ClientPlayer; size?: 's
   if (player.photoURL) {
     return <img src={player.photoURL} alt="" className={`${sizeClass} rounded-full inline-block`} referrerPolicy="no-referrer" />;
   }
-  return <span className={`${textClass} font-semibold text-gray-200`}>{player.name}</span>;
+  return <span className={`${textClass} font-semibold text-cream/80`}>{player.name}</span>;
 }
 
 function TeamDisplay({ p1, p2, score }: { p1: ClientPlayer; p2: ClientPlayer; score: number }) {
@@ -21,16 +21,16 @@ function TeamDisplay({ p1, p2, score }: { p1: ClientPlayer; p2: ClientPlayer; sc
         {bothHavePhotos ? (
           <>
             <PlayerAvatar player={p1} size="md" />
-            <span className="text-gray-500 text-2xl">+</span>
+            <span className="text-cream/40 text-2xl">+</span>
             <PlayerAvatar player={p2} size="md" />
           </>
         ) : (
-          <span className="text-2xl font-medium text-gray-200">
+          <span className="text-2xl font-semibold text-cream/80">
             {p1.name} + {p2.name}
           </span>
         )}
       </div>
-      <div className="text-4xl font-bold">{score}</div>
+      <div className="font-display text-5xl font-semibold text-cream">{score}</div>
     </div>
   );
 }
@@ -39,10 +39,10 @@ export default function ScoreBoard({ gameState }: Props) {
   const { teams, players } = gameState;
 
   return (
-    <div className="bg-gray-900/80 rounded-lg p-3 text-3xl">
-      <h3 className="font-bold text-center mb-2 text-yellow-400 text-3xl">
+    <div className="surface px-4 py-3 text-3xl">
+      <h3 className="font-sans font-extrabold text-center mb-1 text-ochre-light text-xl uppercase tracking-[0.2em]">
         Score{gameState.settings.targetScore !== 1000 && (
-          <span className="text-2xl font-normal text-gray-400"> (to {gameState.settings.targetScore})</span>
+          <span className="font-semibold normal-case tracking-normal text-cream/50"> (to {gameState.settings.targetScore})</span>
         )}
       </h3>
       <div className="grid grid-cols-2 gap-4">
@@ -52,18 +52,18 @@ export default function ScoreBoard({ gameState }: Props) {
 
       {/* Tichu calls or "Points Hand" when no one can call */}
       {players.some(p => p.tichuCall !== 'none') ? (
-        <div className="mt-2 pt-2 border-t border-gray-700">
+        <div className="mt-2 pt-2 border-t border-cream/10">
           {players.filter(p => p.tichuCall !== 'none').map(p => (
             <div key={p.seat} className="text-2xl text-center">
-              <span className="text-yellow-400">{p.name}</span>:{' '}
-              <span className={p.tichuCall === 'grand' ? 'text-blue-400 font-bold' : 'text-green-400'}>
+              <span className="text-cream/80">{p.name}</span>:{' '}
+              <span className={p.tichuCall === 'grand' ? 'text-[#8FB0F0] font-bold' : 'text-[#A9CF8A] font-semibold'}>
                 {p.tichuCall === 'grand' ? 'GRAND TICHU' : 'Tichu'}
               </span>
             </div>
           ))}
         </div>
       ) : gameState.phase === 'playing' && players.every(p => p.isOut || p.hasPlayedFirstCard) && (
-        <div className="mt-2 pt-2 border-t border-gray-700 text-2xl text-center text-gray-400">
+        <div className="mt-2 pt-2 border-t border-cream/10 text-2xl text-center text-cream/50">
           Points Hand
         </div>
       )}
