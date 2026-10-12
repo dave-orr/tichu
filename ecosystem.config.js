@@ -51,6 +51,11 @@ module.exports = {
       max_restarts: 10,
       min_uptime: 10000,
 
+      // On stop/restart the server flushes pending room snapshots to Firestore
+      // (up to 5s, see index.ts) before exiting. pm2's default 1.6s would
+      // SIGKILL it mid-flush and lose the last moves of every live game.
+      kill_timeout: 8000,
+
       // Restart if the process balloons rather than letting the box swap.
       max_memory_restart: '600M',
 

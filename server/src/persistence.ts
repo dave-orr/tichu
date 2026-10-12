@@ -25,6 +25,8 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // them instead of racing (a `set` landing after the `delete` would leave a
 // zombie snapshot that gets resurrected on the next restart).
 const inFlightWrites = new Map<string, Promise<void>>();
+// When each room's snapshot last landed in Firestore (ms), for the dashboard.
+const lastSavedAt = new Map<string, number>();
 
 function mapSetReplacer(_key: string, value: unknown): unknown {
   if (value instanceof Map) return { __t: 'Map', v: Array.from(value.entries()) };
@@ -57,17 +59,61 @@ export function persistRoom(room: Room): void {
   if (existing) clearTimeout(existing);
   const timer = setTimeout(() => {
     debounceTimers.delete(code);
-    // The room may have been torn down (or its code reused, or reset to
-    // waiting) while debouncing.
-    if (getRoom(code) !== room || room.state.phase === 'waiting') return;
-    const write = writeSnapshot(room)
-      .catch(err => console.error(`[persist] failed to write room ${code}:`, err))
-      .finally(() => {
-        if (inFlightWrites.get(code) === write) inFlightWrites.delete(code);
-      });
-    inFlightWrites.set(code, write);
+    startWrite(room);
   }, PERSIST_DEBOUNCE_MS);
   debounceTimers.set(code, timer);
+}
+
+function startWrite(room: Room): void {
+  const code = room.code;
+  // The room may have been torn down (or its code reused, or reset to
+  // waiting) while debouncing.
+  if (getRoom(code) !== room || room.state.phase === 'waiting') return;
+  const startedAt = Date.now();
+  const write = writeSnapshot(room)
+    .then(() => { lastSavedAt.set(code, startedAt); })
+    .catch(err => console.error(`[persist] failed to write room ${code}:`, err))
+    .finally(() => {
+      if (inFlightWrites.get(code) === write) inFlightWrites.delete(code);
+    });
+  inFlightWrites.set(code, write);
+}
+
+/** Whether snapshots are being written at all (Firebase configured). */
+export function persistenceEnabled(): boolean {
+  return !!firebaseAdmin;
+}
+
+/** Snapshot status of one room, for the admin dashboard. */
+export function getPersistStatus(code: string): { savedAt: number | null; pending: boolean } {
+  return {
+    savedAt: lastSavedAt.get(code) ?? null,
+    pending: debounceTimers.has(code) || inFlightWrites.has(code),
+  };
+}
+
+/**
+ * Write every debounced snapshot now and wait for all in-flight writes, so a
+ * shutdown doesn't drop the last moves before a restart. Bounded by
+ * `timeoutMs` so a hung Firestore can't block exit forever.
+ */
+export async function flushPersistence(timeoutMs: number): Promise<number> {
+  const pendingCodes = Array.from(debounceTimers.keys());
+  for (const code of pendingCodes) {
+    clearTimeout(debounceTimers.get(code)!);
+    debounceTimers.delete(code);
+    const room = getRoom(code);
+    if (room) startWrite(room);
+  }
+  const writes = Array.from(inFlightWrites.values());
+  if (writes.length === 0) return 0;
+  let timedOut = false;
+  await Promise.race([
+    Promise.allSettled(writes),
+    new Promise<void>(resolve => setTimeout(() => { timedOut = true; resolve(); }, timeoutMs).unref()),
+  ]);
+  if (timedOut) console.error(`[persist] shutdown flush timed out after ${timeoutMs}ms`);
+  return writes.length;
 }
 
 async function writeSnapshot(room: Room): Promise<void> {
@@ -85,6 +131,7 @@ async function writeSnapshot(room: Room): Promise<void> {
 
 /** Delete a room's snapshot (called when the room is torn down). */
 export function deletePersistedRoom(code: string): void {
+  lastSavedAt.delete(code);
   const timer = debounceTimers.get(code);
   if (timer) {
     clearTimeout(timer);
@@ -106,7 +153,7 @@ export async function loadPersistedRooms(): Promise<Room[]> {
   const now = Date.now();
   const rooms: Room[] = [];
   for (const doc of snap.docs) {
-    const d = doc.data() as { data?: string; expireAt?: FirebaseFirestore.Timestamp };
+    const d = doc.data() as { data?: string; updatedAt?: number; expireAt?: FirebaseFirestore.Timestamp };
     // TTL deletion can lag — skip (and clean up) anything already expired.
     if (d.expireAt && d.expireAt.toMillis() < now) {
       doc.ref.delete().catch(() => { /* best-effort */ });
@@ -115,6 +162,7 @@ export async function loadPersistedRooms(): Promise<Room[]> {
     if (!d.data) continue;
     try {
       rooms.push(JSON.parse(d.data, mapSetReviver) as Room);
+      if (d.updatedAt) lastSavedAt.set(doc.id, d.updatedAt);
     } catch (err) {
       console.error(`[persist] failed to parse snapshot ${doc.id}:`, err);
     }

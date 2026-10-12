@@ -54,6 +54,7 @@ PORT="$(env_value PORT)"; PORT="${PORT:-3000}"
 if [ "$FORCE" -eq 0 ] && in_game="$(curl -fsS --max-time 3 "http://localhost:$PORT/health" 2>/dev/null \
     | sed -n 's/.*"roomsInGame":\([0-9]*\).*/\1/p')" && [ -n "${in_game:-}" ] && [ "$in_game" -gt 0 ]; then
   echo "deploy: $in_game game(s) in progress — a restart disconnects those players."
+  "$ROOT/scripts/rooms.sh" 2>/dev/null | sed 's/^/  /' || true
   if [ -t 0 ]; then
     read -r -p "deploy: continue anyway? [y/N] " reply
     case "$reply" in [yY]*) ;; *) fail "aborted" ;; esac
