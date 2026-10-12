@@ -161,6 +161,48 @@ h1, h2, h3 {
 [data-theme="kawaii"] .court-frame { border-color: #F6C9D8; }
 [data-theme="kawaii"] .card-back { background-image: url('/cards/kawaii/back.svg'); }
 
+/* ===== Halloween theme =====
+   A dark theme like papercraft: a moonlit violet table with faint stars,
+   bone-white card stock with an ink edge, and Creepster for display text. */
+[data-theme="halloween"] .table-felt {
+  background-color: rgb(var(--c-felt-dark));
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.35) 0.8px, transparent 1.2px),
+    radial-gradient(rgb(255 255 255 / 0.2) 0.6px, transparent 1px),
+    radial-gradient(circle at 88% 8%, rgb(255 233 168 / 0.18) 0%, transparent 18%),
+    radial-gradient(ellipse 80% 70% at 50% 42%, rgb(var(--c-felt)) 0%, rgb(var(--c-felt-dark)) 100%);
+  background-size: 97px 89px, 53px 61px, auto, auto;
+  background-position: 0 0, 23px 31px, 0 0, 0 0;
+}
+[data-theme="halloween"] .font-display, [data-theme="halloween"] h1, [data-theme="halloween"] h2, [data-theme="halloween"] h3 {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+[data-theme="halloween"] .score-num { font-family: 'Nunito Variable', sans-serif; font-weight: 800; }
+[data-theme="halloween"] .card {
+  background-color: #F4EBDA;
+  background-image: var(--grain), radial-gradient(ellipse at 50% 40%, #FAF3E6 0%, #EADDC4 100%);
+  box-shadow:
+    inset 0 0 0 1.5px rgb(30 20 40 / 0.55),
+    0 1px 1px rgb(0 0 0 / 0.4),
+    -2px 0 4px -2px rgb(0 0 0 / 0.4),
+    0 5px 10px -3px rgb(0 0 0 / 0.6);
+}
+[data-theme="halloween"] .card.selected {
+  box-shadow: inset 0 0 0 1.5px rgb(30 20 40 / 0.55), 0 0 0 3px rgb(var(--c-ochre)), 0 0 18px rgb(var(--c-ochre) / 0.5), 0 14px 20px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="halloween"] .card.suit-jade { color: #3E9A2A; }
+[data-theme="halloween"] .card.suit-sword { color: #2A2233; }
+[data-theme="halloween"] .card.suit-pagoda { color: #7446C4; }
+[data-theme="halloween"] .card.suit-star { color: #E06A10; }
+[data-theme="halloween"] .card.special-mahjong { background-color: #EFE6FA; color: #5B3A9A; }
+[data-theme="halloween"] .card.special-dog { background-color: #F1F1F6; color: #5B3A9A; }
+[data-theme="halloween"] .card.special-phoenix { background-color: #F0E6FB; color: #5B3A9A; }
+[data-theme="halloween"] .card.special-dragon { background-color: #E8F4DC; color: #3E7A2A; }
+[data-theme="halloween"] .card[class*='special-'] { background-blend-mode: multiply; }
+[data-theme="halloween"] .court-frame { border-color: rgb(242 133 31 / 0.8); }
+[data-theme="halloween"] .card-back { background-image: url('/cards/halloween/back.svg'); }
+
 /* Animations */
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }

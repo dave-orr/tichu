@@ -23,42 +23,50 @@ const inverted = r => ramp([...STEPS].reverse().map((s, i) => (STEPS[i] >= 300 ?
 // Papercraft: warm paper/ink greys and ochre in place of gray and yellow.
 const PAPER_GRAY = ramp(['#FFF8EC', '#F3EBDC', '#E6DCCB', '#D3C8B5', '#A9AE9F', '#7D8579', '#56625A', '#35473D', '#22342A', '#17261E', '#0E1913']);
 const OCHRE = ramp(['#FFF8E6', '#FCEFD0', '#F9DFA6', '#F6CF7A', '#EEBB52', '#E8AA38', '#C98E24', '#9E6E19', '#7A5414', '#5C3F10', '#3A2709']);
+// Halloween: a dark theme like papercraft (no inversion): moonlit violet
+// greys and a pumpkin ramp in place of ochre.
+const NIGHT_GRAY = ramp(['#F6EFFF', '#E9DFF5', '#D6C8E8', '#BBA9D3', '#9A88B4', '#776790', '#56496C', '#3B3050', '#2A2139', '#1D1628', '#120D1A']);
+const PUMPKIN = ramp(['#FFF4E6', '#FFE4C2', '#FFCB8A', '#FFB15E', '#F99A3A', '#F2851F', '#D06E12', '#A8560E', '#80410C', '#5E300A', '#3A1D06']);
 // Kawaii: plum-to-white greys and a rose ramp for highlights, already in
 // light-theme order (50 = darkest text).
 const KAWAII_GRAY = ramp(['#3E3146', '#4A3D52', '#5B4B63', '#6E5E78', '#8A7B93', '#A597AD', '#C9BED0', '#E6DCEC', '#F6F0F9', '#FCF9FD', '#FFFFFF']);
 const ROSE = ramp(['#7A2843', '#8E3050', '#B03E64', '#D2507A', '#E06489', '#EC7C9C', '#F49AB3', '#F9BCCD', '#FCD9E3', '#FEEDF2', '#FFF7FA']);
 
+// Dark-theme version of a Tailwind ramp for Halloween: the dark end (panel
+// and tile shades) dimmed toward the night sky so it sits on the violet table.
+const nightfall = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#2C1E3E', 0.45) : r[s])));
+// Each entry: [papercraft, kawaii, halloween].
 const RAMPS = {
-  gray: [PAPER_GRAY, KAWAII_GRAY],
-  yellow: [OCHRE, ROSE],
-  ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n])]])),
+  gray: [PAPER_GRAY, KAWAII_GRAY, NIGHT_GRAY],
+  yellow: [OCHRE, ROSE, PUMPKIN],
+  ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n]), nightfall(colors[n])]])),
 };
 
-// Named tokens: [papercraft, kawaii].
+// Named tokens: [papercraft, kawaii, halloween].
 const TOKENS = {
-  felt: ['#2A6446', '#D3EEE2'],
-  'felt-dark': ['#1D4A34', '#C2E5D6'],
-  ink: ['#2B2233', '#5B4B63'],          // dark text on light buttons
-  paper: ['#F3EBDC', '#FFFFFF'],        // light button / surface
-  cream: ['#FFF8EC', '#5B4B63'],        // foreground on the table
-  'clay': ['#D97757', '#FF9AA9'],
-  'clay-dark': ['#B85C3E', '#E8798B'],
-  'clay-hover': ['#E2876A', '#FFAAB7'],
-  ochre: ['#E8AA38', '#FFB3C7'],        // highlight: turn ring, primary action
-  'ochre-light': ['#F6CF7A', '#D2507A'], // highlighted text (on the table)
-  'ochre-dark': ['#B97F1E', '#F49AB0'],
-  sap: ['#5E9150', '#86D9B4'],
-  'sap-dark': ['#456E3A', '#5DB893'],
-  'sap-hover': ['#6CA25D', '#9BE3C2'],
-  brick: ['#C8443A', '#FF8A8A'],
-  'brick-dark': ['#9C2F28', '#E06666'],
-  'brick-hover': ['#D65247', '#FF9E9E'],
-  good: ['#A9CF8A', '#2E9A6A'],         // made / captured points text
-  bad: ['#F08A7E', '#D9456A'],          // failed text
-  grand: ['#8FB0F0', '#5B74D6'],        // Grand Tichu label text
-  dragon: ['#8FCB9B', '#2E9A6A'],
-  white: ['#FFFFFF', '#5B4B63'],
-  black: ['#000000', '#FFFFFF'],
+  felt: ['#2A6446', '#D3EEE2', '#2C1E3E'],
+  'felt-dark': ['#1D4A34', '#C2E5D6', '#160F20'],
+  ink: ['#2B2233', '#5B4B63', '#1E1428'],          // dark text on light buttons
+  paper: ['#F3EBDC', '#FFFFFF', '#F4EBDA'],        // light button / surface
+  cream: ['#FFF8EC', '#5B4B63', '#F6EFFF'],        // foreground on the table
+  'clay': ['#D97757', '#FF9AA9', '#8E5CD9'],
+  'clay-dark': ['#B85C3E', '#E8798B', '#5B3A9A'],
+  'clay-hover': ['#E2876A', '#FFAAB7', '#9D70E0'],
+  ochre: ['#E8AA38', '#FFB3C7', '#F2851F'],        // highlight: turn ring, primary action
+  'ochre-light': ['#F6CF7A', '#D2507A', '#FFB15E'], // highlighted text (on the table)
+  'ochre-dark': ['#B97F1E', '#F49AB0', '#B95A0E'],
+  sap: ['#5E9150', '#86D9B4', '#5DAF3E'],
+  'sap-dark': ['#456E3A', '#5DB893', '#3F8A2A'],
+  'sap-hover': ['#6CA25D', '#9BE3C2', '#6CC24A'],
+  brick: ['#C8443A', '#FF8A8A', '#C2352B'],
+  'brick-dark': ['#9C2F28', '#E06666', '#8A2018'],
+  'brick-hover': ['#D65247', '#FF9E9E', '#D2463B'],
+  good: ['#A9CF8A', '#2E9A6A', '#A6E67F'],         // made / captured points text
+  bad: ['#F08A7E', '#D9456A', '#FF8A7A'],          // failed text
+  grand: ['#8FB0F0', '#5B74D6', '#C4A2F2'],        // Grand Tichu label text
+  dragon: ['#8FCB9B', '#2E9A6A', '#A6E67F'],
+  white: ['#FFFFFF', '#5B4B63', '#FFFFFF'],
+  black: ['#000000', '#FFFFFF', '#000000'],
 };
 
 const v = name => `rgb(var(--c-${name}) / <alpha-value>)`;
@@ -103,6 +111,7 @@ export default {
       addBase({
         ':root': { ...vars(0), '--font-display': '"Fraunces Variable", Georgia, serif' },
         '[data-theme="kawaii"]': { ...vars(1), '--font-display': '"Nunito Variable", system-ui, sans-serif' },
+        '[data-theme="halloween"]': { ...vars(2), '--font-display': 'Creepster, "Nunito Variable", system-ui, sans-serif' },
       });
     }),
   ],

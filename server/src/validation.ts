@@ -70,7 +70,7 @@ export function sanitizeSettings(input: unknown): Partial<GameSettings> {
   for (const key of BOOLEAN_SETTINGS) {
     if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
   }
-  if (typeof raw.theme === 'string' && THEMES.some(t => t.id === raw.theme)) {
+  if (typeof raw.theme === 'string' && THEMES.some(t => t.selectable && t.id === raw.theme)) {
     out.theme = raw.theme as GameSettings['theme'];
   }
   if (typeof raw.targetScore === 'number' && Number.isFinite(raw.targetScore)) {

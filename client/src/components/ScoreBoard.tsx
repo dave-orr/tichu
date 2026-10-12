@@ -30,7 +30,7 @@ function TeamDisplay({ p1, p2, score }: { p1: ClientPlayer; p2: ClientPlayer; sc
           </span>
         )}
       </div>
-      <div className="font-display text-5xl font-semibold text-cream">{score}</div>
+      <div className="score-num font-display text-5xl font-semibold text-cream">{score}</div>
     </div>
   );
 }
