@@ -595,12 +595,12 @@ describe('concede with the Dragon on the table', () => {
       ],
       outCount: 1,
       currentTrick: trickDragon,
-      currentTrickPlays: [{ seat: 3, cards: [c(10)] }, { seat: 2, cards: [dragon] }],
-      lastPlayedBy: 2,
-      turnIndex: 3,
+      currentTrickPlays: [{ seat: 3, cards: [c(10)] }, { seat: 0, cards: [dragon] }],
+      lastPlayedBy: 0,
+      turnIndex: 1,
     });
     const result = concede(state, 0);
-    // Seat 2 (team 0) played the Dragon; the 35 points must land with team 1.
+    // Seat 0 (team 0) played the Dragon; the 35 points must land with team 1.
     expect(result.roundResult!.teamScores[1]).toBe(35);
     expect(result.roundResult!.teamScores[0]).toBe(0);
   });
@@ -700,6 +700,12 @@ describe('concession offers', () => {
     const offered = offerConcede(offerState([{}, { hand: [], isOut: true, outOrder: 2 }]), 0).state;
     const done = respondToConcede(offered, 3, true);
     expect(done.roundEnded).toBe(true);
+  });
+
+  it('cannot be offered until the trick the partner went out on is over', () => {
+    const state = { ...offerState(), currentTrick: { type: 'single', cards: [c(9)], rank: 9, length: 1 } as Combo,
+      currentTrickPlays: [{ seat: 2 as Seat, cards: [c(9)] }], lastPlayedBy: 2 as Seat };
+    expect(offerConcede(state, 0).state).toBe(state);
   });
 
   it('cannot be offered while the partner is still in', () => {

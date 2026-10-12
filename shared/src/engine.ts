@@ -3,7 +3,7 @@ import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, sumPoints } from './scoring.js';
 import {
   Card, ClientGameState, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Player, ReceivedCard, RoundHistoryEntry, RoundResult, Seat,
-  Team, cardId, cardsEqual, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
+  Team, TrickPlay, cardId, cardsEqual, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
 // ===== State Creation =====
@@ -801,8 +801,20 @@ function canConcede(state: GameState, seat: Seat): boolean {
   if (state.phase !== 'playing') return false;
   if (state.players[seat].isOut) return false;
   if (state.dragonGiveaway) return false;
-  // Partner must be out
-  return state.players[getPartnerSeat(seat)].isOut;
+  // Partner must be out, and not on the trick still in progress: the offer
+  // opens once the trick they went out on is over.
+  return partnerOutBeforeThisTrick(state, seat);
+}
+
+/**
+ * Whether `seat`'s partner went out in an earlier trick (i.e. is out and
+ * has no play in the current one). Concessions open only then.
+ */
+export function partnerOutBeforeThisTrick(
+  state: { players: readonly { isOut: boolean }[]; currentTrickPlays: readonly TrickPlay[] }, seat: Seat,
+): boolean {
+  const partner = getPartnerSeat(seat);
+  return state.players[partner].isOut && !state.currentTrickPlays.some(p => p.seat === partner);
 }
 
 /** Opponents of the conceder who still hold cards — the ones who must accept. */

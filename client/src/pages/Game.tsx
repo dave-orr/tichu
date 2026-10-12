@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, getPartnerSeat, canPlayWishedRankFromHand, RANK_NAMES } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -403,7 +403,7 @@ export default function Game({ socket, auth }: Props) {
   // Offers can't start mid-countdown or while a wish is pending (the engine
   // rejects them), so hide the button then too.
   const partnerIsOut = phase === 'playing' && !myPlayer.isOut &&
-    players[getPartnerSeat(mySeat)].isOut && !gameState.dragonGiveaway &&
+    partnerOutBeforeThisTrick(gameState, mySeat) && !gameState.dragonGiveaway &&
     !gameState.trickCountdown && !gameState.mahJongWishPending && !concedeOffer;
   const concedeOfferToMe = !!concedeOffer && phase === 'playing' && !myPlayer.isOut
     && getTeamForSeat(concedeOffer.by) !== getTeamForSeat(mySeat);
