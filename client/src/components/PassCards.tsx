@@ -151,7 +151,10 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
         Select or drag one card to pass to each player
       </p>
 
-      <div className="flex justify-center gap-8 mb-4">
+      {/* Slots use the default card size (the hand is large) so the slots,
+          hand and Confirm all fit the design height without scrolling;
+          Confirm sits beside the slots and only enables once all three are set. */}
+      <div className="flex justify-center items-center gap-8 mb-2">
         {([
           { target: 'left' as PassTarget, label: playerNames[leftSeat], seat: leftSeat },
           { target: 'partner' as PassTarget, label: playerNames[partnerSeat], seat: partnerSeat },
@@ -173,15 +176,22 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
                 draggable
                 onDragStart={(e) => handleSlotDragStart(target, e)}
               >
-                <CardComponent card={selections[target]!} large />
+                <CardComponent card={selections[target]!} />
               </div>
             ) : (
-              <div className="w-36 h-[216px] border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center text-gray-500 text-2xl">
+              <div className="w-24 h-36 border-2 border-dashed border-gray-500 rounded-[10px] flex items-center justify-center text-gray-500 text-2xl">
                 ?
               </div>
             )}
           </div>
         ))}
+        <button
+          onClick={() => allSelected && onPass(selections.left!, selections.partner!, selections.right!)}
+          disabled={!allSelected}
+          className="ml-4 py-3 px-8 btn btn-primary text-2xl"
+        >
+          Confirm Pass
+        </button>
       </div>
 
       <div
@@ -197,17 +207,6 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
           onDragStart={() => {}}
         />
       </div>
-
-      {allSelected && (
-        <div className="text-center">
-          <button
-            onClick={() => onPass(selections.left!, selections.partner!, selections.right!)}
-            className="py-2 px-8 btn btn-primary"
-          >
-            Confirm Pass
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -10,23 +10,25 @@ type Props = {
   draggable?: boolean;
   large?: boolean;
   onDragStart?: (card: CardType) => void;
+  /** Widest the hand may spread (px); defaults to the full design width. */
+  maxWidth?: number;
 };
 
 // Card widths in px (Card.tsx: w-24 / large w-36), and the widest a hand may
-// spread within the 1300px design width (FitToViewport).
+// spread by default within the 1300px design width (FitToViewport).
 const CARD_WIDTH = 96;
 const LARGE_CARD_WIDTH = 144;
 const MAX_HAND_WIDTH = 1240;
 /** How long a played card takes to lift out of the hand (index.css hand-leave). */
 const LEAVE_MS = 300;
 
-export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, large, onDragStart }: Props) {
+export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, large, onDragStart, maxWidth = MAX_HAND_WIDTH }: Props) {
   // Larger cards are 50% wider, so scale the overlap up, and tighten it
   // further whenever the hand would still be wider than the layout allows.
   const cardWidth = large ? LARGE_CARD_WIDTH : CARD_WIDTH;
   const overlapFor = (n: number) => {
     const baseOverlap = n > 10 ? -30 : n > 7 ? -18 : n > 4 ? -6 : 0;
-    const fitOverlap = n > 1 ? Math.min(0, Math.floor((MAX_HAND_WIDTH - n * cardWidth) / (n - 1))) : 0;
+    const fitOverlap = n > 1 ? Math.min(0, Math.floor((maxWidth - n * cardWidth) / (n - 1))) : 0;
     return Math.min(large ? Math.round(baseOverlap * 1.5) : baseOverlap, fitOverlap);
   };
   const overlap = overlapFor(cards.length);

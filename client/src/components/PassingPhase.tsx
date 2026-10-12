@@ -87,7 +87,7 @@ export default function PassingPhase({
               {[passRecord.left, passRecord.partner, passRecord.right].map((p, i) => (
                 <div key={i} className="text-center">
                   <div className="text-2xl text-gray-400 mb-1">To {p.playerName}</div>
-                  <CardComponent card={p.card} large />
+                  <CardComponent card={p.card} />
                 </div>
               ))}
             </div>
