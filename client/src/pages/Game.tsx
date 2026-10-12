@@ -57,6 +57,7 @@ export default function Game({ socket, auth }: Props) {
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [showRoomMenu, setShowRoomMenu] = useState(false);
+  const [exitConfirm, setExitConfirm] = useState<'leave' | 'end' | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -540,16 +541,130 @@ export default function Game({ socket, auth }: Props) {
     return null;
   })();
 
+  // The organizer can end the game any time; anyone can once a player has
+  // dropped, so a table abandoned mid-game isn't stuck (the server enforces this).
+  const canEndGame = socket.isOrganizer || disconnectedSeats.length > 0;
+
+  // Gear menu (room code, invites, leave / end game), shown in every phase so
+  // nobody is trapped in a game someone else walked away from.
+  const roomMenu = (
+    <>
+      {/* Room code + invite, tucked behind a gear so it stays unobtrusive.
+          Shown to everyone so a dropped player can be replaced mid-game (by
+          sharing the code or inviting) even if the organizer is the one who
+          left. */}
+      {socket.roomCode && (
+        <div className="absolute top-2 right-2 z-20">
+          <button
+            onClick={() => { setShowRoomMenu(v => !v); setExitConfirm(null); }}
+            title="Room, invite & leave"
+            aria-label="Room options"
+            className="p-2 bg-black/20 hover:bg-black/40 text-cream/50 hover:text-cream rounded-xl transition-colors"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+          {showRoomMenu && (
+            <div className="surface !bg-gray-900/95 absolute right-0 mt-2 p-3 flex flex-col gap-2 min-w-[200px]">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Room</span>
+                <span className="font-mono font-bold tracking-widest text-yellow-400 text-lg">{socket.roomCode}</span>
+                <button
+                  onClick={handleCopyCode}
+                  title={copiedCode ? 'Copied!' : 'Copy room code'}
+                  aria-label="Copy room code"
+                  className="ml-auto px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors text-sm"
+                >
+                  {copiedCode ? '✓' : '⧉'}
+                </button>
+              </div>
+              {auth.profile && (
+                <button
+                  onClick={() => { setShowInvitePanel(true); setShowRoomMenu(false); }}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition-colors text-sm"
+                >
+                  Invite players
+                </button>
+              )}
+              {phase !== 'gameEnd' && (
+                <>
+                  <div className="border-t border-gray-700 my-1" />
+                  {exitConfirm ? (
+                    <div className="flex flex-col gap-2 max-w-[240px]">
+                      <span className="text-sm text-cream">
+                        {exitConfirm === 'leave'
+                          ? 'Leave this game? Your seat opens up for someone else to take over with the room code; the others keep playing.'
+                          : 'End this game for everyone? All players go back to the lobby and the game is not finished or rated.'}
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setExitConfirm(null);
+                            setShowRoomMenu(false);
+                            if (exitConfirm === 'leave') socket.resetRoom(); else socket.endGame();
+                          }}
+                          className="flex-1 px-3 py-1.5 bg-red-700 hover:bg-red-600 rounded font-semibold transition-colors text-sm whitespace-nowrap"
+                        >
+                          {exitConfirm === 'leave' ? 'Leave' : 'End game'}
+                        </button>
+                        <button
+                          onClick={() => setExitConfirm(null)}
+                          className="flex-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded transition-colors text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setExitConfirm('leave')}
+                        className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-semibold transition-colors text-sm"
+                      >
+                        Leave game
+                      </button>
+                      {canEndGame && (
+                        <button
+                          onClick={() => setExitConfirm('end')}
+                          className="px-3 py-1.5 bg-red-800 hover:bg-red-700 rounded font-semibold transition-colors text-sm"
+                        >
+                          End game for everyone
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {showInvitePanel && (
+        <InvitePanel
+          onClose={() => setShowInvitePanel(false)}
+          fetchPlayers={socket.fetchPlayers}
+          sendInvite={socket.sendInvite}
+          expiredInviteUids={socket.expiredInviteUids}
+        />
+      )}
+    </>
+  );
+
   // Grand Tichu phase
   if (phase === 'grandTichuWindow') {
     return (
-      <GrandTichuPhase
-        gameState={gameState}
-        cards={myHand}
-        decided={myPlayer.grandTichuDecided}
-        onDecide={socket.callGrandTichu}
-        gameEvents={gameEvents}
-      />
+      <div className="h-full relative">
+        {roomMenu}
+        <GrandTichuPhase
+          gameState={gameState}
+          cards={myHand}
+          decided={myPlayer.grandTichuDecided}
+          onDecide={socket.callGrandTichu}
+          gameEvents={gameEvents}
+        />
+      </div>
     );
   }
 
@@ -568,18 +683,21 @@ export default function Game({ socket, auth }: Props) {
     };
 
     return (
-      <PassingPhase
-        gameState={gameState}
-        myHand={myHand}
-        mySeat={mySeat}
-        playerNames={playerNames}
-        hasPassed={!!myPlayer.passedCards}
-        playerName={myPlayer.name}
-        passRecord={passRecord}
-        onPass={handlePassCards}
-        onUndoPass={socket.undoPass}
-        gameEvents={gameEvents}
-      />
+      <div className="h-full relative">
+        {roomMenu}
+        <PassingPhase
+          gameState={gameState}
+          myHand={myHand}
+          mySeat={mySeat}
+          playerNames={playerNames}
+          hasPassed={!!myPlayer.passedCards}
+          playerName={myPlayer.name}
+          passRecord={passRecord}
+          onPass={handlePassCards}
+          onUndoPass={socket.undoPass}
+          gameEvents={gameEvents}
+        />
+      </div>
     );
   }
 
@@ -629,57 +747,7 @@ export default function Game({ socket, auth }: Props) {
         </div>
       )}
 
-      {/* Room code + invite, tucked behind a gear so it stays unobtrusive.
-          Shown to everyone so a dropped player can be replaced mid-game (by
-          sharing the code or inviting) even if the organizer is the one who
-          left. */}
-      {socket.roomCode && (
-        <div className="absolute top-2 right-2 z-20">
-          <button
-            onClick={() => setShowRoomMenu(v => !v)}
-            title="Room & invite"
-            aria-label="Room and invite options"
-            className="p-2 bg-black/20 hover:bg-black/40 text-cream/50 hover:text-cream rounded-xl transition-colors"
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-          {showRoomMenu && (
-            <div className="surface !bg-gray-900/95 absolute right-0 mt-2 p-3 flex flex-col gap-2 min-w-[200px]">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">Room</span>
-                <span className="font-mono font-bold tracking-widest text-yellow-400 text-lg">{socket.roomCode}</span>
-                <button
-                  onClick={handleCopyCode}
-                  title={copiedCode ? 'Copied!' : 'Copy room code'}
-                  aria-label="Copy room code"
-                  className="ml-auto px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors text-sm"
-                >
-                  {copiedCode ? '✓' : '⧉'}
-                </button>
-              </div>
-              {auth.profile && (
-                <button
-                  onClick={() => { setShowInvitePanel(true); setShowRoomMenu(false); }}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition-colors text-sm"
-                >
-                  Invite players
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {showInvitePanel && (
-        <InvitePanel
-          onClose={() => setShowInvitePanel(false)}
-          fetchPlayers={socket.fetchPlayers}
-          sendInvite={socket.sendInvite}
-          expiredInviteUids={socket.expiredInviteUids}
-        />
-      )}
+      {roomMenu}
 
       {/* Announcements overlay */}
       <GameAnnouncements events={gameEvents} table />
