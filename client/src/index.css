@@ -96,12 +96,13 @@ h1, h2, h3 {
     0 14px 20px -6px rgba(16, 24, 18, 0.55);
 }
 
-/* Ranks: soft Fraunces, tracked in a touch so "10" stays compact. */
+/* Ranks: Nunito Black. A heavy, open sans stays crisp at the small card
+   sizes (played cards, the passed / received trios), where the thin
+   strokes of a display serif blurred. */
 .card-rank {
-  @apply font-display;
-  font-weight: 700;
-  font-variation-settings: 'SOFT' 100;
-  letter-spacing: -0.05em;
+  @apply font-sans;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
 .card.suit-jade { color: #2F8A55; }

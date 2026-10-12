@@ -229,21 +229,24 @@ suits['star'] = suit_svg(layer(f'<path d="{star}" fill="{RED}"/>' + facets + f'<
 # ===== Pip versions of the suit symbols =====
 # For the corner index and the pips, drawn at 10-25px many times per hand:
 # the same designs, simplified and bolder, with no paper filters, so they
-# stay crisp at that size and cost almost nothing to draw.
-def pip_svg(body, sw=6):
+# stay crisp at that size and cost almost nothing to draw. Every suit gets
+# the same weight of outline in a darker shade of its own colour (not ink),
+# so no suit reads heavier than the others.
+def pip_svg(body, edge, sw=5):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
-            f'<g stroke="{INK}" stroke-width="{sw}" stroke-linejoin="round" stroke-linecap="round">{body}</g></svg>\n')
+            f'<g stroke="{edge}" stroke-width="{sw}" stroke-linejoin="round" stroke-linecap="round">{body}</g></svg>\n')
 pips = {}
-pips['star'] = pip_svg(f'<path d="{star}" fill="{RED}"/>')
+pips['star'] = pip_svg(f'<path d="{star}" fill="{RED}"/>', RED_DK)
 pips['jade'] = pip_svg(
-    f'<path d="{FA}" fill="{INK}" stroke="{INK}" stroke-width="4"/>'
-    f'<path d="{FA}" fill="{JADE}" stroke="{JADE}" stroke-width="2.2"/>', 0)
+    f'<path d="{FA}" fill="{JADE_DK}" stroke-width="4"/>'
+    f'<path d="{FA}" fill="{JADE}" stroke="{JADE}" stroke-width="1.6"/>', JADE_DK)
+SWORD_DK = '#3A414C'
 def pip_jian(rot):
     return (f'<g transform="rotate({rot} 50 50)">'
             f'<path d="M50 4 L58 14 L58 64 L42 64 L42 14 Z" fill="{STEEL}"/>'
             f'<path d="M32 64 L68 64 L68 74 L32 74 Z" fill="{OCHRE}"/>'
             f'<rect x="44" y="74" width="12" height="20" rx="3" fill="{HILT}"/></g>')
-pips['sword'] = pip_svg(pip_jian(-38) + pip_jian(38))
+pips['sword'] = pip_svg(pip_jian(-38) + pip_jian(38), SWORD_DK)
 # The pagoda pip is a solid blue silhouette with a dark-blue (not ink)
 # outline and three chunky tiers, so at pip size it reads as a blue mass,
 # clearly apart from the silver-and-ink crossed swords.
