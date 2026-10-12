@@ -9,15 +9,15 @@ export default function ThemePicker({ value, onChange, disabled, compact }: {
   compact?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3 rounded-lg bg-gray-800 border border-gray-600 ${compact ? 'px-3 py-1.5' : 'p-3'} ${disabled ? 'opacity-70' : ''}`}>
-      <div className="flex-1 text-left leading-snug">
+    <div className={`flex flex-col gap-1.5 rounded-lg bg-gray-800 border border-gray-600 ${compact ? 'px-3 py-1.5' : 'p-3'} ${disabled ? 'opacity-70' : ''}`}>
+      <div className="text-left leading-snug">
         <span className={`${compact ? 'text-xl' : ''} font-semibold`}>Theme</span>
         <p className={compact ? 'hidden lg:block text-base text-gray-400' : 'text-2xl text-gray-400'}>
           {THEMES.find(t => t.id === value)?.description}
         </p>
       </div>
-      <div className="flex rounded-full bg-gray-900/60 p-1 gap-1" role="radiogroup" aria-label="Theme">
-        {THEMES.map(t => (
+      <div className="flex self-start rounded-full bg-gray-900/60 p-1 gap-1" role="radiogroup" aria-label="Theme">
+        {THEMES.filter(t => t.selectable || t.id === value).map(t => (
           <button
             key={t.id}
             type="button"
