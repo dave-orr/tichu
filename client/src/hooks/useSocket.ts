@@ -89,8 +89,9 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       }
     });
 
-    // The organizer cancelled the room — drop everyone back to the start screen.
-    socket.on('room-closed', () => {
+    // The organizer cancelled the room, or someone ended the game — drop
+    // everyone back to the start screen.
+    socket.on('room-closed', (info?: { reason?: string }) => {
       clearRoom();
       setGameState(null);
       gameStateRef.current = null;
@@ -102,7 +103,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setHeadToHead(null);
       setIsOrganizer(false);
       setDisconnectedSeats([]);
-      setError('The room was cancelled.');
+      setError(info?.reason ?? 'The room was cancelled.');
       setNeedMahJongWish(false);
       setRandomPartners(false);
       setPendingInvites([]);
@@ -331,6 +332,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('close-room');
   }, []);
 
+  const endGame = useCallback(() => {
+    socketRef.current?.emit('end-game');
+  }, []);
+
   // Acknowledged requests never hang forever: a rate-limited or dropped event
   // produces no ack at all, which used to leave "Loading…" panels stuck.
   const ACK_TIMEOUT_MS = 10000;
@@ -479,6 +484,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     bombCancel,
     giveDragonTrick,
     mahJongWish,
+    endGame,
     concede: concedeAction,
     respondConcede,
     withdrawConcede,

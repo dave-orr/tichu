@@ -638,6 +638,28 @@ export function setupHandlers(io: Server): Promise<void> {
       closeRoom(room.code);
     });
 
+    // Abandon an in-progress game: everyone returns to the lobby and the room
+    // (with its snapshot) is deleted. Rounds already logged stay in history;
+    // the unfinished game gets no summary or Elo. The organizer may do this
+    // any time; anyone else only once a player has dropped, so a table stuck
+    // waiting on someone who left isn't held hostage by an absent organizer.
+    guarded(socket, 'end-game', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      if (room.state.phase === 'waiting') return;
+      if (room.organizer !== socket.id && getDisconnectedSeats(room).length === 0) {
+        socket.emit('error', { message: 'Only the room creator can end the game while everyone is connected' });
+        return;
+      }
+      const by = room.state.players[seat].name;
+      console.log(`[end-game] room=${room.code} ended by seat=${seat} phase=${room.state.phase}`);
+      io.to(room.code).emit('room-closed', { reason: `${by} ended the game.` });
+      io.in(room.code).socketsLeave(room.code);
+      sseNotifyCallback?.(room.code, -1 as Seat, 'room-closed', { reason: `${by} ended the game.` });
+      closeRoom(room.code);
+    });
+
     // ===== AI Seat Management =====
 
     guarded(socket, 'mark-seat-ai', ({ seat }: { seat: unknown }) => {

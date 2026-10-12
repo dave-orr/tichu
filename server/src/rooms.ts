@@ -664,8 +664,9 @@ function detachSocket(socketId: string, deliberate: boolean): void {
     // The seat is no longer theirs to reclaim; a substitute may take it.
     room.seatSessions.delete(seat);
     if (room.organizer === socketId) room.organizerSession = '';
-    // A finished game with nobody left in it has nothing to wait for.
-    if (room.state.phase === 'gameEnd' && humanSocketCount(room) === 0) {
+    // Nothing left to wait for: a finished game nobody is watching, or a game
+    // every human has deliberately left (no seat holds a reconnect session).
+    if (humanSocketCount(room) === 0 && (room.state.phase === 'gameEnd' || room.seatSessions.size === 0)) {
       clearTrickCountdownTimer(code);
       clearBombWindowTimer(code);
       clearInvitesForRoom(code);

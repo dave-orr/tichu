@@ -29,7 +29,12 @@ persistent client session token (`client/src/utils/session.ts` →
 `rejoin-room` handler → `reconnectToRoom`). If a player drops for good, a
 substitute can fill in mid-game: `joinRoom` takes over any currently
 *disconnected* seat (keeping its hand/tricks) when the game is past `waiting`,
-reachable by sharing the room code (shown in-game, top-right) or via invite. To survive a server
+reachable by sharing the room code (shown in-game, top-right) or via invite.
+The same gear menu has **Leave game** (deliberate `leave-room`: frees the seat
+for a substitute; the room is deleted at once if no seat still holds a
+reconnect session) and **End game for everyone** (`end-game`: organizer any
+time, anyone once a seat is disconnected; deletes the room, no game summary or
+Elo, already-logged rounds stay). To survive a server
 restart/redeploy, each room is snapshotted to Firestore (`liveRooms/{code}`,
 JSON blob, debounced) by `server/src/persistence.ts`; snapshots are reloaded
 on startup and deleted on room teardown, with an `expireAt` TTL backstop.
