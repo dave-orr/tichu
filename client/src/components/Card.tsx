@@ -107,9 +107,9 @@ export default function CardComponent({ card, selected, onClick, small, large, d
               src={`${import.meta.env.BASE_URL}cards/royal-${'JQK'[card.rank - 11]}-${card.suit}.svg`}
               alt=""
               draggable={false}
-              className="absolute inset-[18%] w-[64%] h-[64%] rounded-md object-cover pointer-events-none select-none"
+              className="absolute inset-[23%] w-[54%] h-[54%] rounded-md object-cover pointer-events-none select-none"
             />
-            <div className="absolute inset-[18%] rounded-md border-2 border-[#C99A3B]/80 pointer-events-none" />
+            <div className="absolute inset-[23%] rounded-md border-2 border-[#C99A3B]/80 pointer-events-none" />
           </>
         ) : (
           suitImg(g.centre, undefined, undefined, suitSrc)
@@ -132,7 +132,8 @@ function SpecialCardContent({ name, small, large }: { name: SpecialCardName; sma
         draggable={false}
         className={`${artClass} pointer-events-none`}
       />
-      <div className={`${labelClass} font-display font-semibold leading-tight`}>{SPECIAL_NAMES[name]}</div>
+      {/* The Mah Jong is identified by its "1" corner; the others by name. */}
+      {name !== 'mahjong' && <div className={`${labelClass} font-display font-semibold leading-tight`}>{SPECIAL_NAMES[name]}</div>}
     </>
   );
 }

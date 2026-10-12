@@ -240,18 +240,25 @@ pips['jade'] = pip_svg(
     f'<path d="{FA}" fill="{JADE}" stroke="{JADE}" stroke-width="2.2"/>', 0)
 def pip_jian(rot):
     return (f'<g transform="rotate({rot} 50 50)">'
-            f'<path d="M50 4 L58 14 L58 64 L42 64 L42 14 Z" fill="{STEEL_DK}"/>'
+            f'<path d="M50 4 L58 14 L58 64 L42 64 L42 14 Z" fill="{STEEL}"/>'
             f'<path d="M32 64 L68 64 L68 74 L32 74 Z" fill="{OCHRE}"/>'
             f'<rect x="44" y="74" width="12" height="20" rx="3" fill="{HILT}"/></g>')
 pips['sword'] = pip_svg(pip_jian(-38) + pip_jian(38))
+# The pagoda pip is a solid blue silhouette with a dark-blue (not ink)
+# outline and three chunky tiers, so at pip size it reads as a blue mass,
+# clearly apart from the silver-and-ink crossed swords.
+BLUE_LT = '#7FA2EC'
 def pip_eave(y, half):
-    return (f'<path d="M{50 - half} {y} L{50 - half * .5} {y - 8} L{50 + half * .5} {y - 8} L{50 + half} {y} '
-            f'Q{50 + half * .6} {y + 5} {50 + half * .4} {y + 5} L{50 - half * .4} {y + 5} Q{50 - half * .6} {y + 5} {50 - half} {y} Z" fill="{BLUE}"/>')
-pips['pagoda'] = pip_svg(
-    f'<path d="M50 4 L50 22" stroke="{OCHRE_DK}" stroke-width="7"/>'
-    f'<rect x="36" y="72" width="28" height="22" fill="{CREAM}"/>' + pip_eave(70, 46)
-    + f'<rect x="38" y="50" width="24" height="16" fill="{CREAM}"/>' + pip_eave(48, 38)
-    + f'<rect x="41" y="30" width="18" height="14" fill="{CREAM}"/>' + pip_eave(28, 30), 5)
+    return (f'<path d="M{50 - half} {y} L{50 - half * .55} {y - 10} L{50 + half * .55} {y - 10} L{50 + half} {y} '
+            f'Q{50 + half * .6} {y + 6} {50 + half * .4} {y + 6} L{50 - half * .4} {y + 6} Q{50 - half * .6} {y + 6} {50 - half} {y} Z" fill="{BLUE}"/>')
+pips['pagoda'] = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+    f'<g stroke="{BLUE_DK}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">'
+    f'<path d="M50 3 L50 20" stroke="{OCHRE_DK}" stroke-width="7"/>'
+    f'<rect x="33" y="74" width="34" height="22" fill="{BLUE_LT}"/>' + pip_eave(72, 47)
+    + f'<rect x="36" y="50" width="28" height="18" fill="{BLUE_LT}"/>' + pip_eave(48, 39)
+    + f'<rect x="40" y="29" width="20" height="14" fill="{BLUE_LT}"/>' + pip_eave(27, 31)
+    + '</g></svg>\n')
 
 
 # ===== Royals: papercraft court portraits for J / Q / K =====

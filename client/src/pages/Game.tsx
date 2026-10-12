@@ -588,6 +588,14 @@ export default function Game({ socket, auth }: Props) {
   // opponent / partner / right opponent, matching the table) and a hover
   // title. The wrapper matches the scaled card's true size (96x144 x 0.8) so
   // spacing stays honest.
+  // The hand shares the bottom row with the received / passed trios (each
+  // three 77px mini cards plus gaps, and a 12px gap to the hand), so it gets
+  // whatever width is left of the 1300px design.
+  const showReceived = phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0;
+  const showPassed = phase === 'playing' && gameState.settings.showPassedCards && !!passRecord;
+  const TRIO_WIDTH = 3 * 77 + 2 * 4 + 12;
+  const handMaxWidth = 1300 - 16 - (showReceived ? TRIO_WIDTH : 0) - (showPassed ? TRIO_WIDTH : 0);
+
   const renderMiniCard = (card: CardType, title: string, fadeWhenPlayed = true) => {
     const played = fadeWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
     return (
@@ -858,7 +866,7 @@ export default function Game({ socket, auth }: Props) {
           {/* Cards passed to you — a separated diamond to the LEFT of the hand,
               positioned by who passed each card (partner top, left/right below),
               mirroring the outgoing diamond on the right. */}
-          {phase === 'playing' && gameState.settings.showPassedCards && gameState.myReceivedCards.length > 0 && (
+          {showReceived && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-cream/50 font-bold uppercase tracking-[0.15em]">Received</div>
               {/* A row instead of a diamond keeps the group no taller than the
@@ -892,12 +900,13 @@ export default function Game({ socket, auth }: Props) {
               onToggleCard={toggleCard}
               disabled={phase !== 'playing'}
               large
+              maxWidth={handMaxWidth}
             />
           </div>
 
           {/* Cards you passed — a row mirroring the received trio: left
               opponent / partner (raised) / right opponent. */}
-          {phase === 'playing' && gameState.settings.showPassedCards && passRecord && (
+          {showPassed && passRecord && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-cream/50 font-bold uppercase tracking-[0.15em]">Passed</div>
               <div className="grid grid-cols-3 gap-1 items-start">
