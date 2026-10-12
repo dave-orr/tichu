@@ -50,6 +50,11 @@ export type Room = {
   gameRoundLogs: RoundLog[];
   /** Achievements earned so far this game, round by round. */
   gameAchievements: AchievementEvent[];
+  /** When the room was created (ms). Backfilled on restore for older snapshots. */
+  createdAt: number;
+  /** Last time the room's state was broadcast — any game action, join, leave or
+   *  reconnect (ms). Shown on the admin dashboard to judge whether a table is idle. */
+  lastActivityAt: number;
 };
 
 /** Live human sockets in a room (API/AI players are excluded). */
@@ -313,6 +318,8 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     lastRoundResult: null,
     gameRoundLogs: [],
     gameAchievements: [],
+    createdAt: Date.now(),
+    lastActivityAt: Date.now(),
   };
 
   rooms.set(code, room);
@@ -362,10 +369,7 @@ export function joinRoom(
 
   // A substitute taking over cancels any pending teardown for this seat/room.
   clearSeatGraceTimer(room.code, seat);
-  if (roomCleanupTimers.has(room.code)) {
-    clearTimeout(roomCleanupTimers.get(room.code)!);
-    roomCleanupTimers.delete(room.code);
-  }
+  cancelRoomCleanup(room.code);
 
   return { room, seat };
 }
@@ -409,10 +413,7 @@ export function reconnectToRoom(
 
   // Cancel any pending cleanup timers since a player reconnected
   clearSeatGraceTimer(room.code, seat);
-  if (roomCleanupTimers.has(room.code)) {
-    clearTimeout(roomCleanupTimers.get(room.code)!);
-    roomCleanupTimers.delete(room.code);
-  }
+  cancelRoomCleanup(room.code);
 
   return { room, seat };
 }
@@ -435,7 +436,9 @@ const ABANDONED_ROOM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 // Grace window for a disconnected seat in the waiting room before it is freed,
 // so a quick refresh/crash during setup can reclaim the same seat.
 const WAITING_GRACE_MS = 45 * 1000;
-const roomCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Abandoned-room teardown timers, with the time each one fires (for the admin
+// dashboard: a restored game nobody returns to is deleted at that moment).
+const roomCleanupTimers = new Map<string, { timer: ReturnType<typeof setTimeout>; at: number }>();
 const seatGraceTimers = new Map<string, ReturnType<typeof setTimeout>>(); // `${code}:${seat}`
 
 // Optional hook invoked whenever a room is permanently torn down, so the
@@ -451,6 +454,30 @@ function destroyRoom(code: string): void {
   onRoomGone?.(code);
 }
 
+/** (Re)arm the timer that tears a room down if no human is back within the timeout. */
+function armRoomCleanup(code: string): void {
+  cancelRoomCleanup(code);
+  const timer = setTimeout(() => {
+    roomCleanupTimers.delete(code);
+    const r = rooms.get(code);
+    if (r && humanSocketCount(r) === 0) {
+      clearTrickCountdownTimer(code);
+      clearBombWindowTimer(code);
+      destroyRoom(code);
+      console.log(`Cleaned up abandoned room: ${code}`);
+    }
+  }, ABANDONED_ROOM_TIMEOUT_MS);
+  roomCleanupTimers.set(code, { timer, at: Date.now() + ABANDONED_ROOM_TIMEOUT_MS });
+}
+
+function cancelRoomCleanup(code: string): void {
+  const cleanup = roomCleanupTimers.get(code);
+  if (cleanup) {
+    clearTimeout(cleanup.timer);
+    roomCleanupTimers.delete(code);
+  }
+}
+
 /**
  * Forcibly close a room: clear every timer/invite tied to it and remove it from
  * memory (and its persisted snapshot). Used when the organizer cancels the room
@@ -459,11 +486,7 @@ function destroyRoom(code: string): void {
 export function closeRoom(code: string): void {
   clearTrickCountdownTimer(code);
   clearBombWindowTimer(code);
-  const cleanup = roomCleanupTimers.get(code);
-  if (cleanup) {
-    clearTimeout(cleanup);
-    roomCleanupTimers.delete(code);
-  }
+  cancelRoomCleanup(code);
   for (const seat of [0, 1, 2, 3] as Seat[]) clearSeatGraceTimer(code, seat);
   clearInvitesForRoom(code);
   destroyRoom(code);
@@ -497,22 +520,16 @@ export function registerRestoredRoom(room: Room): boolean {
   if (!room.accumulator.firstEight) room.accumulator.firstEight = new Map();
   if (!room.accumulator.plays) room.accumulator.plays = [];
   if (room.accumulator.trick === undefined) room.accumulator.trick = -1;
+  // gameId is `${code}_${startMs}`, the best stand-in for snapshots that
+  // predate these timestamps.
+  if (!room.createdAt) room.createdAt = Number(room.gameId.split('_')[1]) || Date.now();
+  if (!room.lastActivityAt) room.lastActivityAt = room.createdAt;
   // No bomb-window timer survives a restart, so don't restore an open window
   // that nothing would ever close. (The trick countdown, if any, is re-armed
   // by the handler layer, which owns the timers.)
   if (room.state.bombWindow) room.state = { ...room.state, bombWindow: false };
   rooms.set(room.code, room);
-  const timer = setTimeout(() => {
-    roomCleanupTimers.delete(room.code);
-    const r = rooms.get(room.code);
-    if (r && humanSocketCount(r) === 0) {
-      clearTrickCountdownTimer(room.code);
-      clearBombWindowTimer(room.code);
-      destroyRoom(room.code);
-      console.log(`Cleaned up abandoned room: ${room.code}`);
-    }
-  }, ABANDONED_ROOM_TIMEOUT_MS);
-  roomCleanupTimers.set(room.code, timer);
+  armRoomCleanup(room.code);
   return true;
 }
 
@@ -659,21 +676,10 @@ function detachSocket(socketId: string, deliberate: boolean): void {
 
   // For in-progress games, schedule cleanup if all players disconnected
   if (humanSocketCount(room) === 0) {
-    const timer = setTimeout(() => {
-      roomCleanupTimers.delete(code);
-      const r = rooms.get(code);
-      if (r && humanSocketCount(r) === 0) {
-        clearTrickCountdownTimer(code);
-        clearBombWindowTimer(code);
-        destroyRoom(code);
-        console.log(`Cleaned up abandoned room: ${code}`);
-      }
-    }, ABANDONED_ROOM_TIMEOUT_MS);
-    roomCleanupTimers.set(code, timer);
-  } else if (roomCleanupTimers.has(code)) {
+    armRoomCleanup(code);
+  } else {
     // Someone is still connected, cancel any pending cleanup timer
-    clearTimeout(roomCleanupTimers.get(code)!);
-    roomCleanupTimers.delete(code);
+    cancelRoomCleanup(code);
   }
 }
 
@@ -1031,6 +1037,51 @@ export function getActivitySummary(): {
     }
   }
   return { rooms: rooms.size, roomsInGame, playersSeated, playersConnected, phases };
+}
+
+export type RoomDetail = {
+  code: string;
+  phase: string;
+  roundNumber: number;
+  scores: [number, number];
+  targetScore: number;
+  createdAt: number;
+  /** When the current game started (from the gameId stamp). */
+  gameStartedAt: number;
+  lastActivityAt: number;
+  players: Array<{ seat: Seat; name: string; isAi: boolean; connected: boolean }>;
+  /** When the room will be torn down for having no human connected, if armed. */
+  abandonedCleanupAt: number | null;
+};
+
+/**
+ * Per-room detail for the token-protected admin dashboard. Unlike
+ * getActivitySummary this includes room codes and player names, so it must
+ * never be exposed on a public route.
+ */
+export function getRoomDetails(): RoomDetail[] {
+  const result: RoomDetail[] = [];
+  for (const room of rooms.values()) {
+    const connectedSeats = new Set(room.playerSockets.values());
+    result.push({
+      code: room.code,
+      phase: room.state.phase,
+      roundNumber: room.state.roundNumber,
+      scores: [room.state.teams[0].score, room.state.teams[1].score],
+      targetScore: room.state.settings.targetScore,
+      createdAt: room.createdAt,
+      gameStartedAt: Number(room.gameId.split('_')[1]) || room.createdAt,
+      lastActivityAt: room.lastActivityAt,
+      players: room.state.players.map(p => ({
+        seat: p.seat,
+        name: p.name,
+        isAi: p.isAi,
+        connected: connectedSeats.has(p.seat),
+      })),
+      abandonedCleanupAt: roomCleanupTimers.get(room.code)?.at ?? null,
+    });
+  }
+  return result;
 }
 
 export function findRoomWithOpenAiSeat(): { room: Room; seat: Seat } | null {

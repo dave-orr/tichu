@@ -33,12 +33,31 @@ imports `@tichu/shared`, which npm resolves through a workspace symlink
 Check for live games before restarting; a restart drops every open socket:
 
 ```sh
-curl -s localhost:3000/health   # roomsInGame > 0 means people are mid-game
+~/tichu/scripts/rooms.sh        # per-room table (needs ADMIN_TOKEN in server/.env)
+curl -s localhost:3000/health   # counts only; roomsInGame > 0 means people are mid-game
 ```
+
+The same per-room view is a web page at https://tichu.squidbox.com/admin
+(paste `ADMIN_TOKEN` when asked; it is kept in that browser's localStorage).
+For each room it shows the phase and score, how old the room and the current
+game are, how long since anything happened, which players are connected, and
+when the game's Firestore snapshot was last written. A banner at the top says
+whether a restart right now would interrupt anyone. Without `ADMIN_TOKEN` set
+the data routes return 404.
 
 Rooms are snapshotted to Firestore and restored on boot
 (`server/src/persistence.ts`), so players can reconnect after a restart — but
-they still get disconnected first.
+they still get disconnected first. What a restart does and doesn't keep:
+
+- **In-progress games** come back. On SIGINT/SIGTERM the server flushes any
+  pending (debounced) snapshot before exiting, and pm2's `kill_timeout` gives
+  it 8s to do so. On boot it doesn't accept connections until the restore has
+  finished (capped at 15s), so a fast reconnect can't be told "room not
+  found" and drop its seat.
+- **Waiting rooms** (lobby, not started) are never snapshotted and are lost.
+- **Restored games nobody returns to** are deleted 10 minutes after boot.
+- **`pm2 kill`, a crash, or SIGKILL** skip the flush; the game rewinds to its
+  last snapshot (at most ~1.5s of play).
 
 ## Read the startup banner first
 

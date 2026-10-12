@@ -128,7 +128,13 @@ function getIp(socket: Socket): string {
   return socket.handshake.address || 'unknown';
 }
 
-export function setupHandlers(io: Server): void {
+/**
+ * Register socket handlers and start restoring persisted rooms. Resolves once
+ * the restore has finished (or failed): the caller must not accept connections
+ * before then, or a player reconnecting right after a restart is told their
+ * room is gone and the client drops its saved seat.
+ */
+export function setupHandlers(io: Server): Promise<void> {
   // Delete a room's persisted snapshot whenever it is torn down.
   setRoomGoneCallback(deletePersistedRoom);
   // Re-broadcast when a room changes on a timer rather than a socket event
@@ -137,7 +143,7 @@ export function setupHandlers(io: Server): void {
 
   // Restore any games that were live when the server last stopped, so players
   // can reconnect after a restart/redeploy. Best-effort, non-blocking.
-  loadPersistedRooms()
+  const restoreDone = loadPersistedRooms()
     .then(restored => {
       let count = 0;
       for (const room of restored) {
@@ -984,6 +990,8 @@ export function setupHandlers(io: Server): void {
       }
     });
   });
+
+  return restoreDone;
 }
 
 // SSE push callback, set by api.ts
@@ -1016,6 +1024,7 @@ export function broadcastState(io: Server, room: Room): void {
     io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats, organizerSeat });
   }
   sseBroadcastCallback?.(room);
+  room.lastActivityAt = Date.now();
   // Snapshot the room (debounced) so it survives a server restart.
   persistRoom(room);
 }

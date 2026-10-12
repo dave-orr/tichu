@@ -14,6 +14,10 @@ banner naming the Node version, cwd, whether `.env` loaded, the port and its
 source — read it first when triaging. Deploy steps and outage triage:
 `docs/DEPLOY.md`.
 
+Before restarting, check live games: `scripts/rooms.sh` on the host, or the
+web dashboard at `/admin` (`server/src/admin.ts`). Both need `ADMIN_TOKEN` in
+`server/.env`; without it the data routes are disabled.
+
 ## Architecture
 
 Monorepo with three workspaces: `shared/` (game logic, types) → `server/` (Node+Socket.IO) → `client/` (React+Vite+Tailwind).
