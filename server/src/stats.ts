@@ -4,7 +4,8 @@ import {
   GameSummary, GameSummaryPlayer, GameHistoryRound, HeadToHead,
   GameRecord, UserStats, TeamStats, PairingPlayer, EMPTY_STAT_TOTALS,
   computePlayerStats, computePartnerSummaries, computePairingBreakdown,
-  Comeback, biggestComeback, computeAchievements,
+  Comeback, biggestComeback, computeAchievements, GUEST_PARTNER,
+  AchievementEvent, currentWinStreak, streakMilestone,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room } from './rooms.js';
@@ -117,6 +118,32 @@ export async function saveGameSummary(room: Room): Promise<void> {
   // playerUids is stored alongside the summary purely for querying.
   await db.collection('games').doc(acc.gameId).set({ ...summary, playerUids }, { merge: true });
   invalidateComebackRecord();
+}
+
+/**
+ * Win-streak achievements (Hot Streak, Unstoppable) the game that just ended
+ * earned its winners. Streaks span games, so this reads each winner's
+ * history; call after saveGameSummary so the finished game is included.
+ * Teammates who hit the same milestone share one event.
+ */
+export async function fetchStreakAchievements(room: Room): Promise<AchievementEvent[]> {
+  if (!firebaseAdmin) return [];
+  const db = firebaseAdmin.firestore();
+  const [s0, s1] = [room.state.teams[0].score, room.state.teams[1].score];
+  if (s0 === s1) return [];
+  const winners = room.state.players.filter(p => getTeamForSeat(p.seat) === (s0 > s1 ? 0 : 1));
+  const events = new Map<string, AchievementEvent>();
+  await Promise.all(winners.map(async p => {
+    const uid = room.seatUids.get(p.seat);
+    if (!uid) return;
+    const snap = await db.collection('games').where('playerUids', 'array-contains', uid).get();
+    const id = streakMilestone(currentWinStreak(snap.docs.map(d => toSummary(d.data())), uid));
+    if (!id) return;
+    const e = events.get(id) ?? { id, seats: [], roundNumber: null };
+    e.seats.push(p.seat);
+    events.set(id, e);
+  }));
+  return [...events.values()].map(e => ({ ...e, seats: [...e.seats].sort() }));
 }
 
 /**
@@ -577,10 +604,10 @@ export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
   const rows = computePartnerSummaries(records, uid);
   if (rows.length === 0) return [];
 
-  const partnerUids = rows.map(r => r.partnerUid);
+  const partnerUids = rows.map(r => r.partnerUid).filter(p => p !== GUEST_PARTNER);
   const [info, teamDocs] = await Promise.all([
     loadDisplayInfo(partnerUids),
-    db.getAll(...partnerUids.map(p => db.collection('teams').doc(pairKey(uid, p)))),
+    partnerUids.length ? db.getAll(...partnerUids.map(p => db.collection('teams').doc(pairKey(uid, p)))) : Promise.resolve([]),
   ]);
   const teamElo = new Map<string, EloFields | null>();
   teamDocs.forEach((doc, i) => {
@@ -592,7 +619,7 @@ export async function fetchPartnerStats(uid: string): Promise<PartnerStats[]> {
     const elo = teamElo.get(r.partnerUid) ?? null;
     return {
       ...r,
-      partnerName: info.get(r.partnerUid)?.name || 'Player',
+      partnerName: r.partnerUid === GUEST_PARTNER ? 'Guest partners' : info.get(r.partnerUid)?.name || 'Player',
       partnerPhoto: info.get(r.partnerUid)?.photoURL || null,
       teamElo: elo?.elo ?? null,
       teamEloGames: elo?.eloGames ?? 0,

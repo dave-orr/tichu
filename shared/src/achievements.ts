@@ -22,7 +22,10 @@ export type AchievementId =
   | 'ganis'
   | 'score-based-grand'
   | 'wish-bomb'
-  | 'super-partner';
+  | 'super-partner'
+  | 'gift-horse'
+  | 'hot-streak'
+  | 'unstoppable';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -34,6 +37,10 @@ export type AchievementDef = {
    */
   newLogsOnly?: boolean;
 };
+
+/** Win streak lengths that earn Hot Streak and Unstoppable. */
+export const HOT_STREAK = 5;
+export const UNSTOPPABLE_STREAK = 10;
 
 /** Photo Finish: winning margin at most this. */
 export const PHOTO_FINISH_MARGIN = 10;
@@ -67,6 +74,13 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     description: 'Bomb, then Dog',
     newLogsOnly: true,
   },
+  {
+    id: 'gift-horse',
+    name: 'Gift Horse',
+    description: 'Pass the Dragon or Phoenix to an opponent, then make your Tichu or Grand',
+  },
+  { id: 'hot-streak', name: 'Hot Streak', description: `Win ${HOT_STREAK} games in a row` },
+  { id: 'unstoppable', name: 'Unstoppable', description: `Win ${UNSTOPPABLE_STREAK} games in a row` },
 ];
 
 export type AchievementCount = {
@@ -119,6 +133,14 @@ function roundEvents(r: RoundLog): Array<{ id: AchievementId; seat: Seat }> {
 
   for (const seat of [0, 1, 2, 3] as Seat[]) {
     if (r.bombs.filter(b => b.seat === seat).length >= 2) out.push({ id: 'double-tap', seat });
+  }
+
+  // Gave an opponent the Dragon or Phoenix in the pass, and made the call anyway.
+  const bigCard = (c: Card | null) => !!c && (isSpecial(c, 'dragon') || isSpecial(c, 'phoenix'));
+  for (const pl of r.players) {
+    if (pl.tichuCall !== 'none' && pl.outOrder === 1 && (bigCard(pl.passedLeft) || bigCard(pl.passedRight))) {
+      out.push({ id: 'gift-horse', seat: pl.seat });
+    }
   }
 
   const plays = r.plays ?? [];
@@ -193,6 +215,31 @@ export function achievementEvents(rounds: readonly RoundLog[], outcome?: GameOut
   return events;
 }
 
+/**
+ * Win streak length after each of `uid`'s games, oldest first. A loss or a
+ * tie ends a streak.
+ */
+function streakRun(summaries: readonly GameSummary[], uid: string): Array<{ summary: GameSummary; streak: number }> {
+  let streak = 0;
+  return [...summaries]
+    .filter(s => teamOf(s, uid) !== null)
+    .sort((a, b) => a.finishedAt - b.finishedAt)
+    .map(summary => {
+      streak = summary.winningTeam !== null && summary.winningTeam === teamOf(summary, uid) ? streak + 1 : 0;
+      return { summary, streak };
+    });
+}
+
+/** The win-streak achievement a game earned `uid`, if that game took their streak to a milestone. */
+export function streakMilestone(streak: number): AchievementId | null {
+  return streak === HOT_STREAK ? 'hot-streak' : streak === UNSTOPPABLE_STREAK ? 'unstoppable' : null;
+}
+
+/** `uid`'s current win streak, counting back from their latest game. */
+export function currentWinStreak(summaries: readonly GameSummary[], uid: string): number {
+  return streakRun(summaries, uid).at(-1)?.streak ?? 0;
+}
+
 /** Achievement counts for `uid` across `records`, in `ACHIEVEMENTS` order. */
 export function computeAchievements(records: readonly GameRecord[], uid: string): AchievementCount[] {
   const counts = new Map<AchievementId, AchievementCount>(
@@ -216,6 +263,16 @@ export function computeAchievements(records: readonly GameRecord[], uid: string)
       c.count++;
       if (!c.lastGame || summary.finishedAt > c.lastGame.finishedAt) c.lastGame = summary;
     }
+  }
+
+  // Win streaks span games: each streak counts once when it reaches 5, and
+  // once more if it goes on to 10.
+  for (const { summary, streak } of streakRun(records.map(r => r.summary), uid)) {
+    const id = streakMilestone(streak);
+    if (!id) continue;
+    const c = counts.get(id)!;
+    c.count++;
+    if (!c.lastGame || summary.finishedAt > c.lastGame.finishedAt) c.lastGame = summary;
   }
 
   return ACHIEVEMENTS.map(a => counts.get(a.id)!);

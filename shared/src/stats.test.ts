@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computePlayerStats, computePartnerSummaries, computePairingBreakdown, computeStatTotals,
+  computePlayerStats, computePartnerSummaries, computePairingBreakdown, computeStatTotals, GUEST_PARTNER,
   pairPerspective, GameRecord, biggestComeback,
 } from './stats.js';
 import { GameSummary, RoundLog, RoundLogPlayerEntry, Seat, TichuCall } from './types.js';
@@ -228,6 +228,25 @@ describe('computePartnerSummaries', () => {
   it('never lists an opponent as a partner', () => {
     const records = [{ summary: summary({ id: 'g' }), rounds: [round('g', 1)] }];
     expect(computePartnerSummaries(records, 'A').map(r => r.partnerUid)).toEqual(['C']);
+  });
+  it('collects games with a guest partner in a last row, so the rows add up to every game', () => {
+    const guestPartner = summary({
+      id: 'g2', winningTeam: 1,
+      players: [
+        { seat: 0, uid: 'A', name: 'A', team: 0 },
+        { seat: 1, uid: 'B', name: 'B', team: 1 },
+        { seat: 2, uid: null, name: 'Guest', team: 0 },
+        { seat: 3, uid: 'D', name: 'D', team: 1 },
+      ],
+    });
+    const records = [
+      { summary: summary({ id: 'g1' }), rounds: [round('g1', 1)] },
+      { summary: guestPartner, rounds: [round('g2', 1), round('g2', 2)] },
+    ];
+    const rows = computePartnerSummaries(records, 'A');
+    expect(rows.map(r => r.partnerUid)).toEqual(['C', GUEST_PARTNER]);
+    expect(rows[1]).toMatchObject({ gamesPlayed: 1, gamesWon: 0, roundsPlayed: 2 });
+    expect(rows.reduce((n, r) => n + r.gamesPlayed, 0)).toBe(records.length);
   });
 });
 

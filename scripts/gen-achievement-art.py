@@ -475,6 +475,82 @@ icons['super-partner'] = badge(SKY, layer(
     + layer(sparkle(104, 68, 4, CREAM), sparkle(70, 26, 3.5, CREAM))
 )
 
+# ---- Gift Horse: hand an opponent the Dragon (or Phoenix) as a present,
+# then make your call anyway: the Dragon pops out of the box, and the
+# caller's gold medal hangs in front.
+icons['gift-horse'] = badge(SKY, layer(
+    f'<circle cx="34" cy="32" r="8" fill="{WHITE}" stroke="none" opacity="0.7"/>'
+    f'<circle cx="42" cy="30" r="6" fill="{WHITE}" stroke="none" opacity="0.7"/>'
+    + sparkle(100, 30, 3, CREAM)),
+    layer(  # the dragon popping out of the open box
+        f'<path d="M54 40 L57 26 L62 36 L66 22 L70 36 L75 26 L78 40 Z" fill="{OCHRE}"/>'
+        f'<path d="M50 68 Q48 34 66 34 Q84 34 82 68 Z" fill="{SAP}"/>'
+        f'<path d="M56 56 Q56 50 66 50 Q76 50 76 56 Q76 62 66 62 Q56 62 56 56 Z" fill="{SAP_LT}"/>'
+        f'<circle cx="59" cy="45" r="4.4" fill="{WHITE}"/><circle cx="73" cy="45" r="4.4" fill="{WHITE}"/>'
+        f'<circle cx="60" cy="46" r="1.9" fill="{INK}" stroke="none"/><circle cx="74" cy="46" r="1.9" fill="{INK}" stroke="none"/>'
+        f'<ellipse cx="63" cy="55" rx="1.3" ry="0.9" fill="{INK}" stroke="none"/><ellipse cx="69" cy="55" rx="1.3" ry="0.9" fill="{INK}" stroke="none"/>'
+        f'<path d="M62 60 L63.5 63.5 L65 60 Z M67 60 L68.5 63.5 L70 60 Z" fill="{WHITE}" stroke-width="1"/>')
+    + layer(  # box and ribbon
+        f'<rect x="38" y="66" width="52" height="40" rx="2" fill="{CLAY}"/>'
+        f'<rect x="59" y="66" width="10" height="40" fill="{OCHRE}"/>'
+        f'<path d="M38 84 L90 84" stroke="{OCHRE}" stroke-width="7"/>')
+    + layer(  # lid flipped open to the left, bow on top
+        f'<g transform="rotate(-38 38 66)"><rect x="12" y="58" width="30" height="9" rx="2" fill="{CLAY_DK}"/>'
+        f'<rect x="23" y="58" width="8" height="9" fill="{OCHRE}"/>'
+        f'<path d="M27 58 C19 48 13 52 18 58 Z M27 58 C35 48 41 52 36 58 Z" fill="{OCHRE}"/></g>')
+    + layer(  # the caller's gold medal: Tichu made
+        f'<path d="M22 70 L28 88 L34 70 Z" fill="{BLUE}"/><path d="M28 70 L36 88 L42 72 Z" fill="{CRIMSON}"/>'
+        f'<circle cx="32" cy="94" r="12" fill="{OCHRE}"/>'
+        f'<circle cx="32" cy="94" r="8.5" fill="none" stroke="{OCHRE_DK}" stroke-width="1.4"/>'
+        f'<text x="32" y="99" font-family="system-ui, sans-serif" font-size="13" font-weight="900" '
+        f'text-anchor="middle" fill="{INK}" stroke="none">T</text>')
+)
+
+# ---- Hot Streak: five wins in a row — a comet stamped 5, its tail on fire.
+icons['hot-streak'] = badge(NIGHT, layer(
+    sparkle(30, 34, 2.5, CREAM) + sparkle(98, 96, 2.5, CREAM) + sparkle(44, 100, 2, CREAM) + sparkle(104, 30, 2, CREAM)),
+    layer(  # the flaming tail, outer to inner
+        f'<path d="M72 34 C52 40 30 58 14 92 C30 80 40 80 48 74 C42 86 40 96 44 104 C52 88 64 76 84 68 Z" fill="{CLAY}"/>')
+    + layer(f'<path d="M74 40 C58 46 42 62 30 84 C42 76 50 74 56 70 C52 80 52 88 54 94 C60 82 70 72 82 64 Z" fill="{OCHRE}"/>')
+    + layer(f'<path d="M76 46 C66 50 56 60 48 72 C56 68 62 66 66 64 C64 70 64 76 66 80 C70 72 76 66 82 62 Z" fill="{CREAM}" stroke="none"/>')
+    + layer(  # the comet's head
+        f'<circle cx="84" cy="48" r="17" fill="{OCHRE}"/>'
+        f'<circle cx="84" cy="48" r="12.5" fill="{CREAM}" stroke="{OCHRE_DK}" stroke-width="1.4"/>'
+        f'<text x="84" y="55" font-family="system-ui, sans-serif" font-size="20" font-weight="900" '
+        f'text-anchor="middle" fill="{CLAY_DK}" stroke="none">5</text>')
+)
+
+# ---- Unstoppable: ten wins in a row — a steam train charging through,
+# 10 on its nose, smoke pouring from the stack.
+icons['unstoppable'] = badge(SKY, layer(
+    f'<path d="M14 104 L114 104 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'
+    f'<path d="M14 100 L114 100" stroke="{HAIR}" stroke-width="3" stroke-dasharray="5 4"/>'),
+    layer(  # smoke puffs streaming back
+        f'<circle cx="62" cy="30" r="8" fill="{CREAM}"/><circle cx="48" cy="24" r="9" fill="{CREAM}"/>'
+        f'<circle cx="32" cy="26" r="7" fill="{CREAM}"/><circle cx="22" cy="34" r="5" fill="{CREAM}"/>')
+    + layer(  # speed lines
+        f'<path d="M14 62 L28 62 M12 74 L26 74 M16 86 L28 86" stroke="{INK}" stroke-width="2"/>')
+    + layer(  # cab, boiler, stack, cowcatcher
+        f'<rect x="30" y="50" width="24" height="40" rx="2" fill="{CLAY}"/>'
+        f'<rect x="35" y="56" width="14" height="12" rx="1.5" fill="{CREAM}"/>'
+        f'<path d="M26 50 L58 50 L56 44 L28 44 Z" fill="{CLAY_DK}"/>'
+        f'<rect x="54" y="62" width="40" height="28" rx="4" fill="{INDIGO}"/>'
+        f'<path d="M60 62 L60 90 M72 62 L72 90 M84 62 L84 90" stroke="{OCHRE}" stroke-width="2"/>'
+        f'<path d="M62 62 L60 40 L74 40 L72 62 Z" fill="{INK}"/>'
+        f'<path d="M58 38 L76 38 L74 42 L60 42 Z" fill="{INK}"/>'
+        f'<path d="M94 80 L108 94 L94 94 Z" fill="{OCHRE}"/>')
+    + layer(  # the front plate with 10
+        f'<circle cx="98" cy="72" r="12" fill="{OCHRE}"/>'
+        f'<circle cx="98" cy="72" r="8.5" fill="{CREAM}" stroke="{OCHRE_DK}" stroke-width="1.2"/>'
+        f'<text x="98" y="76.5" font-family="system-ui, sans-serif" font-size="12" font-weight="900" '
+        f'text-anchor="middle" fill="{CLAY_DK}" stroke="none">10</text>')
+    + layer(  # wheels
+        f'<circle cx="42" cy="94" r="8" fill="{INK}"/><circle cx="42" cy="94" r="3" fill="{OCHRE}" stroke="none"/>'
+        f'<circle cx="66" cy="96" r="6" fill="{INK}"/><circle cx="66" cy="96" r="2.4" fill="{OCHRE}" stroke="none"/>'
+        f'<circle cx="84" cy="96" r="6" fill="{INK}"/><circle cx="84" cy="96" r="2.4" fill="{OCHRE}" stroke="none"/>'
+        f'<path d="M42 94 L84 96" stroke="{STONE_DK}" stroke-width="2.4"/>')
+)
+
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for name, svg in icons.items():

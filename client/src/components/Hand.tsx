@@ -12,6 +12,8 @@ type Props = {
   onDragStart?: (card: CardType) => void;
   /** Widest the hand may spread (px); defaults to the full design width. */
   maxWidth?: number;
+  /** Small tags shown above particular cards, keyed by cardId (e.g. who passed it to you). */
+  tags?: ReadonlyMap<string, string>;
 };
 
 // Card widths in px (Card.tsx: w-24 / large w-36), and the widest a hand may
@@ -22,7 +24,7 @@ const MAX_HAND_WIDTH = 1240;
 /** How long a played card takes to lift out of the hand (index.css hand-leave). */
 const LEAVE_MS = 300;
 
-export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, large, onDragStart, maxWidth = MAX_HAND_WIDTH }: Props) {
+export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, large, onDragStart, maxWidth = MAX_HAND_WIDTH, tags }: Props) {
   // Larger cards are 50% wider, so scale the overlap up, and tighten it
   // further whenever the hand would still be wider than the layout allows.
   const cardWidth = large ? LARGE_CARD_WIDTH : CARD_WIDTH;
@@ -77,7 +79,13 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled, dra
           );
         }
         return (
-          <div key={id} className="hand-slot" style={{ marginLeft: i > 0 ? `${overlap}px` : '0' }}>
+          <div key={id} className="hand-slot relative" style={{ marginLeft: i > 0 ? `${overlap}px` : '0' }}>
+            {tags?.get(id) && (
+              // Left-aligned so it stays in the strip of the card left visible by the overlap.
+              <div className="absolute bottom-full left-0 mb-1 z-10 pointer-events-none whitespace-nowrap rounded-full bg-ochre px-2 py-0.5 text-base font-extrabold text-ink shadow-[0_2px_0_rgb(var(--c-ochre-dark))]">
+                {tags.get(id)}
+              </div>
+            )}
             <CardComponent
               card={card}
               selected={selectedCards.has(id)}

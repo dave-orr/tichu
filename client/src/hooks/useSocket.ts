@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback } from '@tichu/shared';
+import { ClientGameState, Card, NormalRank, Seat, GameSettings, InvitablePlayer, PartnerStats, RoundResult, RoomElos, EloUpdate, HeadToHead, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, AchievementEvent } from '@tichu/shared';
 import { getSessionId, saveRoom, loadRoom, clearRoom } from '../utils/session.js';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
@@ -152,6 +152,11 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
 
     socket.on('elo-update', (update: EloUpdate) => {
       setEloUpdate(update);
+    });
+
+    // Win-streak achievements arrive just after the game's final result.
+    socket.on('streak-achievements', ({ events }: { events: AchievementEvent[] }) => {
+      setRoundResult(r => (r ? { ...r, achievements: [...(r.achievements ?? []), ...events] } : r));
     });
 
     socket.on('head-to-head', (h2h: HeadToHead) => {
