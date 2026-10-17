@@ -713,6 +713,12 @@ export default function Game({ socket, auth }: Props) {
   const showPassed = phase === 'playing' && gameState.settings.showPassedCards && !!passRecord;
   const TRIO_WIDTH = 3 * 77 + 2 * 4 + 12;
   const handMaxWidth = 1300 - 16 - (showReceived ? TRIO_WIDTH : 0) - (showPassed ? TRIO_WIDTH : 0);
+  // With the received trio hidden, tag the cards you were passed with who
+  // sent them instead, until the round's first trick is won.
+  const receivedTags = phase === 'playing' && !gameState.settings.showPassedCards
+    && players.every(p => p.trickCount === 0)
+    ? new Map(gameState.myReceivedCards.map(rc => [cardId(rc.card), `from ${playerNames[rc.fromSeat]}`]))
+    : undefined;
 
   const renderMiniCard = (card: CardType, title: string, fadeWhenPlayed = true) => {
     const played = fadeWhenPlayed && gameState.playedCards.some(c => cardId(c) === cardId(card));
@@ -969,6 +975,7 @@ export default function Game({ socket, auth }: Props) {
               disabled={phase !== 'playing'}
               large
               maxWidth={handMaxWidth}
+              tags={receivedTags}
             />
           </div>
 

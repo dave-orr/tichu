@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ACHIEVEMENTS, type AchievementCount } from '@tichu/shared';
+import { ACHIEVEMENTS, GUEST_PARTNER, type AchievementCount } from '@tichu/shared';
 import type { Comeback, PartnerStats, GameSummary, GameHistoryRound, TeamStats, UserStats as UserStatsType } from '@tichu/shared';
 import RecentGames from './RecentGames.js';
 import TeamStatsModal from './TeamStatsModal.js';
@@ -160,12 +160,16 @@ export default function UserStats({
                 <div className="border-t border-gray-700 mt-3 pt-3">
                   <h4 className="text-2xl text-gray-500 uppercase tracking-wide mb-2">By Partner</h4>
                   <div className="space-y-1">
-                    {partners.map(p => (
+                    {partners.map(p => {
+                      // Games whose partner wasn't signed in: no account to drill into.
+                      const guest = p.partnerUid === GUEST_PARTNER;
+                      return (
                       <button
                         key={p.partnerUid}
-                        onClick={() => setSelectedPartner(p)}
-                        title="Show partnership stats"
-                        className="w-full text-left flex items-center justify-between gap-3 text-2xl rounded-lg px-2 py-1 -mx-2 hover:bg-gray-700 transition-colors"
+                        onClick={guest ? undefined : () => setSelectedPartner(p)}
+                        disabled={guest}
+                        title={guest ? 'Games where your partner was not signed in' : 'Show partnership stats'}
+                        className={`w-full text-left flex items-center justify-between gap-3 text-2xl rounded-lg px-2 py-1 -mx-2 transition-colors ${guest ? 'cursor-default' : 'hover:bg-gray-700'}`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           {p.partnerPhoto ? (
@@ -178,9 +182,11 @@ export default function UserStats({
                           <div className="min-w-0">
                             <div className="truncate">{p.partnerName}</div>
                             <div className="text-xl text-gray-400 truncate">
+                              {guest ? 'Not signed in' : <>
                               Tichu {ratio(p.partnerTichuSuccesses, p.partnerTichuCalls)}
                               {p.partnerGrandCalls > 0 && ` · Grand ${ratio(p.partnerGrandSuccesses, p.partnerGrandCalls)}`}
                               {p.partnerRounds > 0 && ` · calls ${pct(p.partnerTichuCalls + p.partnerGrandCalls, p.partnerRounds)}% of rounds`}
+                              </>}
                             </div>
                           </div>
                         </div>
@@ -196,7 +202,8 @@ export default function UserStats({
                           </div>
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

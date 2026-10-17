@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAchievements, achievementEvents, AchievementId } from './achievements.js';
+import { computeAchievements, achievementEvents, currentWinStreak, AchievementId } from './achievements.js';
 import { GameRecord } from './stats.js';
 import {
   Card, GameSummary, NormalRank, RoundLog, RoundPlay, Seat, Suit, TichuCall,
@@ -34,6 +34,7 @@ type RoundSpec = {
   firstEight?: Partial<Record<Seat, Card[]>>;
   bombs?: Seat[];
   plays?: RoundPlay[];
+  passes?: Partial<Record<Seat, { left?: Card; partner?: Card; right?: Card }>>;
 };
 
 function round(gameId: string, num: number, spec: RoundSpec = {}): RoundLog {
@@ -55,7 +56,9 @@ function round(gameId: string, num: number, spec: RoundSpec = {}): RoundLog {
       outOrder: outOrder.indexOf(seat as Seat) + 1,
       initialHand: [],
       firstEight: spec.firstEight?.[seat as Seat],
-      passedLeft: null, passedPartner: null, passedRight: null,
+      passedLeft: spec.passes?.[seat as Seat]?.left ?? null,
+      passedPartner: spec.passes?.[seat as Seat]?.partner ?? null,
+      passedRight: spec.passes?.[seat as Seat]?.right ?? null,
     })),
     bombs: (spec.bombs ?? []).map(seat => ({ seat, cards: fourOf(5) })),
     dragonGiveaways: [],
@@ -244,5 +247,45 @@ describe('Super Partner', () => {
     expect(counts(records, 'A')['super-partner']).toBe(1);
     expect(counts(records, 'B')['super-partner']).toBe(0);
     expect(counts(records, 'D')['super-partner']).toBe(0);
+  });
+});
+
+describe('Gift Horse', () => {
+  const ids = (r: RoundLog) => achievementEvents([r]).filter(e => e.id === 'gift-horse').map(e => e.seats[0]);
+
+  it('passing the Dragon or Phoenix to an opponent, then making the call', () => {
+    expect(ids(round('g', 1, { calls: { 0: 'small' }, passes: { 0: { left: sp('dragon') } } }))).toEqual([0]);
+    expect(ids(round('g', 1, { calls: { 0: 'grand' }, passes: { 0: { right: sp('phoenix') } } }))).toEqual([0]);
+  });
+
+  it('not for a partner pass, a failed call, or no call', () => {
+    expect(ids(round('g', 1, { calls: { 0: 'small' }, passes: { 0: { partner: sp('dragon') } } }))).toEqual([]);
+    expect(ids(round('g', 1, { calls: { 2: 'small' }, outOrder: [0, 1, 2], passes: { 2: { left: sp('dragon') } } }))).toEqual([]);
+    expect(ids(round('g', 1, { passes: { 0: { left: sp('dragon') } } }))).toEqual([]);
+  });
+});
+
+describe('win streaks', () => {
+  // Games for A (team 0), oldest first; true = A's team won, null = a tie.
+  const games = (results: Array<boolean | null>): GameRecord[] => results.map((won, i) => ({
+    summary: summary(`g${i}`, { finishedAt: i, winningTeam: won === null ? null : won ? 0 : 1 }),
+    rounds: [],
+  }));
+
+  it('Hot Streak at 5 in a row and Unstoppable at 10, once per streak', () => {
+    const c = counts(games(Array(12).fill(true)), 'A');
+    expect(c['hot-streak']).toBe(1);
+    expect(c['unstoppable']).toBe(1);
+  });
+
+  it('a loss or a tie resets the streak', () => {
+    const run = [true, true, true, true, false, true, true, true, true, null, true, true, true, true, true];
+    expect(counts(games(run), 'A')['hot-streak']).toBe(1);
+    expect(counts(games(run), 'B')['hot-streak']).toBe(0);
+  });
+
+  it('currentWinStreak counts back from the latest game', () => {
+    expect(currentWinStreak(games([true, false, true, true]).map(r => r.summary), 'A')).toBe(2);
+    expect(currentWinStreak(games([true, true, false]).map(r => r.summary), 'A')).toBe(0);
   });
 });

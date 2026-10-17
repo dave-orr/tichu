@@ -17,7 +17,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, updateEloForGameEnd } from './stats.js';
+import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, fetchStreakAchievements, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards, sanitizeSettings,
@@ -207,6 +207,7 @@ export function setupHandlers(io: Server): Promise<void> {
         .then(decoded => {
           if (!decoded || socket.disconnected) return;
           setSocketUid(socket.id, decoded.uid);
+          attachSeatUid(socket.id, decoded.uid);
           console.log(`Authenticated user: ${decoded.uid}`);
           pushPendingInvites(decoded.uid);
         })
@@ -230,6 +231,7 @@ export function setupHandlers(io: Server): Promise<void> {
       const decoded = typeof newToken === 'string' && newToken ? await verifyIdToken(newToken) : null;
       if (decoded) {
         setSocketUid(socket.id, decoded.uid);
+        attachSeatUid(socket.id, decoded.uid);
         pushPendingInvites(decoded.uid);
       }
       if (typeof ack === 'function') ack({ ok: !!decoded });
@@ -1191,8 +1193,9 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
     // Top-level game summary so players can browse their recent games; once
     // it's written, compute and broadcast the pairings' head-to-head record
     // (sequenced so the just-finished game is included in the count).
-    saveGameSummary(room)
-      .catch(err => console.error('Failed to save game summary:', err))
+    const saved = saveGameSummary(room)
+      .catch(err => console.error('Failed to save game summary:', err));
+    saved
       .then(() => fetchHeadToHead(room))
       .then(h2h => {
         if (h2h && h2h.games > 0) {
@@ -1200,6 +1203,21 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
         }
       })
       .catch(err => console.error('Failed to fetch head-to-head record:', err));
+    // Win streaks span games, so they're only known once the summary is
+    // saved; they join the game-over screen's achievements when they arrive.
+    saved
+      .then(() => fetchStreakAchievements(room))
+      .then(events => {
+        if (events.length === 0) return;
+        if (room.lastRoundResult) {
+          room.lastRoundResult = {
+            ...room.lastRoundResult,
+            achievements: [...(room.lastRoundResult.achievements ?? []), ...events],
+          };
+        }
+        io.to(room.code).emit('streak-achievements', { events });
+      })
+      .catch(err => console.error('Failed to compute win streaks:', err));
 
     // Elo: recompute ratings, then broadcast the changes to the room so the
     // game-over screen can show new ratings and deltas.
@@ -1212,6 +1230,20 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
       })
       .catch(err => console.error('Failed to update Elo ratings:', err));
   }
+}
+
+/**
+ * A socket that finished signing in after it took its seat (the handshake
+ * token is verified asynchronously while the client joins straight away, or
+ * a token arrives later via `authenticate`): attribute the seat to the account
+ * now. Without this the seat plays as a guest, so the game is missing from the
+ * player's history and their partner's per-partner stats.
+ */
+function attachSeatUid(socketId: string, uid: string): void {
+  const found = getRoomBySocket(socketId);
+  if (!found || found.room.seatUids.get(found.seat) === uid) return;
+  found.room.seatUids.set(found.seat, uid);
+  persistRoom(found.room);
 }
 
 /**

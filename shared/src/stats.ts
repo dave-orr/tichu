@@ -241,6 +241,12 @@ export function biggestComeback(records: readonly GameRecord[], uid?: string): C
 // ===== Partners =====
 
 /** One row of the "By Partner" list. */
+/**
+ * `partnerUid` of the row collecting games whose partner wasn't signed in
+ * (a guest or a bot), so the rows add up to the player's games list.
+ */
+export const GUEST_PARTNER = 'guest';
+
 export type PartnerSummary = {
   partnerUid: string;
   /** Pairing record (games where the two were on the same team). */
@@ -288,7 +294,22 @@ export function computePartnerSummaries(records: readonly GameRecord[], uid: str
     });
   }
 
-  return rows.sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.roundsPlayed - a.roundsPlayed);
+  rows.sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.roundsPlayed - a.roundsPlayed);
+
+  // Games with no signed-in partner, last; the partner's calls are unknown.
+  const guestGames = (s: GameSummary): Perspective | null => {
+    const team = teamOf(s, uid);
+    if (team === null || s.players.some(p => p.team === team && p.uid && p.uid !== uid)) return null;
+    return { team, uids: [uid] };
+  };
+  const guests = computeStatTotals(records, guestGames);
+  if (guests.gamesPlayed > 0) {
+    rows.push({
+      partnerUid: GUEST_PARTNER, gamesPlayed: guests.gamesPlayed, gamesWon: guests.gamesWon, roundsPlayed: guests.roundsPlayed,
+      partnerTichuCalls: 0, partnerTichuSuccesses: 0, partnerGrandCalls: 0, partnerGrandSuccesses: 0, partnerRounds: 0,
+    });
+  }
+  return rows;
 }
 
 // ===== Pairing detail =====
