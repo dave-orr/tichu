@@ -63,7 +63,7 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
   // The Mah Jong is a 1 only for straights; there is no "pair of 1s" for the
   // Phoenix to complete, nor a 1-1 step in stairs or the pair of a full house.
   if (mahjong) {
-    return tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks);
+    return tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks, phoenixAs);
   }
 
   // Try detecting each combo type (bombs first so they take priority over straights)
@@ -74,7 +74,7 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
     tryTriple(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
     tryFullHouse(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
     tryConsecutivePairs(cards, normalCards, hasPhoenix, mahjong, ranks) ??
-    tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks);
+    tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks, phoenixAs);
 
   return result;
 }
@@ -225,7 +225,7 @@ function tryConsecutivePairs(
 
 function tryStraight(
   cards: Card[], normalCards: NormalCard[], hasPhoenix: boolean,
-  mahjong: Card | undefined, ranks: number[]
+  mahjong: Card | undefined, ranks: number[], phoenixAs?: NormalRank
 ): Combo | null {
   if (cards.length < 5) return null;
 
@@ -249,11 +249,13 @@ function tryStraight(
 
   // Check if unique ranks have exactly one gap of 1, or are consecutive (phoenix extends)
   if (isConsecutive(uniqueRanks)) {
-    // Phoenix extends the consecutive run at one end: extend high when possible,
-    // otherwise the phoenix fills the low end (rank stays the natural top).
+    // Phoenix extends the consecutive run at one end: high by default when
+    // possible, low when asked (phoenixAs) or when there's no room above the
+    // Ace (the rank then stays the natural top). See phoenixStraightChoices.
     const top = uniqueRanks[uniqueRanks.length - 1];
     const high = top + 1;
-    const topRank = high <= 14 ? high : top;
+    const lowAsked = phoenixAs != null && phoenixAs === uniqueRanks[0] - 1 && phoenixAs >= 2;
+    const topRank = high <= 14 && !lowAsked ? high : top;
     return { type: 'straight', cards, rank: topRank, length: cards.length };
   }
 
@@ -716,4 +718,25 @@ function groupByRank(cards: NormalCard[]): Record<number, NormalCard[]> {
     groups[c.rank].push(c);
   }
   return groups;
+}
+
+/**
+ * When the Phoenix extends a straight and could go at either end (e.g. 3-4-5-6
+ * plus the Phoenix is 2-6 or 3-7), both readings with the rank the Phoenix
+ * stands for. Null when there's only one way to read the cards (the Phoenix
+ * fills a gap, the run already reaches the Ace, or it starts at the Mah Jong,
+ * since the Phoenix can't be a 1).
+ */
+export function phoenixStraightChoices(cards: Card[]): { low: Combo; lowAs: NormalRank; high: Combo; highAs: NormalRank } | null {
+  if (!cards.some(c => c.type === 'special' && c.name === 'phoenix')) return null;
+  const combo = identifyCombo(cards);
+  if (!combo || combo.type !== 'straight') return null;
+  const ranks = [...new Set(cards.flatMap(c =>
+    c.type === 'normal' ? [c.rank as number] : c.type === 'special' && c.name === 'mahjong' ? [1] : []))].sort((a, b) => a - b);
+  if (!isConsecutive(ranks)) return null;
+  const lowAs = ranks[0] - 1, highAs = ranks[ranks.length - 1] + 1;
+  if (lowAs < 2 || highAs > 14) return null;
+  const low = identifyCombo(cards, lowAs as NormalRank);
+  const high = identifyCombo(cards, highAs as NormalRank);
+  return low && high ? { low, lowAs: lowAs as NormalRank, high, highAs: highAs as NormalRank } : null;
 }

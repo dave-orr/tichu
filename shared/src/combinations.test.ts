@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { identifyCombo, canBeat, isBomb, singleCardRank } from './combinations.js';
+import { identifyCombo, canBeat, isBomb, singleCardRank, phoenixStraightChoices } from './combinations.js';
 import { Card, NormalCard, Suit } from './types.js';
 
 // Helper to make normal cards quickly
@@ -279,5 +279,40 @@ describe('Mah Jong is only ever a straight card', () => {
   it('still leads a straight, with or without the Phoenix', () => {
     expect(identifyCombo([mj, n(2), n(3), n(4), n(5)])?.type).toBe('straight');
     expect(identifyCombo([mj, n(2), ph, n(4), n(5)])?.type).toBe('straight');
+  });
+});
+
+describe('Phoenix at either end of a straight', () => {
+  const run = [c(3), c(4, 'star'), c(5), c(6, 'sword'), phoenix];
+
+  it('defaults high, and plays low when asked', () => {
+    expect(identifyCombo(run)!.rank).toBe(7);
+    expect(identifyCombo(run, 2)!.rank).toBe(6);
+    expect(identifyCombo(run, 7)!.rank).toBe(7);
+  });
+
+  it('offers both ends when both are possible', () => {
+    const ch = phoenixStraightChoices(run)!;
+    expect(ch.lowAs).toBe(2);
+    expect(ch.highAs).toBe(7);
+    expect(ch.low.rank).toBe(6);
+    expect(ch.high.rank).toBe(7);
+  });
+
+  it('offers no choice when only one reading exists', () => {
+    // Fills a gap.
+    expect(phoenixStraightChoices([c(3), c(4, 'star'), c(6), c(7, 'sword'), phoenix])).toBeNull();
+    // Already reaches the Ace: it can only go low.
+    expect(phoenixStraightChoices([c(11), c(12, 'star'), c(13), c(14, 'sword'), phoenix])).toBeNull();
+    // Starts at the Mah Jong: the Phoenix can't be a 1... nor below it.
+    expect(phoenixStraightChoices([mahjong, c(2, 'star'), c(3), c(4, 'sword'), phoenix])).toBeNull();
+    // Starts at 2: the Phoenix can't be a 1 either.
+    expect(phoenixStraightChoices([c(2), c(3, 'star'), c(4), c(5, 'sword'), phoenix])).toBeNull();
+    // No Phoenix.
+    expect(phoenixStraightChoices([c(2), c(3, 'star'), c(4), c(5, 'sword'), c(6)])).toBeNull();
+  });
+
+  it('ignores a low hint the cards can\'t take', () => {
+    expect(identifyCombo([c(2), c(3, 'star'), c(4), c(5, 'sword'), phoenix], 1 as any)!.rank).toBe(6);
   });
 });

@@ -713,3 +713,16 @@ describe('concession offers', () => {
     expect(offerConcede(state, 0).state).toBe(state);
   });
 });
+
+describe('playing the Phoenix low in a straight', () => {
+  const run = [c(3), c(4, 'star'), c(5), c(6, 'sword'), { type: 'special', name: 'phoenix' } as Card];
+  const state = () => makeState({
+    players: [makePlayer(0, { hand: [...run, c(9)] }), makePlayer(1), makePlayer(2), makePlayer(3)],
+    turnIndex: 0, currentTrick: null,
+  });
+
+  it('takes the low reading when asked, the high one by default', () => {
+    expect(playCards(state(), 0, run, 2).state.currentTrick!.rank).toBe(6);
+    expect(playCards(state(), 0, run).state.currentTrick!.rank).toBe(7);
+  });
+});

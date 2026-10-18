@@ -280,8 +280,9 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('undo-pass');
   }, []);
 
-  const playCards = useCallback((cards: Card[]) => {
-    socketRef.current?.emit('play-cards', { cards });
+  /** `phoenixAs`: which rank the Phoenix stands for when a straight could take it at either end. */
+  const playCards = useCallback((cards: Card[], phoenixAs?: NormalRank) => {
+    socketRef.current?.emit('play-cards', phoenixAs ? { cards, phoenixAs } : { cards });
   }, []);
 
   const passTurnAction = useCallback(() => {

@@ -408,15 +408,19 @@ export function setupHandlers(io: Server): Promise<void> {
       broadcastState(io, room);
     });
 
-    guarded(socket, 'play-cards', ({ cards }: { cards: unknown }) => {
+    guarded(socket, 'play-cards', ({ cards, phoenixAs }: { cards: unknown; phoenixAs?: unknown }) => {
       if (!isValidCardArray(cards)) {
         socket.emit('error', { message: 'Invalid card data' });
         return;
       }
+      // Optional: which rank the Phoenix stands for in a straight it could
+      // extend at either end. Anything else is ignored (default reading).
+      const phoenixRank = Number.isInteger(phoenixAs) && (phoenixAs as number) >= 2 && (phoenixAs as number) <= 14
+        ? phoenixAs as NormalRank : undefined;
       const found = getRoomBySocket(socket.id);
       if (!found) return;
       const { room, seat } = found;
-      const result = handlePlayCards(room, seat, cards);
+      const result = handlePlayCards(room, seat, cards, phoenixRank);
       processPlayResult(io, room, seat, result);
     });
 
