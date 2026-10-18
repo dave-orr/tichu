@@ -551,6 +551,63 @@ icons['unstoppable'] = badge(SKY, layer(
         f'<path d="M42 94 L84 96" stroke="{STONE_DK}" stroke-width="2.4"/>')
 )
 
+# ---- The Last Word: trailing into the final hand, make your call and win
+# the match on it. A calligraphy brush finishes 終 ("the end"): the
+# character is written in black ink, and its final stroke, still wet in
+# vermilion, ends right under the brush as it lifts away.
+VERMILION, VERMILION_DK = '#E34234', '#A8281C'
+# 終 ("end, final"), traced from Noto Serif SC Black (SIL Open Font License
+# 1.1, (c) Google) so it renders the same everywhere; 100-unit em box.
+ZHONG = 'M48.5 75.8Q61.0 74.7 69.0 76.0Q77.1 77.4 81.5 80.1Q85.9 82.8 87.3 85.9Q88.7 89.0 87.8 91.6Q86.9 94.3 84.3 95.5Q81.7 96.7 78.2 95.5Q75.9 93.0 71.5 89.6Q67.2 86.3 61.2 82.9Q55.3 79.5 48.3 76.9ZM71.6 7.7Q71.3 8.7 70.3 9.3Q69.3 10.0 67.6 9.8Q62.2 21.5 54.9 29.7Q47.7 37.9 38.8 43.1L37.7 42.4Q41.0 37.5 44.1 31.1Q47.2 24.6 49.7 17.2Q52.2 9.8 53.7 2.2ZM57.9 56.7Q66.2 56.5 71.0 58.0Q75.8 59.5 77.7 61.9Q79.7 64.4 79.4 66.9Q79.2 69.5 77.4 71.3Q75.6 73.2 72.8 73.6Q70.1 74.0 67.2 72.1Q66.5 69.7 63.9 65.6Q61.4 61.5 57.2 57.9ZM55.4 21.5Q60.6 30.9 72.1 36.7Q83.6 42.5 99.3 45.0L99.1 46.1Q94.6 48.0 92.5 51.5Q90.4 54.9 89.8 60.3Q80.1 56.5 73.4 51.0Q66.7 45.5 62.2 38.4Q57.8 31.2 54.6 23.0ZM73.2 18.0 80.7 10.7 92.9 21.3Q92.4 22.2 91.5 22.5Q90.6 22.8 88.8 23.0Q84.4 31.6 77.3 38.9Q70.3 46.1 60.6 51.6Q51.0 57.0 38.7 60.4L38.0 59.2Q46.9 54.6 54.1 48.1Q61.4 41.6 66.5 34.0Q71.7 26.2 74.4 18.0ZM79.8 18.0V20.7H52.9L54.2 18.0ZM44.9 28.1Q44.3 29.0 42.7 29.3Q41.2 29.6 38.8 28.5L42.0 27.9Q39.6 31.2 35.8 35.4Q32.0 39.5 27.3 43.8Q22.6 48.0 17.7 51.8Q12.9 55.6 8.4 58.2L8.3 56.9H14.1Q13.6 62.3 11.9 65.3Q10.2 68.3 8.0 69.1L3.3 55.1Q3.3 55.1 4.8 54.8Q6.3 54.4 7.2 53.6Q10.2 51.4 13.7 47.2Q17.2 43.0 20.6 37.8Q24.0 32.6 26.7 27.5Q29.4 22.5 30.7 18.5ZM34.7 10.6Q34.3 11.5 32.8 11.9Q31.4 12.3 28.8 11.5L32.1 11.0Q29.5 14.5 25.4 18.6Q21.4 22.7 16.8 26.5Q12.3 30.2 8.3 32.5L8.2 31.4H14.3Q14.0 36.5 12.6 39.5Q11.2 42.5 9.1 43.4L3.4 29.7Q3.4 29.7 4.7 29.4Q6.0 29.0 6.7 28.5Q8.4 26.9 10.3 23.8Q12.2 20.7 13.9 16.9Q15.7 13.0 17.0 9.3Q18.4 5.5 19.0 2.7ZM13.0 68.3Q16.5 76.3 16.5 82.1Q16.6 88.1 14.3 91.3Q13.1 92.8 10.9 93.1Q8.8 93.5 6.7 92.6Q4.7 91.8 3.6 89.7Q2.4 86.9 3.4 84.4Q4.5 82.0 7.0 80.4Q8.1 79.2 9.3 77.2Q10.6 75.2 11.3 72.8Q12.1 70.5 11.7 68.3ZM30.8 66.4Q36.7 68.2 39.9 70.7Q43.1 73.3 44.2 75.9Q45.3 78.6 44.8 80.8Q44.3 83.1 42.7 84.4Q41.1 85.7 38.9 85.6Q36.8 85.6 34.6 83.6Q34.7 80.7 34.0 77.7Q33.3 74.7 32.2 71.9Q31.1 69.1 29.8 66.9ZM20.8 67.5Q26.8 71.3 29.1 75.2Q31.5 79.2 31.2 82.5Q31.0 85.8 29.1 87.7Q27.2 89.7 24.6 89.6Q22.0 89.5 19.7 86.6Q20.6 81.9 20.5 76.8Q20.4 71.8 19.6 67.8ZM28.1 46.4Q35.3 48.5 38.7 51.7Q42.1 54.9 42.7 57.9Q43.3 61.0 41.9 63.1Q40.5 65.3 38.0 65.6Q35.5 66.1 32.8 63.8Q32.6 60.9 31.7 57.8Q30.8 54.8 29.6 51.9Q28.4 49.0 27.1 46.9ZM5.6 55.3Q8.4 55.1 13.3 54.9Q18.3 54.6 24.5 54.3Q30.8 53.9 37.3 53.5L37.4 54.6Q33.4 56.7 26.0 60.2Q18.7 63.8 9.5 67.4ZM4.6 30.4Q7.1 30.5 11.4 30.5Q15.8 30.5 21.1 30.5Q26.5 30.5 32.0 30.4V31.5Q28.9 33.3 22.8 36.2Q16.7 39.1 9.3 42.3Z'
+# Split the glyph's outline into its strokes; the first subpath is the
+# final stroke in writing order (the long lower dot of 冬).
+ZHONG_PARTS = ['M' + p for p in ZHONG.split('M') if p.strip()]
+ZHONG_LAST, ZHONG_REST = ZHONG_PARTS[0], ''.join(ZHONG_PARTS[1:])
+GLYPH = 'translate(20 22) scale(0.8)'
+icons['last-word'] = badge(CREAM, layer(
+    f'<circle cx="62" cy="64" r="44" fill="{PAPER}" stroke="none" opacity="0.7"/>'),
+    layer(  # the character so far, in black ink
+        f'<path d="{ZHONG_REST}" fill="{INK}" stroke="none" transform="{GLYPH}"/>')
+    + layer(  # the final stroke, fresh vermilion, with a wet highlight
+        f'<path d="{ZHONG_LAST}" fill="{VERMILION}" stroke="none" transform="{GLYPH}"/>'
+        f'<path d="M62 86 Q74 88 84 96" fill="none" stroke="{CREAM}" stroke-width="1.4" opacity="0.6"/>')
+    + layer(  # a big brush (drawn pointing down, then tilted) whose tip sits
+              # on the end of the stroke; the handle runs off the badge.
+        '<g transform="translate(86 97) rotate(30)">'
+        f'<rect x="-7" y="-160" width="14" height="122" rx="3" fill="{OCHRE}"/>'
+        f'<rect x="-4" y="-160" width="3" height="120" fill="{CREAM}" stroke="none" opacity="0.45"/>'
+        f'<rect x="-9" y="-44" width="18" height="11" rx="2" fill="{CRIMSON}"/>'
+        f'<path d="M0 0 C-4 -7 -10 -18 -10 -27 Q-10 -33 -7 -35 L7 -35 Q10 -33 10 -27 C10 -18 4 -7 0 0 Z" fill="{INK}"/>'
+        f'<path d="M0 0 C-2 -4 -4 -8 -5 -11 L5 -11 C4 -8 2 -4 0 0 Z" fill="{VERMILION}" stroke="none"/>'
+        '</g>')
+    + layer(sparkle(26, 104, 2.4, OCHRE))
+)
+
+# ---- With a Flourish: a Grand made on the match-winning hand, 400+ ahead:
+# a golden fan snaps open over a radiant crown.
+rays = ''.join(
+    f'<path d="M64 84 L{64 + 56 * math.cos(math.radians(a - 4)):.1f} {84 + 56 * math.sin(math.radians(a - 4)):.1f} '
+    f'L{64 + 56 * math.cos(math.radians(a + 4)):.1f} {84 + 56 * math.sin(math.radians(a + 4)):.1f} Z" fill="{OCHRE}" stroke="none" opacity="0.35"/>'
+    for a in range(-180, 1, 20))
+ribs = ''.join(
+    f'<path d="M64 74 L{64 + 44 * math.cos(math.radians(a)):.1f} {74 + 44 * math.sin(math.radians(a)):.1f}" stroke="{OCHRE_DK}" stroke-width="1.4"/>'
+    for a in range(-170, -9, 16))
+fan_pts = ' '.join(f'{64 + 44 * math.cos(math.radians(a)):.1f} {74 + 44 * math.sin(math.radians(a)):.1f}' for a in range(-172, -7, 4))
+icons['with-a-flourish'] = badge(INDIGO, layer(rays),
+    layer(  # the fan: a gold half-disc of pleats with a red lacquer guard
+        f'<path d="M64 74 L{fan_pts} Z" fill="{OCHRE}"/>'
+        f'<path d="M{" ".join(f"{64 + 30 * math.cos(math.radians(a)):.1f} {74 + 30 * math.sin(math.radians(a)):.1f}" for a in range(-172, -7, 4))}" '
+        f'fill="none" stroke="{CREAM}" stroke-width="2.4" opacity="0.8"/>'
+        + ribs +
+        f'<circle cx="64" cy="74" r="3.5" fill="{CRIMSON}"/>')
+    + layer(  # the radiant Grand crown below
+        f'<path d="M40 112 L36 86 L50 96 L64 80 L78 96 L92 86 L88 112 Z" fill="{BLUE}"/>'
+        f'<path d="M40 112 L88 112 L88 106 L40 106 Z" fill="{OCHRE}"/>'
+        f'<circle cx="36" cy="84" r="3.2" fill="{OCHRE}"/><circle cx="64" cy="78" r="3.6" fill="{OCHRE}"/><circle cx="92" cy="84" r="3.2" fill="{OCHRE}"/>'
+        f'<circle cx="64" cy="100" r="3.4" fill="{CRIMSON}"/>')
+    + layer(sparkle(24, 60, 4, CREAM), sparkle(104, 60, 4, CREAM), sparkle(64, 22, 3.5, CREAM))
+)
+
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for name, svg in icons.items():

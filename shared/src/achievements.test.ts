@@ -289,3 +289,38 @@ describe('win streaks', () => {
     expect(currentWinStreak(games([true, true, false]).map(r => r.summary), 'A')).toBe(0);
   });
 });
+
+describe('match-winning hand', () => {
+  // Team 0 (A seat 0 + C seat 2) wins the game on round 2.
+  const game = (before: [number, number], final: [number, number], call: 'small' | 'grand', outOrder: Seat[] = [0, 1, 2]) => {
+    const rounds = [
+      round('g', 1, { before: [0, 0], after: before }),
+      round('g', 2, { before, after: final, calls: { 0: call }, outOrder }),
+    ];
+    return achievementEvents(rounds, { winningTeam: 0, finalScores: final });
+  };
+  const ids = (events: ReturnType<typeof achievementEvents>, id: string) => events.filter(e => e.id === id);
+
+  it('The Last Word: trailing into the final hand, make the call and win', () => {
+    const e = ids(game([700, 800], [1020, 900], 'small'), 'last-word');
+    expect(e).toEqual([{ id: 'last-word', seats: [0], roundNumber: 2 }]);
+    expect(ids(game([800, 700], [1020, 900], 'small'), 'last-word')).toEqual([]);   // was ahead
+    expect(ids(game([700, 800], [1020, 900], 'small', [1, 0, 2]), 'last-word')).toEqual([]); // call failed
+  });
+
+  it('With a Flourish: a made Grand on the winning hand, 400+ ahead', () => {
+    expect(ids(game([800, 500], [1200, 500], 'grand'), 'with-a-flourish')).toHaveLength(1);
+    expect(ids(game([800, 500], [1100, 750], 'grand'), 'with-a-flourish')).toEqual([]); // only 350 ahead
+    expect(ids(game([800, 300], [1100, 300], 'small'), 'with-a-flourish')).toEqual([]); // Tichu, not Grand
+  });
+
+  it('counts for the caller on the stats page', () => {
+    const rounds = [
+      round('g', 1, { before: [0, 0], after: [700, 800] }),
+      round('g', 2, { before: [700, 800], after: [1020, 900], calls: { 0: 'small' } }),
+    ];
+    const records = [{ summary: summary('g', { finalScores: [1020, 900] }), rounds }];
+    expect(counts(records, 'A')['last-word']).toBe(1);
+    expect(counts(records, 'C')['last-word']).toBe(0);
+  });
+});
