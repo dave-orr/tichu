@@ -309,7 +309,11 @@ export function trickCountdownDuration(state: GameState): number {
   return bombPossible ? TRICK_COUNTDOWN_MS : TRICK_COUNTDOWN_FAST_MS;
 }
 
-export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResult {
+/**
+ * `phoenixAs`: the rank the Phoenix stands for where the cards could be read
+ * more than one way (see phoenixStraightChoices); omitted, the default reading.
+ */
+export function playCards(state: GameState, seat: Seat, cards: Card[], phoenixAs?: NormalRank): PlayResult {
   if (state.phase !== 'playing') return { state };
   if (state.turnIndex !== seat) return { state };
   if (state.dragonGiveaway) return { state };
@@ -336,7 +340,7 @@ export function playCards(state: GameState, seat: Seat, cards: Card[]): PlayResu
   }
 
   // Identify the combination
-  const combo = identifyCombo(cards);
+  const combo = identifyCombo(cards, phoenixAs);
   if (!combo) return { state };
 
   // Phoenix as a single takes rank of current trick + 0.5

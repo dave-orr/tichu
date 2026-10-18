@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, RANK_NAMES } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, phoenixStraightChoices, RANK_NAMES } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -257,6 +257,17 @@ export default function Game({ socket, auth }: Props) {
     return true;
   }, [isMyTurn, selectedCombo, currentTrick, mustPlayWish, gameState?.mahJongWish]);
 
+  // A straight the Phoenix could extend at either end (3-4-5-6 + Phoenix is
+  // 2-6 or 3-7): when both readings are legal plays, Play asks which. The
+  // high one beats whatever the low one does, so the low one decides.
+  const phoenixChoice = useMemo(() => {
+    const choice = phoenixStraightChoices(selectedCardList);
+    if (!choice || (currentTrick !== null && !canBeat(currentTrick, choice.low))) return null;
+    return choice;
+  }, [selectedCardList, currentTrick]);
+  const [showPhoenixChoice, setShowPhoenixChoice] = useState(false);
+  useEffect(() => setShowPhoenixChoice(false), [selectedCardList]);
+
   const canBombNow = useMemo(() => {
     if (phase !== 'playing' || selectedCardList.length < 4) return false;
     // The engine refuses bombs while a wish is being chosen or a Dragon trick
@@ -423,10 +434,15 @@ export default function Game({ socket, auth }: Props) {
     }).catch(() => { /* clipboard unavailable — ignore */ });
   };
 
-  const handlePlay = () => {
+  const handlePlay = (phoenixAs?: NormalRank) => {
     if (!canPlay) return;
-    socket.playCards(selectedCardList);
+    if (phoenixChoice && phoenixAs === undefined) {
+      setShowPhoenixChoice(true);
+      return;
+    }
+    socket.playCards(selectedCardList, phoenixAs);
     setSelectedCards(new Set());
+    setShowPhoenixChoice(false);
   };
 
   const enterBombMode = () => {
@@ -1000,6 +1016,25 @@ export default function Game({ socket, auth }: Props) {
             Confirm flows render as popovers above the bar — no layout shift. */}
         {phase === 'playing' && (
           <div className="relative mt-1">
+            {showPhoenixChoice && phoenixChoice && (
+              <div className="surface !bg-gray-900/95 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 px-4 py-3 flex items-center gap-3 whitespace-nowrap">
+                <span className="text-2xl text-cream">Play the Phoenix as</span>
+                {[
+                  { as: phoenixChoice.lowAs, from: phoenixChoice.lowAs, to: phoenixChoice.highAs - 1 },
+                  { as: phoenixChoice.highAs, from: phoenixChoice.lowAs + 1, to: phoenixChoice.highAs },
+                ].map(({ as, from, to }) => (
+                  <button
+                    key={as}
+                    onClick={() => handlePlay(as)}
+                    className="btn btn-primary shrink-0 py-1 px-4 text-base"
+                  >
+                    {RANK_NAMES[as]}{' '}
+                    <span className="font-semibold opacity-75">({RANK_NAMES[from as NormalRank]}–{RANK_NAMES[to as NormalRank]})</span>
+                  </button>
+                ))}
+                <button onClick={() => setShowPhoenixChoice(false)} className="btn btn-quiet shrink-0 py-1 px-4 text-base">Cancel</button>
+              </div>
+            )}
             {showTichuConfirm && (
               <ConfirmPopover
                 message={`${players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
@@ -1047,7 +1082,7 @@ export default function Game({ socket, auth }: Props) {
                 ) : (
                   <>
                     <button
-                      onClick={handlePlay}
+                      onClick={() => handlePlay()}
                       disabled={!canPlayNow}
                       className="btn btn-play py-2 px-8"
                     >

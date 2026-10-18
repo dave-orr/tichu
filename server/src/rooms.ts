@@ -852,8 +852,8 @@ function recordPlay(room: Room, prev: GameState, seat: Seat, cards: Card[]): voi
   if (combo && isBomb(combo)) acc.bombs.push({ seat, cards: [...cards] });
 }
 
-export function handlePlayCards(room: Room, seat: Seat, cards: Card[]): PlayResult {
-  const result = playCards(room.state, seat, cards);
+export function handlePlayCards(room: Room, seat: Seat, cards: Card[], phoenixAs?: NormalRank): PlayResult {
+  const result = playCards(room.state, seat, cards, phoenixAs);
   if (result.state !== room.state) recordPlay(room, room.state, seat, cards);
   return result;
 }
