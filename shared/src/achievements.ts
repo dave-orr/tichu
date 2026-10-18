@@ -25,7 +25,9 @@ export type AchievementId =
   | 'super-partner'
   | 'gift-horse'
   | 'hot-streak'
-  | 'unstoppable';
+  | 'unstoppable'
+  | 'last-word'
+  | 'with-a-flourish';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -41,6 +43,9 @@ export type AchievementDef = {
 /** Win streak lengths that earn Hot Streak and Unstoppable. */
 export const HOT_STREAK = 5;
 export const UNSTOPPABLE_STREAK = 10;
+
+/** With a Flourish: winning margin at least this. */
+export const FLOURISH_MARGIN = 400;
 
 /** Photo Finish: winning margin at most this. */
 export const PHOTO_FINISH_MARGIN = 10;
@@ -81,6 +86,16 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   },
   { id: 'hot-streak', name: 'Hot Streak', description: `Win ${HOT_STREAK} games in a row` },
   { id: 'unstoppable', name: 'Unstoppable', description: `Win ${UNSTOPPABLE_STREAK} games in a row` },
+  {
+    id: 'last-word',
+    name: 'The Last Word',
+    description: 'Trailing going into the final hand, make your Tichu or Grand and win the match on it',
+  },
+  {
+    id: 'with-a-flourish',
+    name: 'With a Flourish',
+    description: `Make a Grand on the match-winning hand and finish ${FLOURISH_MARGIN}+ points ahead`,
+  },
 ];
 
 export type AchievementCount = {
@@ -209,6 +224,19 @@ export function achievementEvents(rounds: readonly RoundLog[], outcome?: GameOut
     if (outcome.finalScores[team] - outcome.finalScores[other] <= PHOTO_FINISH_MARGIN) game('photo-finish');
     if (sorted.length > 0 && sorted.every(r => r.scoresAfterRound[team] > r.scoresAfterRound[other])) {
       game('wire-to-wire');
+    }
+
+    // The match-winning hand: the winners' made calls on it. These belong to
+    // the caller (and that round), not the whole team.
+    const last = sorted.at(-1);
+    if (last) {
+      const margin = outcome.finalScores[team] - outcome.finalScores[other];
+      for (const pl of last.players) {
+        if (pl.team !== team || pl.tichuCall === 'none' || pl.outOrder !== 1) continue;
+        const mine = (id: AchievementId) => events.push({ id, seats: [pl.seat], roundNumber: last.roundNumber });
+        if (last.scoresBeforeRound[team] < last.scoresBeforeRound[other]) mine('last-word');
+        if (pl.tichuCall === 'grand' && margin >= FLOURISH_MARGIN) mine('with-a-flourish');
+      }
     }
   }
 
