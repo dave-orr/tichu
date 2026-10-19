@@ -4,6 +4,8 @@ import App from './App.js';
 import '@fontsource-variable/fraunces/soft.css';
 import '@fontsource-variable/nunito';
 import '@fontsource/creepster';
+import '@fontsource/cormorant-garamond/600.css';
+import '@fontsource/cormorant-garamond/700.css';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

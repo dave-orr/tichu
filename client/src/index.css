@@ -203,6 +203,72 @@ h1, h2, h3 {
 [data-theme="halloween"] .court-frame { border-color: rgb(242 133 31 / 0.8); }
 [data-theme="halloween"] .card-back { background-image: url('/cards/halloween/back.svg'); }
 
+/* ===== Classic Baroque theme =====
+   A dark theme: jade lacquer table, gold keylines on the chrome, and the
+   painted full-face cards (cards/baroque/, drawn whole by Card.tsx). Seat
+   panels read as framed plaques and Tichu calls as red seal stamps. */
+[data-theme="baroque"] .table-felt {
+  background-color: rgb(var(--c-felt-dark));
+  background-image:
+    var(--felt-grain),
+    repeating-linear-gradient(45deg, rgb(212 169 69 / 0.035) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-45deg, rgb(212 169 69 / 0.035) 0 1px, transparent 1px 22px),
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgb(var(--c-felt)) 0%, rgb(var(--c-felt-dark)) 100%);
+}
+[data-theme="baroque"] .font-display, [data-theme="baroque"] h1, [data-theme="baroque"] h2, [data-theme="baroque"] h3 {
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+[data-theme="baroque"] .surface {
+  background-color: rgb(13 22 18 / 0.72);
+  box-shadow: inset 0 0 0 1px rgb(212 169 69 / 0.45), inset 0 0 0 4px rgb(13 22 18 / 0.72), inset 0 0 0 5px rgb(212 169 69 / 0.18), 0 8px 20px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="baroque"] [data-seat-panel] {
+  background-color: rgb(13 22 18 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(212 169 69 / 0.4), inset 0 0 0 5px rgb(13 22 18 / 0.55), inset 0 0 0 6px rgb(212 169 69 / 0.16), 0 10px 24px -10px rgb(0 0 0 / 0.6);
+}
+[data-theme="baroque"] .btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2em;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 0 0 1px rgb(241 220 156 / 0.35), 0 4px 0 var(--edge, rgba(0, 0, 0, 0.35)), 0 6px 12px -4px rgba(0, 0, 0, 0.5);
+}
+[data-theme="baroque"] .btn:disabled { box-shadow: none; }
+[data-theme="baroque"] .btn-pass { --edge: #B5A684; }
+[data-theme="baroque"] .tichu-badge {
+  @apply font-display;
+  background-color: rgb(var(--c-clay));
+  color: rgb(var(--c-cream));
+  font-size: 1.35rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 3px;
+  transform: rotate(-6deg);
+  box-shadow: inset 0 0 0 1.5px #F6EEDC, inset 0 0 0 2.5px rgb(var(--c-clay-dark)), 0 2px 4px rgb(0 0 0 / 0.45);
+}
+[data-theme="baroque"] .tichu-badge-grand {
+  background-color: rgb(var(--c-clay-dark));
+  color: rgb(var(--c-ochre-light));
+  box-shadow: inset 0 0 0 1.5px rgb(var(--c-ochre)), inset 0 0 0 2.5px rgb(var(--c-clay-dark)), 0 2px 4px rgb(0 0 0 / 0.45);
+}
+/* Full-face cards: the art carries its own cream stock, border and rounded
+   (transparent) corners, so the card box adds only the shadow. */
+[data-theme="baroque"] .card.card-face {
+  background: none;
+  border-radius: 7% / 4.7%;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.35), -2px 0 4px -2px rgb(0 0 0 / 0.35), 0 5px 10px -3px rgb(0 0 0 / 0.55);
+}
+[data-theme="baroque"] .card.card-face:hover {
+  box-shadow: 0 2px 2px rgb(0 0 0 / 0.3), 0 10px 16px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="baroque"] .card.card-face.selected {
+  box-shadow: 0 0 0 3px rgb(var(--c-ochre)), 0 0 16px rgb(var(--c-ochre) / 0.55), 0 14px 20px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="baroque"] .card-back {
+  background-image: url('/cards/baroque/back.svg');
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.55);
+}
+
 /* Animations */
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }

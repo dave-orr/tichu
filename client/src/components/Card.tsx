@@ -1,5 +1,5 @@
 import { Card as CardType, RANK_NAMES, SPECIAL_NAMES, SpecialCardName } from '@tichu/shared';
-import { cardArt, useTheme } from '../theme.js';
+import { cardArt, faceArt, hasFullFaces, useTheme } from '../theme.js';
 
 type Props = {
   card: CardType;
@@ -43,6 +43,23 @@ export default function CardComponent({ card, selected, onClick, small, large, d
   // proportionally scaled glyphs, used for the player's own hand and pass slots.
   const theme = useTheme();
   const sizeClass = small ? 'w-16 h-24 text-xs' : large ? 'w-36 h-[216px]' : 'w-24 h-36';
+
+  if (hasFullFaces(theme)) {
+    // One painted image per card, indices and all. The art is 5:7; it fills
+    // the same 2:3 box as every other theme so hands and plays lay out alike.
+    const label = card.type === 'special' ? SPECIAL_NAMES[card.name] : `${RANK_NAMES[card.rank]} of ${card.suit}`;
+    return (
+      <div
+        className={`card card-face ${selected ? 'selected' : ''} ${sizeClass}`}
+        onClick={onClick}
+        draggable={draggable}
+        onDragStart={onDragStart}
+        aria-label={label}
+      >
+        <img src={faceArt(theme, card)} alt="" draggable={false} className="w-full h-full pointer-events-none select-none" />
+      </div>
+    );
+  }
 
   if (card.type === 'special') {
     return (

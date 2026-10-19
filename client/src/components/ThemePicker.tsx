@@ -26,7 +26,7 @@ export default function ThemePicker({ value, onChange, disabled, compact }: {
             title={t.description}
             disabled={disabled}
             onClick={() => onChange(t.id)}
-            className={`rounded-full px-3 py-1 font-bold ${compact ? 'text-base' : 'text-xl'} transition-colors ${
+            className={`whitespace-nowrap rounded-full px-3 py-1 font-bold ${compact ? 'text-base' : 'text-xl'} transition-colors ${
               value === t.id ? 'bg-ochre text-ink' : 'text-cream/70 hover:text-cream disabled:hover:text-cream/70'
             }`}
           >

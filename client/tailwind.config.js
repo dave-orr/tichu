@@ -29,44 +29,51 @@ const NIGHT_GRAY = ramp(['#F6EFFF', '#E9DFF5', '#D6C8E8', '#BBA9D3', '#9A88B4', 
 const PUMPKIN = ramp(['#FFF4E6', '#FFE4C2', '#FFCB8A', '#FFB15E', '#F99A3A', '#F2851F', '#D06E12', '#A8560E', '#80410C', '#5E300A', '#3A1D06']);
 // Kawaii: plum-to-white greys and a rose ramp for highlights, already in
 // light-theme order (50 = darkest text).
+// Classic Baroque: jade-black lacquer greys warming to parchment, and a
+// burnished gold ramp in place of ochre (sampled from the card art).
+const LACQUER_GRAY = ramp(['#FAF4E6', '#F1E8D4', '#E2D6BC', '#CABDA0', '#A3A48F', '#7A826F', '#556052', '#37463B', '#26332B', '#18231D', '#0D1612']);
+const GOLD = ramp(['#FFF9E8', '#FCF0CF', '#F6E0A2', '#EED07A', '#E5BF5A', '#D4A945', '#B88A2E', '#946C22', '#73521A', '#563D14', '#36260C']);
 const KAWAII_GRAY = ramp(['#3E3146', '#4A3D52', '#5B4B63', '#6E5E78', '#8A7B93', '#A597AD', '#C9BED0', '#E6DCEC', '#F6F0F9', '#FCF9FD', '#FFFFFF']);
 const ROSE = ramp(['#7A2843', '#8E3050', '#B03E64', '#D2507A', '#E06489', '#EC7C9C', '#F49AB3', '#F9BCCD', '#FCD9E3', '#FEEDF2', '#FFF7FA']);
 
 // Dark-theme version of a Tailwind ramp for Halloween: the dark end (panel
 // and tile shades) dimmed toward the night sky so it sits on the violet table.
+// Dark-theme version of a Tailwind ramp for Classic Baroque: panel shades
+// dimmed toward the jade lacquer so they sit on the table.
+const lacquered = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#14291F', 0.4) : r[s])));
 const nightfall = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#2C1E3E', 0.45) : r[s])));
-// Each entry: [papercraft, kawaii, halloween].
+// Each entry: [papercraft, kawaii, halloween, baroque].
 const RAMPS = {
-  gray: [PAPER_GRAY, KAWAII_GRAY, NIGHT_GRAY],
-  yellow: [OCHRE, ROSE, PUMPKIN],
-  ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n]), nightfall(colors[n])]])),
+  gray: [PAPER_GRAY, KAWAII_GRAY, NIGHT_GRAY, LACQUER_GRAY],
+  yellow: [OCHRE, ROSE, PUMPKIN, GOLD],
+  ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n]), nightfall(colors[n]), lacquered(colors[n])]])),
 };
 
-// Named tokens: [papercraft, kawaii, halloween].
+// Named tokens: [papercraft, kawaii, halloween, baroque].
 const TOKENS = {
-  felt: ['#2A6446', '#D3EEE2', '#2C1E3E'],
-  'felt-dark': ['#1D4A34', '#C2E5D6', '#160F20'],
-  ink: ['#2B2233', '#5B4B63', '#1E1428'],          // dark text on light buttons
-  paper: ['#F3EBDC', '#FFFFFF', '#F4EBDA'],        // light button / surface
-  cream: ['#FFF8EC', '#5B4B63', '#F6EFFF'],        // foreground on the table
-  'clay': ['#D97757', '#FF9AA9', '#8E5CD9'],
-  'clay-dark': ['#B85C3E', '#E8798B', '#5B3A9A'],
-  'clay-hover': ['#E2876A', '#FFAAB7', '#9D70E0'],
-  ochre: ['#E8AA38', '#FFB3C7', '#F2851F'],        // highlight: turn ring, primary action
-  'ochre-light': ['#F6CF7A', '#D2507A', '#FFB15E'], // highlighted text (on the table)
-  'ochre-dark': ['#B97F1E', '#F49AB0', '#B95A0E'],
-  sap: ['#5E9150', '#86D9B4', '#5DAF3E'],
-  'sap-dark': ['#456E3A', '#5DB893', '#3F8A2A'],
-  'sap-hover': ['#6CA25D', '#9BE3C2', '#6CC24A'],
-  brick: ['#C8443A', '#FF8A8A', '#C2352B'],
-  'brick-dark': ['#9C2F28', '#E06666', '#8A2018'],
-  'brick-hover': ['#D65247', '#FF9E9E', '#D2463B'],
-  good: ['#A9CF8A', '#2E9A6A', '#A6E67F'],         // made / captured points text
-  bad: ['#F08A7E', '#D9456A', '#FF8A7A'],          // failed text
-  grand: ['#8FB0F0', '#5B74D6', '#C4A2F2'],        // Grand Tichu label text
-  dragon: ['#8FCB9B', '#2E9A6A', '#A6E67F'],
-  white: ['#FFFFFF', '#5B4B63', '#FFFFFF'],
-  black: ['#000000', '#FFFFFF', '#000000'],
+  felt: ['#2A6446', '#D3EEE2', '#2C1E3E', '#1F4636'],
+  'felt-dark': ['#1D4A34', '#C2E5D6', '#160F20', '#0F241A'],
+  ink: ['#2B2233', '#5B4B63', '#1E1428', '#1E1A16'],          // dark text on light buttons
+  paper: ['#F3EBDC', '#FFFFFF', '#F4EBDA', '#F3EAD6'],        // light button / surface
+  cream: ['#FFF8EC', '#5B4B63', '#F6EFFF', '#F6EEDC'],        // foreground on the table
+  'clay': ['#D97757', '#FF9AA9', '#8E5CD9', '#A8322A'],
+  'clay-dark': ['#B85C3E', '#E8798B', '#5B3A9A', '#6E1512'],
+  'clay-hover': ['#E2876A', '#FFAAB7', '#9D70E0', '#BD4034'],
+  ochre: ['#E8AA38', '#FFB3C7', '#F2851F', '#D4A945'],        // highlight: turn ring, primary action
+  'ochre-light': ['#F6CF7A', '#D2507A', '#FFB15E', '#EBCB7A'], // highlighted text (on the table)
+  'ochre-dark': ['#B97F1E', '#F49AB0', '#B95A0E', '#8E6A20'],
+  sap: ['#5E9150', '#86D9B4', '#5DAF3E', '#2F7D55'],
+  'sap-dark': ['#456E3A', '#5DB893', '#3F8A2A', '#1B5035'],
+  'sap-hover': ['#6CA25D', '#9BE3C2', '#6CC24A', '#3A9065'],
+  brick: ['#C8443A', '#FF8A8A', '#C2352B', '#8E1B1B'],
+  'brick-dark': ['#9C2F28', '#E06666', '#8A2018', '#560E0E'],
+  'brick-hover': ['#D65247', '#FF9E9E', '#D2463B', '#A52626'],
+  good: ['#A9CF8A', '#2E9A6A', '#A6E67F', '#A9D39A'],         // made / captured points text
+  bad: ['#F08A7E', '#D9456A', '#FF8A7A', '#F08A7E'],          // failed text
+  grand: ['#8FB0F0', '#5B74D6', '#C4A2F2', '#EBCB7A'],        // Grand Tichu label text
+  dragon: ['#8FCB9B', '#2E9A6A', '#A6E67F', '#8FCB9B'],
+  white: ['#FFFFFF', '#5B4B63', '#FFFFFF', '#FFFFFF'],
+  black: ['#000000', '#FFFFFF', '#000000', '#000000'],
 };
 
 const v = name => `rgb(var(--c-${name}) / <alpha-value>)`;
@@ -112,6 +119,7 @@ export default {
         ':root': { ...vars(0), '--font-display': '"Fraunces Variable", Georgia, serif' },
         '[data-theme="kawaii"]': { ...vars(1), '--font-display': '"Nunito Variable", system-ui, sans-serif' },
         '[data-theme="halloween"]': { ...vars(2), '--font-display': 'Creepster, "Nunito Variable", system-ui, sans-serif' },
+        '[data-theme="baroque"]': { ...vars(3), '--font-display': '"Cormorant Garamond", Georgia, serif' },
       });
     }),
   ],
