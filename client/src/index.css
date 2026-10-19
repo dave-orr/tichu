@@ -268,6 +268,10 @@ h1, h2, h3 {
   background-image: url('/cards/baroque/back.svg');
   box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.55);
 }
+/* The Dragon's flight path and the Dog's paw prints in gold leaf. */
+[data-theme="baroque"] .dragon-arc { stroke: rgb(var(--c-ochre)); }
+[data-theme="baroque"] .dragon-arc-head { fill: rgb(var(--c-ochre)); }
+[data-theme="baroque"] .paw-print-ink { fill: rgb(var(--c-ochre-light)); opacity: 0.6; }
 
 /* Animations */
 @keyframes slide-up {
