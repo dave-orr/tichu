@@ -405,10 +405,11 @@ function DragonArrow({ event }: { event: GameEvent }) {
           <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
             <defs>
               <marker id={`dragon-arrow-${event.id}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M0 0 L10 5 L0 10 z" fill="#c084fc" />
+                <path className="dragon-arc-head" d="M0 0 L10 5 L0 10 z" fill="#c084fc" />
               </marker>
             </defs>
             <path
+              className="dragon-arc"
               d={path.d}
               fill="none"
               stroke="#c084fc"
@@ -491,7 +492,7 @@ function DogDash({ event }: { event: GameEvent }) {
               viewBox="0 0 24 24"
               aria-hidden="true"
             >
-              <g fill="#2B2233" opacity="0.45">
+              <g className="paw-print-ink" fill="#2B2233" opacity="0.45">
                 <ellipse cx="12" cy="15" rx="5" ry="4.2" />
                 <circle cx="6" cy="9" r="2.2" /><circle cx="10" cy="6" r="2.2" />
                 <circle cx="14" cy="6" r="2.2" /><circle cx="18" cy="9" r="2.2" />
