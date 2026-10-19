@@ -11,7 +11,7 @@ export default function TichuBadge({ call, status = 'pending' }: { call: TichuCa
     <span className="ml-1.5 inline-flex items-center align-middle gap-0.5">
       <span
         title={isGrand ? 'Grand Tichu' : 'Tichu'}
-        className={`inline-flex items-center text-lg font-extrabold rounded-md px-1.5 py-0.5 leading-none tracking-wide text-cream ${
+        className={`tichu-badge ${isGrand ? 'tichu-badge-grand' : ''} inline-flex items-center text-lg font-extrabold rounded-md px-1.5 py-0.5 leading-none tracking-wide text-cream ${
           isGrand
             ? 'bg-[#3B6FD6] shadow-[0_2px_0_#24489A]'
             : 'bg-sap shadow-[0_2px_0_rgb(var(--c-sap-dark))]'
