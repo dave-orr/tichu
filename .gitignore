@@ -14,3 +14,6 @@ server/stats-audit*.json
 
 # pm2 logs (see ecosystem.config.js)
 logs/
+
+# Anonymized round export for bot research; see server/src/scripts/exportRounds.ts
+server/rounds-export*.jsonl
