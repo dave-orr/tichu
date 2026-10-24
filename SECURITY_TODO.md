@@ -35,8 +35,11 @@ Findings from a security review of the Tichu codebase.
 ### React auto-escapes player names (safe for now)
 - Player names are rendered as text content in React, which escapes HTML. No current XSS risk, but if rendering ever moves to `dangerouslySetInnerHTML` or a non-React context, names would need sanitization.
 
-### npm audit reports 4 moderate vulnerabilities
-- Run `npm audit` and address the flagged packages. (As of 2026-05-31 `npm install` reports 31 vulnerabilities — 1 critical, 7 high — re-audit.)
+### npm audit: remaining findings need major upgrades
+Everything `npm audit fix` could reach is fixed (2026-10-24). What's left:
+- **Server — `firebase-admin` 13 → 14** clears 8 moderates (`uuid`, `google-gax`, `teeny-request` chain). The `uuid` bug needs a caller passing its own buffer to v3/v5/v6, which nothing here does. 14 requires Node 22 (we already do); test against real Firestore before deploying.
+- **Client — `firebase`'s `@grpc/grpc-js` 1.9** (4 highs). Even the latest `firebase` pins `~1.9`, so there's no fix to take; grpc-js is only used by the SDK's Node build, not the browser bundle we ship.
+- **Dev only — `vite` 5 → 8, `vitest` → 5, `tailwindcss` 3 → 4.** Build/test tooling that never runs on the server; each is a migration of its own.
 
 ---
 
