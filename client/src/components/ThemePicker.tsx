@@ -1,4 +1,27 @@
 import { THEMES, type Theme } from '@tichu/shared';
+import { cardArt, faceArt, hasFullFaces } from '../theme.js';
+
+// Each theme's Dragon card stock (the .special-dragon tint in index.css). The
+// preview sits outside that theme's [data-theme] scope, so it can't inherit it.
+const DRAGON_STOCK: Record<Theme, string> = {
+  papercraft: '#EAF4E6',
+  kawaii: '#EAFBF2',
+  halloween: '#E8F4DC',
+  baroque: '#FBF5E6',
+};
+
+/** A small Dragon card in the theme's art, so each option shows its look. */
+function ThemePreview({ theme, compact }: { theme: Theme; compact?: boolean }) {
+  const size = compact ? 'w-8 h-12' : 'w-12 h-[72px]';
+  if (hasFullFaces(theme)) {
+    return <img src={faceArt(theme, { type: 'special', name: 'dragon' })} alt="" className={`${size} shrink-0 rounded object-cover`} />;
+  }
+  return (
+    <span className={`${size} shrink-0 rounded flex items-center justify-center p-0.5`} style={{ backgroundColor: DRAGON_STOCK[theme] }}>
+      <img src={cardArt(theme, 'dragon.svg')} alt="" className="w-full h-full object-contain" />
+    </span>
+  );
+}
 
 /** Vertical choice list of table theme (GameSettings.theme), set by the room creator. */
 export default function ThemePicker({ value, onChange, disabled, compact }: {
@@ -26,10 +49,11 @@ export default function ThemePicker({ value, onChange, disabled, compact }: {
             title={t.description}
             disabled={disabled}
             onClick={() => onChange(t.id)}
-            className={`rounded-lg px-3 py-1 text-left font-bold ${compact ? 'text-base' : 'text-xl'} transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-2 py-1 text-left font-bold ${compact ? 'text-base' : 'text-xl'} transition-colors ${
               value === t.id ? 'bg-ochre text-ink' : 'text-cream/70 hover:text-cream disabled:hover:text-cream/70'
             }`}
           >
+            <ThemePreview theme={t.id} compact={compact} />
             {t.name}
           </button>
         ))}
