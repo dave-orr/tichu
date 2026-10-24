@@ -1,113 +1,102 @@
-import TargetScoreInput from './TargetScoreInput.js';
-import ThemePicker from './ThemePicker.js';
+import HouseRules, { RULES, SectionLabel, type RuleToggle } from './HouseRules.js';
+import ThemeGallery from './ThemeGallery.js';
 import { useState } from 'react';
-import type { GameSettings, Theme } from '@tichu/shared';
+import { DEFAULT_SETTINGS, type GameSettings, type Theme } from '@tichu/shared';
 
 type Props = {
+  playerName: string;
   initialSettings?: Partial<GameSettings>;
   initialRandomPartners?: boolean;
   onCreateRoom: (randomPartners: boolean, settings: GameSettings) => void;
   onBack: () => void;
 };
 
-export default function CreateRoomForm({ initialSettings, initialRandomPartners, onCreateRoom, onBack }: Props) {
+export default function CreateRoomForm({ playerName, initialSettings, initialRandomPartners, onCreateRoom, onBack }: Props) {
   const [randomPartners, setRandomPartners] = useState(initialRandomPartners ?? false);
-  const [countPoints, setCountPoints] = useState(initialSettings?.countPoints ?? false);
-  const [cardsSeen, setCardsSeen] = useState(initialSettings?.cardsSeen ?? false);
-  const [showPassedCards, setShowPassedCards] = useState(initialSettings?.showPassedCards ?? false);
-  const [clockwise, setClockwise] = useState(initialSettings?.clockwise ?? false);
-  const [targetScore, setTargetScore] = useState(initialSettings?.targetScore ?? 1000);
-  const [theme, setTheme] = useState<Theme>(initialSettings?.theme ?? 'papercraft');
+  const [toggles, setToggles] = useState<Record<RuleToggle, boolean>>({
+    countPoints: initialSettings?.countPoints ?? DEFAULT_SETTINGS.countPoints,
+    cardsSeen: initialSettings?.cardsSeen ?? DEFAULT_SETTINGS.cardsSeen,
+    showPassedCards: initialSettings?.showPassedCards ?? DEFAULT_SETTINGS.showPassedCards,
+    clockwise: initialSettings?.clockwise ?? DEFAULT_SETTINGS.clockwise,
+  });
+  const [targetScore, setTargetScore] = useState(initialSettings?.targetScore ?? DEFAULT_SETTINGS.targetScore);
+  const [theme, setTheme] = useState<Theme>(initialSettings?.theme ?? DEFAULT_SETTINGS.theme ?? 'papercraft');
+
+  const isDefault = !randomPartners
+    && RULES.every(r => toggles[r.key] === DEFAULT_SETTINGS[r.key])
+    && targetScore === DEFAULT_SETTINGS.targetScore
+    && theme === (DEFAULT_SETTINGS.theme ?? 'papercraft');
+
+  const resetToDefaults = () => {
+    setRandomPartners(false);
+    setToggles({
+      countPoints: DEFAULT_SETTINGS.countPoints,
+      cardsSeen: DEFAULT_SETTINGS.cardsSeen,
+      showPassedCards: DEFAULT_SETTINGS.showPassedCards,
+      clockwise: DEFAULT_SETTINGS.clockwise,
+    });
+    setTargetScore(DEFAULT_SETTINGS.targetScore);
+    setTheme(DEFAULT_SETTINGS.theme ?? 'papercraft');
+  };
 
   return (
-    <div className="space-y-4">
-      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
-        <input
-          type="checkbox"
-          checked={randomPartners}
-          onChange={e => setRandomPartners(e.target.checked)}
-          className="w-5 h-5 rounded accent-yellow-500"
-        />
-        <div>
-          <span className="font-semibold">Random Partners</span>
-          <p className="text-2xl text-gray-400">Randomly assign teams when the game starts</p>
+    <div className="w-full max-w-6xl">
+      {/* Header: back, title, reset */}
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={onBack} className="btn btn-quiet flex items-center gap-2 pl-3 pr-4 py-2 text-base">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+        <div className="flex-1 text-center">
+          <h1 className="text-3xl sm:text-4xl text-cream leading-tight">Set the Table</h1>
+          <p className="text-cream/60 mt-1">
+            New room, hosted by <span className="text-ochre-light font-semibold">{playerName}</span>
+          </p>
         </div>
-      </label>
-      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
-        <input
-          type="checkbox"
-          checked={countPoints}
-          onChange={e => setCountPoints(e.target.checked)}
-          className="w-5 h-5 rounded accent-yellow-500"
-        />
-        <div>
-          <span className="font-semibold">Count Points</span>
-          <p className="text-2xl text-gray-400">Show captured point totals by each player's name</p>
-        </div>
-      </label>
-      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
-        <input
-          type="checkbox"
-          checked={cardsSeen}
-          onChange={e => setCardsSeen(e.target.checked)}
-          className="w-5 h-5 rounded accent-yellow-500"
-        />
-        <div>
-          <span className="font-semibold">Cards Seen</span>
-          <p className="text-2xl text-gray-400">Show how many of each card remain unplayed</p>
-        </div>
-      </label>
-      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
-        <input
-          type="checkbox"
-          checked={showPassedCards}
-          onChange={e => setShowPassedCards(e.target.checked)}
-          className="w-5 h-5 rounded accent-yellow-500"
-        />
-        <div>
-          <span className="font-semibold">Show Passed Cards</span>
-          <p className="text-2xl text-gray-400">Show the cards you passed and received, beside your hand</p>
-        </div>
-      </label>
-      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 border border-gray-600">
-        <input
-          type="checkbox"
-          checked={clockwise}
-          onChange={e => setClockwise(e.target.checked)}
-          className="w-5 h-5 rounded accent-yellow-500"
-        />
-        <div>
-          <span className="font-semibold">Clockwise Play</span>
-          <p className="text-2xl text-gray-400">Play passes clockwise instead of counterclockwise</p>
-        </div>
-      </label>
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800 border border-gray-600">
-        <div className="flex-1">
-          <span className="font-semibold">Target Score</span>
-          <p className="text-2xl text-gray-400">Points needed to win the game</p>
-        </div>
-        <TargetScoreInput
-          value={targetScore}
-          onCommit={setTargetScore}
-          className="w-24 py-1 px-2 bg-gray-700 border border-gray-500 rounded text-center text-white"
-        />
+        <button
+          onClick={resetToDefaults}
+          disabled={isDefault}
+          aria-label="Reset to defaults"
+          className="btn btn-quiet flex items-center gap-2 px-4 py-2 text-base"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <polyline points="3 3 3 9 9 9" />
+          </svg>
+          <span className="hidden sm:inline">Reset to defaults</span>
+        </button>
       </div>
-      <ThemePicker value={theme} onChange={setTheme} />
-      <button
-        onClick={() => {
-          const settings = { countPoints, cardsSeen, showPassedCards, clockwise, targetScore, theme };
-          onCreateRoom(randomPartners, settings);
-        }}
-        className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-lg transition-colors"
-      >
-        Create Room
-      </button>
-      <button
-        onClick={onBack}
-        className="w-full py-2 text-gray-400 hover:text-white transition-colors"
-      >
-        Back
-      </button>
+
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_25rem] gap-8">
+        {/* Theme, then the call to action under it */}
+        <section className="flex flex-col">
+          <SectionLabel>Theme</SectionLabel>
+          <div className="flex-1">
+            <ThemeGallery value={theme} onChange={setTheme} />
+          </div>
+          <button
+            onClick={() => onCreateRoom(randomPartners, { ...toggles, targetScore, theme })}
+            className="btn btn-primary w-full mt-6 py-4 text-2xl"
+          >
+            Create Room
+          </button>
+        </section>
+
+        {/* Rules */}
+        <section>
+          <SectionLabel>House Rules</SectionLabel>
+          <HouseRules
+            randomPartners={randomPartners}
+            onRandomPartnersChange={setRandomPartners}
+            toggles={toggles}
+            onToggle={(key, value) => setToggles(prev => ({ ...prev, [key]: value }))}
+            targetScore={targetScore}
+            onTargetScoreChange={setTargetScore}
+          />
+        </section>
+      </div>
     </div>
   );
 }

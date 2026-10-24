@@ -116,7 +116,7 @@ export default {
   plugins: [
     plugin(({ addBase }) => {
       addBase({
-        ':root': { ...vars(0), '--font-display': '"Fraunces Variable", Georgia, serif' },
+        ':root, [data-theme="papercraft"]': { ...vars(0), '--font-display': '"Fraunces Variable", Georgia, serif' },
         '[data-theme="kawaii"]': { ...vars(1), '--font-display': '"Nunito Variable", system-ui, sans-serif' },
         '[data-theme="halloween"]': { ...vars(2), '--font-display': 'Creepster, "Nunito Variable", system-ui, sans-serif' },
         '[data-theme="baroque"]': { ...vars(3), '--font-display': '"Cormorant Garamond", Georgia, serif' },
