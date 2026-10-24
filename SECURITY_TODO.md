@@ -39,7 +39,8 @@ Findings from a security review of the Tichu codebase.
 Everything `npm audit fix` could reach is fixed (2026-10-24). What's left:
 - **Server — `firebase-admin` 13 → 14** clears 8 moderates (`uuid`, `google-gax`, `teeny-request` chain). The `uuid` bug needs a caller passing its own buffer to v3/v5/v6, which nothing here does. 14 requires Node 22 (we already do); test against real Firestore before deploying.
 - **Client — `firebase`'s `@grpc/grpc-js` 1.9** (4 highs). Even the latest `firebase` pins `~1.9`, so there's no fix to take; grpc-js is only used by the SDK's Node build, not the browser bundle we ship.
-- **Dev only — `vite` 5 → 8, `vitest` → 5, `tailwindcss` 3 → 4.** Build/test tooling that never runs on the server; each is a migration of its own.
+- **Dev only — `tailwindcss` 3 → 4** (2 moderates in its `postcss-selector-parser`, build-time only). A real migration: v4 moves config into CSS, and the theme system's `addBase` CSS-variable plugin and v3 defaults (border colours, shadow/ring scales) would need re-checking across all four themes.
+- **Dev only — `esbuild` 0.27.3 under Vite 8** (low): dev-server file read on Windows only; clears when Vite bumps its pin.
 
 ---
 
