@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@tichu/shared': path.resolve(__dirname, '../shared/src/index.ts'),
+      '@tichu/shared': path.resolve(import.meta.dirname, '../shared/src/index.ts'),
     },
   },
   server: {
