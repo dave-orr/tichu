@@ -1,6 +1,6 @@
 import { THEMES, type Theme } from '@tichu/shared';
 
-/** Segmented choice of table theme (GameSettings.theme), set by the room creator. */
+/** Vertical choice list of table theme (GameSettings.theme), set by the room creator. */
 export default function ThemePicker({ value, onChange, disabled, compact }: {
   value: Theme;
   onChange: (theme: Theme) => void;
@@ -16,7 +16,7 @@ export default function ThemePicker({ value, onChange, disabled, compact }: {
           {THEMES.find(t => t.id === value)?.description}
         </p>
       </div>
-      <div className="flex self-start rounded-full bg-gray-900/60 p-1 gap-1" role="radiogroup" aria-label="Theme">
+      <div className="flex flex-col rounded-xl bg-gray-900/60 p-1 gap-1" role="radiogroup" aria-label="Theme">
         {THEMES.filter(t => t.selectable || t.id === value).map(t => (
           <button
             key={t.id}
@@ -26,7 +26,7 @@ export default function ThemePicker({ value, onChange, disabled, compact }: {
             title={t.description}
             disabled={disabled}
             onClick={() => onChange(t.id)}
-            className={`whitespace-nowrap rounded-full px-3 py-1 font-bold ${compact ? 'text-base' : 'text-xl'} transition-colors ${
+            className={`rounded-lg px-3 py-1 text-left font-bold ${compact ? 'text-base' : 'text-xl'} transition-colors ${
               value === t.id ? 'bg-ochre text-ink' : 'text-cream/70 hover:text-cream disabled:hover:text-cream/70'
             }`}
           >
