@@ -334,6 +334,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('swap-seats', { seatA, seatB });
   }, []);
 
+  const shuffleSeats = useCallback(() => {
+    socketRef.current?.emit('shuffle-seats');
+  }, []);
+
   const closeRoom = useCallback(() => {
     socketRef.current?.emit('close-room');
   }, []);
@@ -497,6 +501,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     concedeDeclined,
     nextRound,
     swapSeats: swapSeatsAction,
+    shuffleSeats,
     closeRoom,
     updateSettings,
     autoSkippedSeat,

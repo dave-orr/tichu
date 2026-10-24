@@ -732,14 +732,21 @@ function shuffleSeats(room: Room): void {
   }
 }
 
-/** Swap two players' seats (organizer only) */
+/**
+ * Swap two seats (organizer only, waiting room). One of them may be empty, which
+ * moves the player into it. Refused for AI-reserved empty seats and for
+ * disconnected players, whose reconnect grace timer is keyed by seat.
+ */
 export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
   if (room.state.phase !== 'waiting') return false;
   if (seatA === seatB) return false;
 
   const socketA = room.seatPlayers.get(seatA);
   const socketB = room.seatPlayers.get(seatB);
-  if (!socketA || !socketB) return false;
+  if (!socketA && !socketB) return false;
+  if ((!socketA && room.aiOpenSeats.has(seatA)) || (!socketB && room.aiOpenSeats.has(seatB))) return false;
+  const disconnected = getDisconnectedSeats(room);
+  if (disconnected.includes(seatA) || disconnected.includes(seatB)) return false;
 
   // Swap in state (everything that identifies the person, not the seat)
   const a = room.state.players[seatA];
@@ -749,10 +756,10 @@ export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
   b.id = tmp.id; b.name = tmp.name; b.photoURL = tmp.photoURL; b.isAi = tmp.isAi;
 
   // Swap socket mappings
-  room.playerSockets.set(socketA, seatB);
-  room.playerSockets.set(socketB, seatA);
-  room.seatPlayers.set(seatA, socketB);
-  room.seatPlayers.set(seatB, socketA);
+  if (socketA) room.playerSockets.set(socketA, seatB);
+  if (socketB) room.playerSockets.set(socketB, seatA);
+  if (socketB) room.seatPlayers.set(seatA, socketB); else room.seatPlayers.delete(seatA);
+  if (socketA) room.seatPlayers.set(seatB, socketA); else room.seatPlayers.delete(seatB);
 
   // Swap session tokens so reconnection still maps to the right person
   const sessA = room.seatSessions.get(seatA);
@@ -766,6 +773,24 @@ export function swapSeats(room: Room, seatA: Seat, seatB: Seat): boolean {
   if (uidB !== undefined) room.seatUids.set(seatA, uidB); else room.seatUids.delete(seatA);
   if (uidA !== undefined) room.seatUids.set(seatB, uidA); else room.seatUids.delete(seatB);
 
+  return true;
+}
+
+/**
+ * Randomly rearrange the waiting room (organizer only): players and empty seats
+ * trade places, leaving AI-reserved seats where they are. Built from swaps so
+ * every seat-keyed map moves with its player. Refused while anyone is
+ * disconnected (see swapSeats).
+ */
+export function shuffleWaitingSeats(room: Room): boolean {
+  if (room.state.phase !== 'waiting') return false;
+  if (getDisconnectedSeats(room).length > 0) return false;
+  const seats = ([0, 1, 2, 3] as Seat[]).filter(s => room.seatPlayers.has(s) || !room.aiOpenSeats.has(s));
+  // Fisher-Yates over the seat list, applied as swaps (skipping empty-empty).
+  for (let i = seats.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    if (i !== j) swapSeats(room, seats[i], seats[j]);
+  }
   return true;
 }
 

@@ -52,6 +52,7 @@ export default function Lobby({ socket, auth }: Props) {
         aiOpenSeats={socket.aiOpenSeats}
         disconnectedSeats={socket.disconnectedSeats}
         onSwapSeats={socket.swapSeats}
+        onShuffleSeats={socket.shuffleSeats}
         onUpdateSettings={socket.updateSettings}
         onUpdateRandomPartners={socket.updateRandomPartners}
         onStartGame={socket.startGame}
@@ -64,6 +65,31 @@ export default function Lobby({ socket, auth }: Props) {
         sendInvite={socket.sendInvite}
         expiredInviteUids={socket.expiredInviteUids}
       />
+    );
+  }
+
+  if (mode === 'create') {
+    // Room setup gets the whole screen: a wide two-column layout, not the
+    // narrow menu card.
+    return (
+      <div className="table-felt min-h-screen flex flex-col items-center justify-center px-6 py-4">
+        {error && (
+          <div className="w-full max-w-6xl bg-red-900/50 border border-red-500 p-3 rounded-lg mb-6 text-center">
+            {error}
+          </div>
+        )}
+        <CreateRoomForm
+          playerName={playerName.trim()}
+          initialSettings={profile?.preferences.lastSettings}
+          initialRandomPartners={profile?.preferences.lastRandomPartners}
+          onCreateRoom={(randomPartners, settings) => {
+            socket.createRoom(playerName.trim(), randomPartners, settings, profile?.photoURL);
+            socket.saveSettings(settings, randomPartners);
+            auth.updateLastSettings(settings);
+          }}
+          onBack={() => setMode('menu')}
+        />
+      </div>
     );
   }
 
@@ -212,19 +238,6 @@ export default function Lobby({ socket, auth }: Props) {
           </div>
         )}
 
-        {mode === 'create' && (
-          <CreateRoomForm
-            initialSettings={profile?.preferences.lastSettings}
-            initialRandomPartners={profile?.preferences.lastRandomPartners}
-            onCreateRoom={(randomPartners, settings) => {
-              socket.createRoom(playerName.trim(), randomPartners, settings, profile?.photoURL);
-              socket.saveSettings(settings, randomPartners);
-              auth.updateLastSettings(settings);
-            }}
-            onBack={() => setMode('menu')}
-          />
-        )}
-
         {mode === 'join' && (
           <div className="space-y-4">
             <input
@@ -253,7 +266,7 @@ export default function Lobby({ socket, auth }: Props) {
             </button>
             <button
               onClick={() => setMode('menu')}
-              className="w-full py-2 text-gray-400 hover:text-white transition-colors"
+              className="btn btn-quiet w-full py-2"
             >
               Back
             </button>

@@ -159,6 +159,8 @@ h1, h2, h3 {
 [data-theme="kawaii"] .card.special-phoenix { background-color: #FFEFF3; color: #E5587A; }
 [data-theme="kawaii"] .card.special-dragon { background-color: #EAFBF2; color: #2E9A6A; }
 [data-theme="kawaii"] .court-frame { border-color: #F6C9D8; }
+/* Switch tracks are translucent black, which Kawaii inverts to white. */
+[data-theme="kawaii"] input:not(:checked) + .switch-track { background-color: rgb(var(--c-cream) / 0.18); }
 [data-theme="kawaii"] .card-back { background-image: url('/cards/kawaii/back.svg'); }
 
 /* ===== Halloween theme =====

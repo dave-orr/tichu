@@ -6,7 +6,7 @@ import {
   canStartGame, startGame, handleGrandTichu, handleSmallTichu,
   handlePassCards, handleUndoPass, handlePlayCards, handlePassTurn, handleBomb,
   handleDragonGiveaway, handleMahJongWish, handleConcede, handleRespondConcede, handleWithdrawConcede, applyPlayResult,
-  startNextRound, resetRoomForNewGame, swapSeats, Room, setSocketUid, getSocketUid,
+  startNextRound, resetRoomForNewGame, swapSeats, shuffleWaitingSeats, Room, setSocketUid, getSocketUid,
   getSocketForUid, isUidOnline, isUidAvailable,
   createInvite, removeInvite, getInvite, getInvitesForUser,
   clearInvitesForRoom, closeRoom,
@@ -625,6 +625,19 @@ export function setupHandlers(io: Server): Promise<void> {
         return;
       }
       if (swapSeats(room, seatA, seatB)) {
+        broadcastState(io, room);
+      }
+    });
+
+    guarded(socket, 'shuffle-seats', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can rearrange seats' });
+        return;
+      }
+      if (shuffleWaitingSeats(room)) {
         broadcastState(io, room);
       }
     });
