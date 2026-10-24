@@ -58,6 +58,12 @@ describe('identifyCombo', () => {
       expect(combo!.rank).toBe(10);
     });
 
+    it('ignores a forged phoenixAs on a phoenix pair', () => {
+      const combo = identifyCombo([c(2), phoenix], 14);
+      expect(combo!.type).toBe('pair');
+      expect(combo!.rank).toBe(2);
+    });
+
     it('rejects mismatched pair', () => {
       const combo = identifyCombo([c(7), c(8)]);
       expect(combo).toBeNull();
@@ -76,6 +82,12 @@ describe('identifyCombo', () => {
       expect(combo!.type).toBe('triple');
       expect(combo!.rank).toBe(9);
     });
+
+    it('ignores a forged phoenixAs on a phoenix triple', () => {
+      const combo = identifyCombo([c(3, 'jade'), c(3, 'sword'), phoenix], 14);
+      expect(combo!.type).toBe('triple');
+      expect(combo!.rank).toBe(3);
+    });
   });
 
   describe('full houses', () => {
@@ -89,6 +101,19 @@ describe('identifyCombo', () => {
       const combo = identifyCombo([c(8, 'jade'), c(8, 'sword'), c(8, 'pagoda'), c(3, 'jade'), phoenix]);
       expect(combo!.type).toBe('fullHouse');
       expect(combo!.rank).toBe(8);
+    });
+
+    it('lets phoenixAs pick which of two pairs becomes the triple', () => {
+      const cards = [c(3, 'jade'), c(3, 'sword'), c(9, 'jade'), c(9, 'sword'), phoenix];
+      expect(identifyCombo(cards)!.rank).toBe(9);
+      expect(identifyCombo(cards, 3)!.rank).toBe(3);
+    });
+
+    it('ignores a phoenixAs naming neither pair', () => {
+      const cards = [c(3, 'jade'), c(3, 'sword'), c(9, 'jade'), c(9, 'sword'), phoenix];
+      expect(identifyCombo(cards, 14)!.rank).toBe(9);
+      const withTriple = [c(3, 'jade'), c(3, 'sword'), c(3, 'pagoda'), c(9, 'jade'), phoenix];
+      expect(identifyCombo(withTriple, 14)!.rank).toBe(3);
     });
   });
 
@@ -154,6 +179,14 @@ describe('identifyCombo', () => {
         expect(combo!.type).toBe('straight');
         expect(combo!.rank).toBe(14); // (phoenix as 9)-10-11-12-13-14
         expect(combo!.length).toBe(6);
+      });
+
+      it('ignores a phoenixAs that is not a legal end of the run', () => {
+        const run = [c(5), c(6, 'sword'), c(7, 'pagoda'), c(8, 'star'), phoenix];
+        expect(identifyCombo(run, 14)!.rank).toBe(9);
+        expect(identifyCombo(run, 4)!.rank).toBe(8);
+        const gapped = [c(5), c(6, 'sword'), c(8, 'pagoda'), c(9, 'star'), phoenix];
+        expect(identifyCombo(gapped, 14)!.rank).toBe(9);
       });
     });
   });

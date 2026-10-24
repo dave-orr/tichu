@@ -70,8 +70,8 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
   const result =
     tryFourOfAKindBomb(cards, normalCards, hasPhoenix, ranks) ??
     tryStraightFlushBomb(cards, normalCards, hasPhoenix, mahjong) ??
-    tryPair(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
-    tryTriple(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
+    tryPair(cards, hasPhoenix, ranks) ??
+    tryTriple(cards, hasPhoenix, ranks) ??
     tryFullHouse(cards, normalCards, hasPhoenix, ranks, phoenixAs) ??
     tryConsecutivePairs(cards, normalCards, hasPhoenix, mahjong, ranks) ??
     tryStraight(cards, normalCards, hasPhoenix, mahjong, ranks, phoenixAs);
@@ -79,10 +79,9 @@ export function identifyCombo(cards: Card[], phoenixAs?: NormalRank): Combo | nu
   return result;
 }
 
-function tryPair(
-  cards: Card[], normalCards: NormalCard[], hasPhoenix: boolean,
-  ranks: number[], phoenixAs?: NormalRank
-): Combo | null {
+// Pairs and triples ignore phoenixAs: the Phoenix can only match the natural
+// cards, so there is one reading and a client-sent rank must not override it.
+function tryPair(cards: Card[], hasPhoenix: boolean, ranks: number[]): Combo | null {
   if (cards.length !== 2) return null;
 
   if (!hasPhoenix) {
@@ -95,16 +94,12 @@ function tryPair(
 
   // Phoenix + one normal card = pair of that rank
   if (ranks.length === 1) {
-    const rank = phoenixAs ?? ranks[0];
-    return { type: 'pair', cards, rank, length: 2 };
+    return { type: 'pair', cards, rank: ranks[0], length: 2 };
   }
   return null;
 }
 
-function tryTriple(
-  cards: Card[], normalCards: NormalCard[], hasPhoenix: boolean,
-  ranks: number[], phoenixAs?: NormalRank
-): Combo | null {
+function tryTriple(cards: Card[], hasPhoenix: boolean, ranks: number[]): Combo | null {
   if (cards.length !== 3) return null;
 
   if (!hasPhoenix) {
@@ -116,8 +111,7 @@ function tryTriple(
 
   // Phoenix + 2 of same rank
   if (ranks.length === 2 && ranks[0] === ranks[1]) {
-    const rank = phoenixAs ?? ranks[0];
-    return { type: 'triple', cards, rank, length: 3 };
+    return { type: 'triple', cards, rank: ranks[0], length: 3 };
   }
   return null;
 }
@@ -156,14 +150,9 @@ function tryFullHouse(
       return { type: 'fullHouse', cards, rank: r2, length: 5 };
     }
     if (c1 === 2 && c2 === 2) {
-      // Phoenix can join either pair to make triple
-      // Use phoenixAs hint, otherwise pick the higher rank as triple
-      if (phoenixAs != null) {
-        const tripleRank = phoenixAs === r1 ? r1 : r2;
-        return { type: 'fullHouse', cards, rank: tripleRank, length: 5 };
-      }
-      // Default: higher rank is the triple
-      const tripleRank = Math.max(r1, r2);
+      // Phoenix can join either pair to make triple, chosen by phoenixAs.
+      // A hint naming neither pair is ignored (higher rank is the triple).
+      const tripleRank = phoenixAs === r1 || phoenixAs === r2 ? phoenixAs : Math.max(r1, r2);
       return { type: 'fullHouse', cards, rank: tripleRank, length: 5 };
     }
   }

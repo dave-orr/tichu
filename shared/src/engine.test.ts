@@ -726,3 +726,30 @@ describe('playing the Phoenix low in a straight', () => {
     expect(playCards(state(), 0, run).state.currentTrick!.rank).toBe(7);
   });
 });
+
+describe('a forged phoenixAs cannot raise the Phoenix rank', () => {
+  const phx = { type: 'special', name: 'phoenix' } as Card;
+  const leadWith = (hand: Card[]) => makeState({
+    players: [makePlayer(0, { hand: [...hand, c(9)] }), makePlayer(1), makePlayer(2), makePlayer(3)],
+    turnIndex: 0, currentTrick: null,
+  });
+
+  it('keeps a Phoenix pair at the natural rank', () => {
+    expect(playCards(leadWith([c(2), phx]), 0, [c(2), phx], 14).state.currentTrick!.rank).toBe(2);
+  });
+
+  it('keeps a Phoenix triple at the natural rank', () => {
+    const cards = [c(3), c(3, 'star'), phx];
+    expect(playCards(leadWith(cards), 0, cards, 14).state.currentTrick!.rank).toBe(3);
+  });
+
+  it('cannot beat a higher pair with a forged rank', () => {
+    const state = makeState({
+      players: [makePlayer(0, { hand: [c(2), phx, c(9)] }), makePlayer(1), makePlayer(2), makePlayer(3)],
+      turnIndex: 0,
+      currentTrick: { type: 'pair', cards: [c(10), c(10, 'star')], rank: 10, length: 2 },
+      lastPlayedBy: 1,
+    });
+    expect(playCards(state, 0, [c(2), phx], 14).state).toBe(state);
+  });
+});
