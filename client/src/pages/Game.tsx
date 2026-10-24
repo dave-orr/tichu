@@ -3,7 +3,7 @@ import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeam
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
-import Hand from '../components/Hand.js';
+import Hand, { HandTag } from '../components/Hand.js';
 import CardComponent from '../components/Card.js';
 import ScoreBoard from '../components/ScoreBoard.js';
 import MahJongWish from '../components/MahJongWish.js';
@@ -729,11 +729,15 @@ export default function Game({ socket, auth }: Props) {
   const showPassed = phase === 'playing' && gameState.settings.showPassedCards && !!passRecord;
   const TRIO_WIDTH = 3 * 77 + 2 * 4 + 12;
   const handMaxWidth = 1300 - 16 - (showReceived ? TRIO_WIDTH : 0) - (showPassed ? TRIO_WIDTH : 0);
-  // With the received trio hidden, tag the cards you were passed with who
-  // sent them instead, until the round's first trick is won.
+  // With the received trio hidden, mark the cards you were passed with an
+  // arrow toward the seat that sent them instead (right opponent / partner /
+  // left opponent), until the round's first trick is won.
   const receivedTags = phase === 'playing' && !gameState.settings.showPassedCards
     && players.every(p => p.trickCount === 0)
-    ? new Map(gameState.myReceivedCards.map(rc => [cardId(rc.card), `from ${playerNames[rc.fromSeat]}`]))
+    ? new Map<string, HandTag>(gameState.myReceivedCards.map(rc => [cardId(rc.card), {
+        toward: (['right', 'up', 'left'] as const)[(rc.fromSeat - gameState.mySeat + 3) % 4],
+        title: `Passed to you by ${playerNames[rc.fromSeat]}`,
+      }]))
     : undefined;
 
   const renderMiniCard = (card: CardType, title: string, fadeWhenPlayed = true) => {

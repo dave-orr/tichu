@@ -2,6 +2,9 @@ import { ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { Card as CardType, cardId } from '@tichu/shared';
 import CardComponent from './Card.js';
 
+/** An arrow pointing toward a seat at the table, with a hover title. */
+export type HandTag = { toward: 'left' | 'up' | 'right'; title: string };
+
 type Props = {
   cards: CardType[];
   selectedCards: Set<string>;
@@ -12,8 +15,8 @@ type Props = {
   onDragStart?: (card: CardType) => void;
   /** Widest the hand may spread (px); defaults to the full design width. */
   maxWidth?: number;
-  /** Small tags shown above particular cards, keyed by cardId (e.g. who passed it to you). */
-  tags?: ReadonlyMap<string, string>;
+  /** Arrow badges shown above particular cards, keyed by cardId (e.g. who passed it to you). */
+  tags?: ReadonlyMap<string, HandTag>;
   /** A banner floated above the hand (e.g. "Your turn!"), kept clear of the tags. */
   banner?: ReactNode;
 };
@@ -25,63 +28,31 @@ const LARGE_CARD_WIDTH = 144;
 const MAX_HAND_WIDTH = 1240;
 /** How long a played card takes to lift out of the hand (index.css hand-leave). */
 const LEAVE_MS = 300;
-/** Space kept between neighbouring tags in a row (px). */
-const TAG_GAP = 6;
+/** Tag badge size (w-8) and inset (left-2), so it sits in the card's visible strip (px). */
+const TAG_SIZE = 32;
+const TAG_INSET = 8;
 /** Space kept between the banner and the nearest tag (px). */
 const BANNER_GAP = 16;
-
-type TagLayout = {
-  /** Vertical lift of each tag, by cardId: adjacent tags are staggered into rows. */
-  lift: Map<string, number>;
-  /** Banner position: horizontal offset of its centre from the hand's centre, and lift. */
-  bannerX: number;
-  bannerLift: number;
-};
+/** Arrow rotation per direction (the drawn arrow points right). */
+const ARROW_TURN: Record<HandTag['toward'], number> = { right: 0, up: -90, left: 180 };
 
 /**
- * Lay out the tags and the banner so nothing overlaps. Each tag sits above the
- * left edge of its card; when a tag runs past the next tag's start (the
- * visible strip of an overlapped card is narrower than a tag), it goes up a
- * row. The banner stays centred if that's clear of every tag, else slides to
- * the nearest clear spot over the hand, else rises above the tag rows.
+ * Where to float the banner so it stays clear of the tags: centred if that's
+ * clear, else the nearest clear spot over the hand, else just above the tags.
+ * Returns the offset of its centre from the hand's centre, and its lift.
  * Positions come from the settled layout (not the DOM), so a card mid-exit
  * doesn't skew them.
  */
-function layoutTags(
-  ids: string[],
-  step: number,
-  handWidth: number,
-  tagSize: ReadonlyMap<string, { w: number; h: number }>,
-  bannerWidth: number,
-): TagLayout {
-  const lift = new Map<string, number>();
-  const rowEnds: number[] = [];
-  const spans: [number, number][] = [];
-  let rowHeight = 0;
-  ids.forEach((id, i) => {
-    const size = tagSize.get(id);
-    if (!size) return;
-    const x = i * step;
-    let row = rowEnds.findIndex(end => end + TAG_GAP <= x);
-    if (row < 0) row = rowEnds.length;
-    rowEnds[row] = x + size.w;
-    rowHeight = Math.max(rowHeight, size.h);
-    spans.push([x, x + size.w]);
-    lift.set(id, row);
-  });
-  const rowStep = rowHeight + 2;
-  for (const [id, row] of lift) lift.set(id, row * rowStep);
-
+function placeBanner(tagged: boolean[], step: number, handWidth: number, bannerWidth: number): { x: number; lift: number } {
+  const spans = tagged.flatMap((t, i) => t ? [[i * step + TAG_INSET, i * step + TAG_INSET + TAG_SIZE] as const] : []);
   const centred = (handWidth - bannerWidth) / 2;
   const clear = (x: number) => x >= 0 && x + bannerWidth <= handWidth
     && spans.every(([a, b]) => x + bannerWidth + BANNER_GAP <= a || x >= b + BANNER_GAP);
-  const candidates = [centred, ...spans.flatMap(([a, b]) => [a - BANNER_GAP - bannerWidth, b + BANNER_GAP])]
+  const best = [centred, ...spans.flatMap(([a, b]) => [a - BANNER_GAP - bannerWidth, b + BANNER_GAP])]
     .filter(clear)
-    .sort((a, b) => Math.abs(a - centred) - Math.abs(b - centred));
-  if (spans.length === 0 || candidates.length > 0) {
-    return { lift, bannerX: (candidates[0] ?? centred) - centred, bannerLift: 0 };
-  }
-  return { lift, bannerX: 0, bannerLift: rowEnds.length * rowStep };
+    .sort((a, b) => Math.abs(a - centred) - Math.abs(b - centred))[0];
+  if (spans.length === 0 || best !== undefined) return { x: (best ?? centred) - centred, lift: 0 };
+  return { x: 0, lift: TAG_SIZE };
 }
 
 export default function Hand({ cards, selectedCards, onToggleCard, disabled, draggable, large, onDragStart, maxWidth = MAX_HAND_WIDTH, tags, banner }: Props) {
@@ -122,35 +93,22 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled, dra
     if (!shown.some(s => cardId(s.card) === cardId(card))) shown.splice(at, 0, { card, leaving: true });
   });
 
-  // Measure the tags and banner (their size depends on names and theme fonts),
-  // then place them from the settled hand layout.
-  const tagRefs = useRef(new Map<string, HTMLDivElement>());
+  // The banner's width depends on the theme's font, so measure it.
   const bannerRef = useRef<HTMLDivElement>(null);
-  const [sizes, setSizes] = useState<{ tags: Map<string, { w: number; h: number }>; banner: number }>({ tags: new Map(), banner: 0 });
-  const tagKey = tags ? [...tags].map(([id, t]) => `${id}=${t}`).join('|') : '';
+  const [bannerWidth, setBannerWidth] = useState(0);
   useLayoutEffect(() => {
-    const measure = () => {
-      const next = new Map<string, { w: number; h: number }>();
-      tagRefs.current.forEach((el, id) => next.set(id, { w: el.offsetWidth, h: el.offsetHeight }));
-      const bannerWidth = bannerRef.current?.offsetWidth ?? 0;
-      setSizes(prev => {
-        const same = prev.banner === bannerWidth && prev.tags.size === next.size
-          && [...next].every(([id, s]) => prev.tags.get(id)?.w === s.w && prev.tags.get(id)?.h === s.h);
-        return same ? prev : { tags: next, banner: bannerWidth };
-      });
-    };
+    const measure = () => setBannerWidth(bannerRef.current?.offsetWidth ?? 0);
     measure();
-    // Theme fonts may arrive after the first paint and change the widths.
+    // Theme fonts may arrive after the first paint and change the width.
     let live = true;
     document.fonts?.ready.then(() => { if (live) measure(); });
     return () => { live = false; };
-  }, [tagKey, !!banner, large]);
-  const layout = layoutTags(
-    cards.map(cardId),
+  }, [!!banner]);
+  const bannerPos = placeBanner(
+    cards.map(c => !!tags?.has(cardId(c))),
     cardWidth + overlap,
     cards.length * cardWidth + Math.max(0, cards.length - 1) * overlap,
-    sizes.tags,
-    sizes.banner,
+    bannerWidth,
   );
 
   return (
@@ -159,7 +117,7 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled, dra
         <div
           ref={bannerRef}
           className="absolute bottom-full left-1/2 mb-3 z-20 pointer-events-none"
-          style={{ transform: `translate(calc(-50% + ${layout.bannerX}px), -${layout.bannerLift}px)` }}
+          style={{ transform: `translate(calc(-50% + ${bannerPos.x}px), -${bannerPos.lift}px)` }}
         >
           {banner}
         </div>
@@ -181,15 +139,15 @@ export default function Hand({ cards, selectedCards, onToggleCard, disabled, dra
         return (
           <div key={id} className="hand-slot relative" style={{ marginLeft: i > 0 ? `${overlap}px` : '0' }}>
             {tags?.get(id) && (
-              // Left-aligned so it starts in the strip of the card left visible
-              // by the overlap; layoutTags lifts it a row if it would run into
-              // the next tag.
+              // Small enough to sit in the strip of the card left visible by the overlap.
               <div
-                ref={el => { if (el) tagRefs.current.set(id, el); else tagRefs.current.delete(id); }}
-                className="absolute bottom-full left-0 mb-1 z-10 pointer-events-none whitespace-nowrap rounded-full bg-ochre px-2 py-0.5 text-base font-extrabold text-ink shadow-[0_2px_0_rgb(var(--c-ochre-dark))]"
-                style={{ transform: `translateY(-${layout.lift.get(id) ?? 0}px)` }}
+                title={tags.get(id)!.title}
+                aria-label={tags.get(id)!.title}
+                className="absolute bottom-full left-2 mb-1 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-ochre text-ink shadow-[0_2px_0_rgb(var(--c-ochre-dark))]"
               >
-                {tags.get(id)}
+                <svg viewBox="0 0 24 24" className="h-5 w-5" style={{ transform: `rotate(${ARROW_TURN[tags.get(id)!.toward]}deg)` }} fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 12h15M13 6l6 6-6 6" />
+                </svg>
               </div>
             )}
             <CardComponent
