@@ -33,7 +33,7 @@ export default function FitToViewport({ children }: { children: ReactNode }) {
   const { w, h } = useViewportSize();
   const scale = Math.min(1, w / DESIGN_WIDTH, h / DESIGN_HEIGHT);
   return (
-    <div className="h-screen w-screen overflow-hidden">
+    <div className="h-screen w-screen overflow-clip">
       <div
         style={{
           width: `${100 / scale}%`,

@@ -204,6 +204,12 @@ h1, h2, h3 {
 [data-theme="halloween"] .card[class*='special-'] { background-blend-mode: multiply; }
 [data-theme="halloween"] .court-frame { border-color: rgb(242 133 31 / 0.8); }
 [data-theme="halloween"] .card-back { background-image: url('/cards/halloween/back.svg'); }
+[data-theme="halloween"] .tichu-badge-grand { background-color: #7446C4; box-shadow: 0 2px 0 #4A2A85; }
+/* The Dragon's path in pumpkin (the default violet sinks into the night
+   table) and paw prints in moonlight (dark ink vanishes on it). */
+[data-theme="halloween"] .dragon-arc { stroke: rgb(var(--c-ochre)); }
+[data-theme="halloween"] .dragon-arc-head { fill: rgb(var(--c-ochre)); }
+[data-theme="halloween"] .paw-print-ink { fill: #F6EFFF; opacity: 0.4; }
 
 /* ===== Classic Baroque theme =====
    A dark theme: jade lacquer table, gold keylines on the chrome, and the

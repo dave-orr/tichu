@@ -63,11 +63,16 @@ def haunted_house(sw=4):
 
 
 def bat(sw=4):
-    return (f'<path d="M50 34 Q40 28 30 32 Q18 18 2 26 Q12 34 10 46 Q20 44 26 52 Q32 46 40 54 Q44 46 50 52 '
-            f'Q56 46 60 54 Q68 46 74 52 Q80 44 90 46 Q88 34 98 26 Q82 18 70 32 Q60 28 50 34 Z" fill="{BAT}" stroke-width="{sw * .7}"/>'
-            f'<path d="M40 30 L42 18 L47 26 Q50 25 53 26 L58 18 L60 30 Q62 44 50 48 Q38 44 40 30 Z" fill="{BAT}" stroke-width="{sw * .7}"/>'
-            f'<circle cx="45.5" cy="33" r="2.6" fill="{GLOW}" stroke="none"/><circle cx="54.5" cy="33" r="2.6" fill="{GLOW}" stroke="none"/>'
-            f'<path d="M47 41 L48 44 L49 41 M51 41 L52 44 L53 41" fill="{WHITE}" stroke="{WHITE}" stroke-width="1.2"/>')
+    # Wings swept up in a V so the bat fills its square about as tall as the
+    # other suits (a flat wingspan read as a thin dark dash at pip size), with
+    # lighter wing ribs so it doesn't go to a solid blot on bone card stock.
+    return (f'<path d="M50 42 Q36 32 22 22 Q12 16 4 10 Q7 30 12 48 Q18 45 23 53 Q29 49 33 59 Q39 55 43 65 Q47 61 50 67 '
+            f'Q53 61 57 65 Q61 55 67 59 Q71 49 77 53 Q82 45 88 48 Q93 30 96 10 Q88 16 78 22 Q64 32 50 42 Z" fill="{BAT}" stroke-width="{sw * .7}"/>'
+            f'<path d="M43 47 Q30 36 13 20 M42 52 Q32 49 23 51 M57 47 Q70 36 87 20 M58 52 Q68 49 77 51" fill="none" stroke="{BAT_LT}" stroke-width="{sw * .55}"/>'
+            f'<ellipse cx="50" cy="58" rx="9" ry="13" fill="{BAT}" stroke-width="{sw * .7}"/>'
+            f'<path d="M40 38 L39 22 L46.5 31 Q50 30 53.5 31 L61 22 L60 38 Q61 50 50 51 Q39 50 40 38 Z" fill="{BAT}" stroke-width="{sw * .7}"/>'
+            f'<circle cx="45.5" cy="38.5" r="3" fill="{GLOW}" stroke="none"/><circle cx="54.5" cy="38.5" r="3" fill="{GLOW}" stroke="none"/>'
+            f'<path d="M47 45 L48 48.5 L49 45 M51 45 L52 48.5 L53 45" fill="{WHITE}" stroke="{WHITE}" stroke-width="1.2"/>')
 
 
 SYMBOLS = {'star': pumpkin, 'jade': cauldron, 'pagoda': haunted_house, 'sword': bat}
@@ -292,7 +297,7 @@ def dragon_fly(up):
 
 ART = {
     **{f'suit-{s}': svg(f(4)) for s, f in SYMBOLS.items()},
-    **{f'pip-{s}': svg(f(6) if s != 'sword' else f'<g transform="translate(50 42) scale(1.3) translate(-50 -40)">{f(6)}</g>') for s, f in SYMBOLS.items()},
+    **{f'pip-{s}': svg(f(6)) for s, f in SYMBOLS.items()},
     **{f'royal-J-{s}': vampire(s) for s in SYMBOLS},
     **{f'royal-Q-{s}': witch(s) for s in SYMBOLS},
     **{f'royal-K-{s}': skeleton_king(s) for s in SYMBOLS},

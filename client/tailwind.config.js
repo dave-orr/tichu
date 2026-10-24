@@ -48,6 +48,9 @@ const RAMPS = {
   yellow: [OCHRE, ROSE, PUMPKIN, GOLD],
   ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n]), nightfall(colors[n]), lacquered(colors[n])]])),
 };
+// Blue marks Grand Tichu (badges, bubbles, results). Halloween has no blue in
+// its palette, so its Grand Tichu goes haunted-house violet instead.
+RAMPS.blue[2] = nightfall(colors.violet);
 
 // Named tokens: [papercraft, kawaii, halloween, baroque].
 const TOKENS = {
