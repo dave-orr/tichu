@@ -977,13 +977,9 @@ export default function Game({ socket, auth }: Props) {
           )}
 
           {/* "Your turn!" floats just above the hand so it doesn't push
-              the cards around when it appears. */}
+              the cards around when it appears; Hand keeps it clear of the
+              received-card tags. */}
           <div className="relative">
-            {isMyTurn && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-10 pointer-events-none whitespace-nowrap rounded-full bg-ochre px-5 py-1 font-display font-semibold text-ink text-3xl shadow-[0_3px_0_rgb(var(--c-ochre-dark)),0_8px_18px_-6px_rgba(0,0,0,0.6)]">
-                Your turn!
-              </div>
-            )}
             <Hand
               cards={myHand}
               selectedCards={selectedCards}
@@ -992,6 +988,11 @@ export default function Game({ socket, auth }: Props) {
               large
               maxWidth={handMaxWidth}
               tags={receivedTags}
+              banner={isMyTurn && (
+                <div className="whitespace-nowrap rounded-full bg-ochre px-5 py-1 font-display font-semibold text-ink text-3xl shadow-[0_3px_0_rgb(var(--c-ochre-dark)),0_8px_18px_-6px_rgba(0,0,0,0.6)]">
+                  Your turn!
+                </div>
+              )}
             />
           </div>
 
