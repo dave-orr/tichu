@@ -31,7 +31,7 @@ export default function AchievementsEarned({ events, players, isGameOver }: {
               <AchievementBadge id={e.id} />
               <div className="text-left">
                 <div className="text-2xl font-bold text-yellow-400">{def.name}</div>
-                <div className="text-2xl text-white">{e.seats.map(s => players[s]?.name ?? '?').join(' + ')}</div>
+                <div className="text-2xl text-white">{e.seats.length === 4 ? 'Everyone' : e.seats.map(s => players[s]?.name ?? '?').join(' + ')}</div>
                 {isGameOver && e.roundNumber !== null && (
                   <div className="text-xl text-gray-400">Round {e.roundNumber}</div>
                 )}

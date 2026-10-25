@@ -608,6 +608,28 @@ icons['with-a-flourish'] = badge(INDIGO, layer(rays),
     + layer(sparkle(24, 60, 4, CREAM), sparkle(104, 60, 4, CREAM), sparkle(64, 22, 3.5, CREAM))
 )
 
+# ---- Crafty: finish a game on the Papercraft table. A paper crane folded
+# from a playing card takes off over the green felt. (The other themes'
+# badges are drawn in their own styles by scripts/gen-theme-achievement-art.py.)
+icons['crafty'] = badge(SAP, layer(
+    f'<path d="M14 98 Q64 90 114 98 L114 120 L14 120 Z" fill="{SAP_DK}" stroke="none"/>'
+    + ''.join(f'<rect x="{x}" y="88" width="20" height="28" rx="3" fill="{WHITE}" stroke="none" transform="rotate({r} {x + 10} 102)"/>'
+              f'<circle cx="{x + 10}" cy="102" r="3.4" fill="{c}" stroke="none" transform="rotate({r} {x + 10} 102)"/>'
+              for x, r, c in ((30, -14, CRIMSON), (78, 12, TEAL)))),
+    layer(  # far wing, raised behind the body
+        f'<path d="M66 66 L92 22 L80 70 Z" fill="{CLAY_DK}"/>')
+    + layer(  # body, neck and head, tail
+        f'<path d="M40 76 L64 64 L90 76 L64 86 Z" fill="{CLAY}"/>'
+        f'<path d="M48 74 L24 46 L30 44 L54 70 Z" fill="{CLAY}"/>'
+        f'<path d="M24 46 L16 54 L30 44 Z" fill="{CLAY_DK}"/>'
+        f'<path d="M84 74 L110 54 L92 80 Z" fill="{CLAY}"/>'
+        f'<path d="M40 76 L90 76" stroke="{CLAY_DK}" stroke-width="1.4"/>')
+    + layer(  # near wing, folded forward, with a crease
+        f'<path d="M62 70 L40 26 L76 64 Z" fill="{CLAY_LT}"/>'
+        f'<path d="M62 70 L52 46" stroke="{CREAM}" stroke-width="1.4" opacity="0.9"/>')
+    + layer(sparkle(100, 34, 4, CREAM), sparkle(22, 72, 3, CREAM), sparkle(108, 92, 3, OCHRE))
+)
+
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for name, svg in icons.items():

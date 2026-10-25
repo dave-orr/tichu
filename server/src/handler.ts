@@ -1274,7 +1274,11 @@ function roundAchievements(room: Room, log: RoundLog): AchievementEvent[] {
   const rounds = [...room.gameRoundLogs.filter(r => r.roundNumber !== log.roundNumber), log];
   const scores: [number, number] = [room.state.teams[0].score, room.state.teams[1].score];
   const outcome: GameOutcome | undefined = room.state.phase === 'gameEnd'
-    ? { finalScores: scores, winningTeam: scores[0] === scores[1] ? null : scores[0] > scores[1] ? 0 : 1 }
+    ? {
+      finalScores: scores,
+      winningTeam: scores[0] === scores[1] ? null : scores[0] > scores[1] ? 0 : 1,
+      theme: room.state.settings.theme ?? 'papercraft',
+    }
     : undefined;
   const all = achievementEvents(rounds, outcome);
   const thisRound = all.filter(e => e.roundNumber === log.roundNumber);
