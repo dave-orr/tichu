@@ -1,4 +1,4 @@
-import { Card, GameSummary, RoundLog, RoundPlay, Seat, getTeamForSeat } from './types.js';
+import { Card, GameSummary, RoundLog, RoundPlay, Seat, Theme, getTeamForSeat } from './types.js';
 import { identifyCombo, isBomb } from './combinations.js';
 import { GameRecord, teamOf } from './stats.js';
 
@@ -27,7 +27,11 @@ export type AchievementId =
   | 'hot-streak'
   | 'unstoppable'
   | 'last-word'
-  | 'with-a-flourish';
+  | 'with-a-flourish'
+  | 'crafty'
+  | 'totally-kawaii'
+  | 'old-master'
+  | 'trick-or-treat';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -96,7 +100,21 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     name: 'With a Flourish',
     description: `Make a Grand on the match-winning hand and finish ${FLOURISH_MARGIN}+ points ahead`,
   },
+  // Theme achievements: the whole table earns one for finishing a game.
+  // Only games since summaries started recording the theme count.
+  { id: 'crafty', name: 'Crafty', description: 'Finish a game on the Papercraft table', newLogsOnly: true },
+  { id: 'totally-kawaii', name: 'Totally Kawaii', description: 'Finish a game on the Kawaii table', newLogsOnly: true },
+  { id: 'old-master', name: 'Old Master', description: 'Finish a game on the Classic Baroque table', newLogsOnly: true },
+  { id: 'trick-or-treat', name: 'Trick or Treat', description: 'Finish a game on the Halloween table', newLogsOnly: true },
 ];
+
+/** The achievement every seat earns for finishing a game in each theme. */
+export const THEME_ACHIEVEMENTS: Record<Theme, AchievementId> = {
+  papercraft: 'crafty',
+  kawaii: 'totally-kawaii',
+  baroque: 'old-master',
+  halloween: 'trick-or-treat',
+};
 
 export type AchievementCount = {
   id: AchievementId;
@@ -107,8 +125,9 @@ export type AchievementCount = {
 
 /**
  * One achievement earned at the table. Round achievements belong to the seat
- * that earned them (`roundNumber` set); game achievements belong to both
- * seats of the winning team (`roundNumber` null).
+ * that earned them (`roundNumber` set); game achievements belong to the seats
+ * listed (`roundNumber` null): the winning team's two, or all four for a
+ * theme achievement.
  */
 export type AchievementEvent = {
   id: AchievementId;
@@ -117,7 +136,7 @@ export type AchievementEvent = {
 };
 
 /** How the game ended; game-level achievements need it. */
-export type GameOutcome = Pick<GameSummary, 'winningTeam' | 'finalScores'>;
+export type GameOutcome = Pick<GameSummary, 'winningTeam' | 'finalScores' | 'theme'>;
 
 const isSpecial = (c: Card, name: string) => c.type === 'special' && c.name === name;
 const isBombPlay = (p: RoundPlay) => {
@@ -240,6 +259,9 @@ export function achievementEvents(rounds: readonly RoundLog[], outcome?: GameOut
     }
   }
 
+  // Finishing a game at all, win, lose or tie, earns the table's theme badge.
+  if (outcome?.theme) events.push({ id: THEME_ACHIEVEMENTS[outcome.theme], seats: [0, 1, 2, 3], roundNumber: null });
+
   return events;
 }
 
@@ -280,11 +302,11 @@ export function computeAchievements(records: readonly GameRecord[], uid: string)
     const roundsByNumber = new Map(rounds.map(r => [r.roundNumber, r]));
 
     for (const e of achievementEvents(rounds, summary)) {
-      // Game achievements go to the winning team as listed in the summary;
+      // Game achievements go to their seats' team as listed in the summary;
       // round ones to whoever actually sat in the seat that round (a
       // substitute may have taken it over mid-game).
       const mine = e.roundNumber === null
-        ? getTeamForSeat(e.seats[0]) === team
+        ? e.seats.some(s => getTeamForSeat(s) === team)
         : !!roundsByNumber.get(e.roundNumber)?.players.some(p => e.seats.includes(p.seat) && p.uid === uid);
       if (!mine) continue;
       const c = counts.get(e.id)!;

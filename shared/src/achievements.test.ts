@@ -324,3 +324,26 @@ describe('match-winning hand', () => {
     expect(counts(records, 'C')['last-word']).toBe(0);
   });
 });
+
+describe('theme achievements', () => {
+  it('everyone at the table earns the theme badge for finishing, win or lose', () => {
+    const events = achievementEvents([round('g', 1)], { winningTeam: 1, finalScores: [500, 1000], theme: 'baroque' });
+    expect(events.filter(e => e.id === 'old-master')).toEqual([{ id: 'old-master', seats: [0, 1, 2, 3], roundNumber: null }]);
+  });
+
+  it('counts per theme on the stats page, and not for summaries without one', () => {
+    const records: GameRecord[] = [
+      { summary: summary('g1', { theme: 'kawaii' }), rounds: [round('g1', 1)] },
+      { summary: summary('g2', { theme: 'kawaii', winningTeam: 1 }), rounds: [round('g2', 1)] },
+      { summary: summary('g3', { theme: 'papercraft', winningTeam: null }), rounds: [round('g3', 1)] },
+      { summary: summary('g4'), rounds: [round('g4', 1)] }, // from before the theme was recorded
+    ];
+    for (const uid of UIDS) {
+      const c = counts(records, uid);
+      expect(c['totally-kawaii']).toBe(2);
+      expect(c.crafty).toBe(1);
+      expect(c['old-master']).toBe(0);
+      expect(c['trick-or-treat']).toBe(0);
+    }
+  });
+});

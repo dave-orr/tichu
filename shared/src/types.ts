@@ -341,6 +341,8 @@ export type GameSummary = {
   finalScores: [number, number];
   winningTeam: 0 | 1 | null;
   rounds: number;
+  /** The table's theme. Absent in summaries from before it was recorded. */
+  theme?: Theme;
 };
 
 export type GameHistoryCall = {

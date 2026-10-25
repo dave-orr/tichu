@@ -113,6 +113,7 @@ export async function saveGameSummary(room: Room): Promise<void> {
     finalScores,
     winningTeam,
     rounds: state.roundNumber,
+    theme: state.settings.theme ?? 'papercraft',
   };
 
   // playerUids is stored alongside the summary purely for querying.
@@ -478,6 +479,7 @@ function toSummary(data: FirebaseFirestore.DocumentData): GameSummary {
     finalScores: data.finalScores ?? [0, 0],
     winningTeam: data.winningTeam ?? null,
     rounds: data.rounds ?? 0,
+    ...(data.theme ? { theme: data.theme } : {}),
   };
 }
 
