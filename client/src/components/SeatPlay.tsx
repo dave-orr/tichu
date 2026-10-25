@@ -11,6 +11,9 @@ type Props = {
 export default function SeatPlay({ cards, isTopOfTrick, combo }: Props) {
   if (cards.length === 0) return null;
   const sorted = sortForDisplay(cards, combo);
+  // A Phoenix hidden inside a pair, straight, full house… glows so it's
+  // clear a wild card is standing in. A lone Phoenix is obvious already.
+  const glowPhoenix = cards.length > 1;
   return (
     <div
       className={`inline-flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg seat-play ${
@@ -21,13 +24,21 @@ export default function SeatPlay({ cards, isTopOfTrick, combo }: Props) {
     >
       <div className="flex">
         {sorted.map((card, i) => (
-          <div key={cardId(card)} style={{ marginLeft: i > 0 ? '-20px' : 0 }}>
+          <div
+            key={cardId(card)}
+            className={glowPhoenix && isPhoenix(card) ? 'phoenix-glow' : undefined}
+            style={{ marginLeft: i > 0 ? '-20px' : 0 }}
+          >
             <CardComponent card={card} small />
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+function isPhoenix(card: CardType): boolean {
+  return card.type === 'special' && card.name === 'phoenix';
 }
 
 function sortForDisplay(cards: CardType[], combo: Combo | null): CardType[] {
