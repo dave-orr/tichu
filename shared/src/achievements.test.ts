@@ -166,6 +166,24 @@ describe('computeAchievements', () => {
     expect(counts(records, 'C').ganis).toBe(0);
   });
 
+  it('Fly the Coop: the play that empties your hand includes the Mah Jong', () => {
+    const run = (from: number, len: number) => Array.from({ length: len }, (_, i) => n(from + i, i % 2 ? 'star' : 'jade'));
+    const plays: RoundPlay[] = [
+      { seat: 1, cards: [sp('mahjong')], trick: 0 },   // B leads it early: not going out
+      { seat: 0, cards: run(2, 13), trick: 1 },
+      { seat: 0, cards: [sp('mahjong')], trick: 2 },   // A's 14th card, led as a single
+      { seat: 2, cards: run(6, 9), trick: 3 },
+      { seat: 2, cards: [sp('mahjong'), ...run(2, 4)], trick: 4 }, // C goes out on a straight from the 1
+      { seat: 3, cards: run(2, 13), trick: 5 },
+      { seat: 3, cards: [n(14)], trick: 6 },           // D goes out, but not on the Mah Jong
+    ];
+    const records: GameRecord[] = [{ summary: summary('g'), rounds: [round('g', 1, { plays })] }];
+    expect(counts(records, 'A')['fly-the-coop']).toBe(1);
+    expect(counts(records, 'B')['fly-the-coop']).toBe(0);
+    expect(counts(records, 'C')['fly-the-coop']).toBe(1);
+    expect(counts(records, 'D')['fly-the-coop']).toBe(0);
+  });
+
   it('Score-Based Grand: no Dragon, Phoenix or Ace in the first 8', () => {
     const weak = [2, 3, 4, 5, 6, 7, 8, 9].map(r => n(r));
     const withAce = [2, 3, 4, 5, 6, 7, 8, 14].map(r => n(r));
