@@ -131,8 +131,8 @@ h1, h2, h3 {
 [data-theme="kawaii"] .table-felt {
   background-color: rgb(var(--c-felt-dark));
   background-image:
-    radial-gradient(rgb(255 255 255 / 0.55) 1.6px, transparent 1.9px),
-    radial-gradient(ellipse 80% 70% at 50% 38%, #EEF9F3 0%, rgb(var(--c-felt)) 55%, rgb(var(--c-felt-dark)) 100%);
+    radial-gradient(rgb(255 255 255 / 0.4) 1.6px, transparent 1.9px),
+    radial-gradient(ellipse 80% 70% at 50% 38%, #DAEDE3 0%, rgb(var(--c-felt)) 55%, rgb(var(--c-felt-dark)) 100%);
   background-size: 28px 28px, auto;
 }
 [data-theme="kawaii"] h1, [data-theme="kawaii"] h2, [data-theme="kawaii"] h3 { font-weight: 800; }
