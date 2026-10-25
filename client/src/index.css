@@ -498,6 +498,38 @@ h1, h2, h3 {
 
 /* Trick sweep — a just-cleared trick flies toward the winner's seat.
    --sx/--sy are set per play by PlayerPanel. */
+/* A Phoenix inside a multi-card play (SeatPlay) glows in its theme's fire,
+   so the wild card stands out in a pair or straight. The ring sits inside
+   the card as well as around it: in an overlapped play the next card hides
+   the Phoenix's right edge. An animation outranks the theme card rules
+   without a specificity fight; reduced motion freezes it at the soft end. */
+:root { --phoenix-glow: 255 132 46; }
+[data-theme="kawaii"] { --phoenix-glow: 240 92 140; }
+[data-theme="halloween"] { --phoenix-glow: 255 128 24; }
+[data-theme="baroque"] { --phoenix-glow: 255 176 64; }
+@keyframes phoenix-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 2px rgb(var(--phoenix-glow)),
+      inset 0 0 10px rgb(var(--phoenix-glow) / 0.5),
+      0 0 8px 2px rgb(var(--phoenix-glow) / 0.75),
+      0 0 18px 5px rgb(var(--phoenix-glow) / 0.35);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 2px rgb(var(--phoenix-glow)),
+      inset 0 0 14px rgb(var(--phoenix-glow) / 0.7),
+      0 0 12px 4px rgb(var(--phoenix-glow) / 0.9),
+      0 0 30px 10px rgb(var(--phoenix-glow) / 0.45);
+  }
+}
+.phoenix-glow > .card {
+  animation: phoenix-glow 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .phoenix-glow > .card { animation-play-state: paused; }
+}
+
 @keyframes seat-play-sweep {
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
   100% { transform: translate(var(--sx), var(--sy)) scale(0.35); opacity: 0; }
