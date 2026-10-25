@@ -104,10 +104,12 @@ export type Theme = 'papercraft' | 'kawaii' | 'halloween' | 'baroque';
  */
 export const THEMES: readonly { id: Theme; name: string; description: string; selectable: boolean }[] = [
   { id: 'papercraft', name: 'Papercraft', description: 'Cut-paper cards on green felt', selectable: true },
-  { id: 'kawaii', name: 'Kawaii', description: 'Pastel table, cute faces on everything', selectable: true },
+  // Seasonal: set selectable to false after Halloween to retire it (and move
+  // DEFAULT_SETTINGS.theme back).
+  { id: 'halloween', name: 'Halloween', description: 'Moonlit table, pumpkins, bats and friendly monsters', selectable: true },
   { id: 'baroque', name: 'Classic Baroque', description: 'Hand-painted court cards on jade lacquer', selectable: true },
-  // Seasonal: set selectable to true near Halloween to offer it.
-  { id: 'halloween', name: 'Halloween', description: 'Moonlit table, pumpkins, bats and friendly monsters', selectable: false },
+  // Retired from the picker; rooms already on it keep drawing it.
+  { id: 'kawaii', name: 'Kawaii', description: 'Pastel table, cute faces on everything', selectable: false },
 ];
 
 export type GameSettings = {
@@ -126,8 +128,13 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showPassedCards: false,
   clockwise: false,
   targetScore: 1000,
-  theme: 'papercraft',
+  theme: 'halloween',
 };
+
+/** True if new rooms may use this theme (see THEMES `selectable`). */
+export function isSelectableTheme(theme: unknown): theme is Theme {
+  return THEMES.some(t => t.selectable && t.id === theme);
+}
 
 // ===== Game State =====
 
