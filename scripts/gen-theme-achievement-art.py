@@ -11,7 +11,7 @@ scripts/gen-achievement-art.py):
   lacquer, gradients for a painted finish, and a painter's palette
   (palette from scripts/gen-baroque-art.py).
 - `trick-or-treat`: flat cut shapes with a dark ink outline, a bat-wing rim
-  and a moonlit night with a jack-o'-lantern treat pail
+  and a black cat with glowing eyes against a crescent moon
   (palette from scripts/gen-halloween-art.py).
 
     python3 scripts/gen-theme-achievement-art.py client/public/achievements
@@ -158,15 +158,13 @@ icons['old-master'] = svg(
 
 # ===== Trick or Treat =====
 H_INK = '#1E1428'
-H_NIGHT, H_NIGHT_LT = '#2C1E3E', '#45305E'
+H_NIGHT = '#2C1E3E'
 H_MOON = '#FFE9A8'
-H_PUMPKIN, H_PUMPKIN_DK, H_PUMPKIN_LT = '#F2851F', '#B95A0E', '#FFB15E'
-H_SLIME, H_SLIME_DK = '#6CC24A', '#3F8A2A'
-H_HAUNT, H_HAUNT_DK, H_HAUNT_LT = '#8E5CD9', '#5B3A9A', '#C4A2F2'
+H_PUMPKIN = '#F2851F'
+H_HAUNT, H_HAUNT_DK = '#8E5CD9', '#5B3A9A'
 H_BAT = '#2E2638'
 H_GLOW = '#FFD54A'
 H_WHITE = '#FFFFFF'
-H_BLOOD = '#C2352B'
 
 
 def h_bat(x, y, s):
@@ -177,38 +175,34 @@ def h_bat(x, y, s):
             f'<path d="M{p(-2, -1)} L{p(-2.5, -4)} L{p(-.6, -2)} L{p(.6, -2)} L{p(2.5, -4)} L{p(2, -1)} Z" fill="{H_BAT}" stroke-width="1"/>')
 
 
-def h_candy(x, y, rot, c):
-    return (f'<g transform="rotate({rot} {x} {y})">'
-            f'<path d="M{x - 6} {y} L{x - 12} {y - 4} L{x - 12} {y + 4} Z M{x + 6} {y} L{x + 12} {y - 4} L{x + 12} {y + 4} Z" fill="{c}" stroke-width="1.4"/>'
-            f'<ellipse cx="{x}" cy="{y}" rx="7" ry="5" fill="{c}" stroke-width="1.6"/>'
-            f'<path d="M{x - 3} {y - 3} Q{x} {y} {x - 1} {y + 4} M{x + 2} {y - 4} Q{x + 4} {y} {x + 3} {y + 3}" fill="none" stroke="{H_WHITE}" stroke-width="1.2" opacity=".8"/>'
-            '</g>')
+def h_stars(pts):
+    return ''.join(f'<path d="{star_path(x, y, r, r * .45)}" fill="{H_MOON}" stroke="none"/>' for x, y, r in pts)
 
 
-ribs = ''.join(f'<ellipse cx="{x}" cy="90" rx="{rx}" ry="20" fill="{H_PUMPKIN}" stroke-width="2.2"/>' for x, rx in ((52, 13), (76, 13), (64, 14)))
 icons['trick-or-treat'] = svg(
     f'<g stroke="{H_INK}">'
     # bat-wing rim in haunted purple, an orange band, then the night sky
     f'<path d="{rim(62, 14, 6, pointed=True)}" fill="{H_HAUNT_DK}" stroke-width="2.4"/>'
     f'<circle cx="64" cy="64" r="51" fill="{H_PUMPKIN}" stroke-width="2.2"/>'
     f'<circle cx="64" cy="64" r="46" fill="{H_NIGHT}" stroke-width="2.2"/>'
-    f'<path d="M20 78 Q34 70 44 76 Q54 68 64 74 Q76 66 86 74 Q98 68 108 78 L108 96 Q64 120 20 96 Z" fill="{H_NIGHT_LT}" stroke="none" clip-path="url(#night)"/>'
-    # the moon, a few stars, two bats
-    f'<circle cx="86" cy="38" r="14" fill="{H_MOON}" stroke-width="2"/>'
-    f'<circle cx="81" cy="34" r="2.6" fill="{H_GLOW}" stroke="none" opacity=".6"/><circle cx="91" cy="44" r="2" fill="{H_GLOW}" stroke="none" opacity=".6"/>'
-    + ''.join(f'<path d="{star_path(x, y, r, r * .45)}" fill="{H_MOON}" stroke="none"/>' for x, y, r in ((36, 30, 3), (54, 22, 2.2), (28, 54, 2.2)))
-    + h_bat(48, 44, 1.1) + h_bat(104, 60, .75)
-    # the jack-o'-lantern pail: handle, candy spilling out, carved grin
-    + f'<path d="M42 82 Q64 46 86 82" fill="none" stroke-width="5.6"/>'
-    f'<path d="M42 82 Q64 46 86 82" fill="none" stroke="{H_BAT}" stroke-width="3"/>'
-    + h_candy(51, 66, -28, H_HAUNT_LT) + h_candy(77, 65, 24, H_SLIME) + h_candy(64, 62, 4, H_BLOOD)
-    + ribs
-    + f'<path d="M44 78 Q64 72 84 78" fill="none" stroke="{H_PUMPKIN_DK}" stroke-width="2"/>'
-    f'<path d="M50 80 Q64 76 78 80 Q64 84 50 80 Z" fill="{H_PUMPKIN_DK}" stroke-width="1.6"/>'
-    f'<path d="M52 88 L58 84 L59 92 Z M76 88 L70 84 L69 92 Z" fill="{H_GLOW}" stroke-width="1.4"/>'
-    f'<path d="M52 98 Q64 106 76 98 L72 100 L69 97 L66 101 L62 97 L59 101 L56 97 Z" fill="{H_GLOW}" stroke-width="1.4"/>'
-    f'<path d="M45 86 Q46 80 50 79" fill="none" stroke="{H_PUMPKIN_LT}" stroke-width="2" opacity=".9"/>'
-    '</g>',
+    f'<g clip-path="url(#night)">'
+    # a crescent moon: a full moon with the night sky biting into it
+    f'<circle cx="60" cy="62" r="34" fill="{H_MOON}" stroke-width="2.2"/>'
+    f'<circle cx="74" cy="50" r="30" fill="{H_NIGHT}" stroke="none"/>'
+    + h_stars(((96, 28, 3), (104, 50, 2.2), (34, 34, 2.4), (52, 24, 2)))
+    # the black cat sitting in front of it: body, curling tail, head and ears
+    + f'<path d="M52 92 Q48 76 56 68 Q60 54 74 56 Q86 58 86 72 Q88 86 82 94 Z" fill="{H_BAT}" stroke-width="2.2"/>'
+    f'<path d="M84 90 Q100 92 100 78 Q100 70 94 70" fill="none" stroke-width="6.4"/>'
+    f'<path d="M84 90 Q100 92 100 78 Q100 70 94 70" fill="none" stroke="{H_BAT}" stroke-width="3.6"/>'
+    f'<path d="M50 62 Q46 48 54 38 L58 46 Q64 44 70 46 L74 38 Q82 48 78 62 Q74 72 64 72 Q54 72 50 62 Z" fill="{H_BAT}" stroke-width="2.2"/>'
+    f'<path d="M56 41 L57 46 M76 41 L75 46" stroke="{H_HAUNT}" stroke-width="2"/>'
+    # glowing slit eyes, a pink nose and whiskers
+    f'<ellipse cx="58" cy="57" rx="4.2" ry="4.6" fill="{H_GLOW}" stroke="none"/><ellipse cx="70" cy="57" rx="4.2" ry="4.6" fill="{H_GLOW}" stroke="none"/>'
+    f'<ellipse cx="58" cy="57.5" rx="1.2" ry="3.4" fill="{H_INK}" stroke="none"/><ellipse cx="70" cy="57.5" rx="1.2" ry="3.4" fill="{H_INK}" stroke="none"/>'
+    f'<path d="M62 64 L64 66 L66 64 Z" fill="#FFB3C7" stroke="none"/>'
+    f'<path d="M48 64 L40 62 M48 67 L40 69 M80 64 L88 62 M80 67 L88 69" stroke="{H_WHITE}" stroke-width="1" opacity=".7"/>'
+    + h_bat(30, 90, .8)
+    + '</g></g>',
     '<clipPath id="night"><circle cx="64" cy="64" r="45"/></clipPath>',
 )
 
