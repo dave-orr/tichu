@@ -390,6 +390,39 @@ icons['ganis'] = badge(VIOLET, '',
     + layer(sparkle(64, 22, 5, CREAM), sparkle(24, 60, 3.5, CREAM), sparkle(104, 60, 3.5, CREAM))
 )
 
+# ---- Fly the Coop: go out on the Mah Jong. The sparrow from the card bursts
+# out of its birdhouse's open door, its last card fluttering behind.
+icons['fly-the-coop'] = badge(SKY, layer(
+    f'<path d="M14 104 Q64 96 114 104 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'
+    f'<circle cx="92" cy="30" r="9" fill="{WHITE}" stroke="none" opacity="0.7"/>'
+    f'<circle cx="101" cy="33" r="6" fill="{WHITE}" stroke="none" opacity="0.7"/>'),
+    layer(  # the birdhouse on its post, door hanging open
+        f'<path d="M36 104 L36 92 M44 104 L44 92" stroke="{HAIR}" stroke-width="4"/>'
+        f'<path d="M22 92 L22 66 L40 52 L58 66 L58 92 Z" fill="{OCHRE}"/>'
+        f'<path d="M16 68 L40 46 L64 68 L58 70 L40 54 L22 70 Z" fill="{CLAY}"/>'
+        f'<circle cx="40" cy="76" r="7" fill="{INK}"/>'
+        f'<path d="M33 78 L24 84 L24 72 L33 70 Z" fill="{OCHRE_DK}"/>'
+        f'<path d="M30 88 L50 88" stroke="{OCHRE_DK}" stroke-width="1.6"/>')
+    + layer(  # its last card, the 1, tumbling behind
+        f'<g transform="rotate(-18 62 46)"><rect x="54" y="34" width="16" height="23" rx="2.5" fill="{WHITE}"/>'
+        f'<text x="62" y="51" font-family="system-ui, sans-serif" font-size="13" font-weight="900" '
+        f'text-anchor="middle" fill="{CLAY_DK}" stroke="none">1</text></g>')
+    + layer(  # motion streaks
+        f'<path d="M50 70 Q60 62 70 62 M52 80 Q64 72 76 72" fill="none" stroke="{WHITE}" stroke-width="2.4" opacity="0.9"/>')
+    + layer(  # the sparrow, wings up, heading for the sky
+        f'<path d="M74 72 C68 74 62 76 56 76 C62 72 66 68 70 64 Z" fill="{HAIR}"/>'
+        f'<path d="M70 66 C72 56 82 50 92 52 C100 54 102 62 98 68 C94 74 84 76 76 74 C72 72 70 70 70 66 Z" fill="{CLAY}"/>'
+        f'<path d="M78 74 C86 74 94 70 97 64 C90 66 82 66 76 66 C74 70 75 72 78 74 Z" fill="{CREAM}"/>'
+        f'<path d="M80 62 C78 48 84 36 96 30 C96 42 92 54 84 62 Z" fill="{HAIR}"/>'
+        f'<path d="M84 58 L90 42 M87 60 L94 46" stroke="{CREAM}" stroke-width="1.3"/>'
+        f'<circle cx="100" cy="54" r="9" fill="{CLAY}"/>'
+        f'<path d="M94 47 C97 44 104 44 108 48 C103 48 98 49 94 50 Z" fill="{HAIR}"/>'
+        f'<path d="M108 53 L116 55 L108 58 Z" fill="{OCHRE}"/>'
+        f'<circle cx="103" cy="52" r="1.9" fill="{INK}" stroke="none"/><circle cx="103.7" cy="51.3" r="0.6" fill="{WHITE}" stroke="none"/>'
+        f'<circle cx="98" cy="58" r="2" fill="{ROSE}" stroke="none" opacity="0.6"/>')
+    + layer(sparkle(30, 34, 3.5, CREAM), sparkle(112, 80, 3, CREAM))
+)
+
 # ---- Score-Based Grand: a tiny player in a Grand crown shrugs up at a giant.
 icons['score-based-grand'] = badge(SKY, layer(
     f'<path d="M14 100 Q64 94 114 100 L114 120 L14 120 Z" fill="{SAP}" stroke="none"/>'

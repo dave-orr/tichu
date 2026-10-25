@@ -20,6 +20,7 @@ export type AchievementId =
   | 'hat-trick'
   | 'friendly-fire'
   | 'ganis'
+  | 'fly-the-coop'
   | 'score-based-grand'
   | 'wish-bomb'
   | 'super-partner'
@@ -65,6 +66,12 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'hat-trick', name: 'Hat Trick', description: 'Make Tichu or Grand Tichu three rounds in a row' },
   { id: 'friendly-fire', name: 'Friendly Fire', description: 'Bomb your own Dragon', newLogsOnly: true },
   { id: 'ganis', name: 'Ganis!', description: 'Play a 14-card straight', newLogsOnly: true },
+  {
+    id: 'fly-the-coop',
+    name: 'Fly the Coop',
+    description: 'Go out on a play that includes the Mah Jong',
+    newLogsOnly: true,
+  },
   {
     id: 'score-based-grand',
     name: 'Score-Based Grand',
@@ -138,6 +145,9 @@ export type AchievementEvent = {
 /** How the game ended; game-level achievements need it. */
 export type GameOutcome = Pick<GameSummary, 'winningTeam' | 'finalScores' | 'theme'>;
 
+/** Cards in a hand once the pass is done. */
+const HAND_SIZE = 14;
+
 const isSpecial = (c: Card, name: string) => c.type === 'special' && c.name === name;
 const isBombPlay = (p: RoundPlay) => {
   const combo = identifyCombo(p.cards);
@@ -178,7 +188,14 @@ function roundEvents(r: RoundLog): Array<{ id: AchievementId; seat: Seat }> {
   }
 
   const plays = r.plays ?? [];
+  // Counting cards rather than trusting outOrder: a concession marks seats
+  // out without their playing a card.
+  const played = [0, 0, 0, 0];
   plays.forEach((play, i) => {
+    played[play.seat] += play.cards.length;
+    if (played[play.seat] === HAND_SIZE && play.cards.some(c => isSpecial(c, 'mahjong'))) {
+      out.push({ id: 'fly-the-coop', seat: play.seat });
+    }
     const prev = previousInTrick(plays, i);
     // Your bomb, then your Dog leading the very next trick.
     const before = i > 0 ? plays[i - 1] : null;
