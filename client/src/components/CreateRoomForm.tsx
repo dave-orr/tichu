@@ -1,7 +1,7 @@
 import HouseRules, { RULES, SectionLabel, type RuleToggle } from './HouseRules.js';
 import ThemeGallery from './ThemeGallery.js';
 import { useState } from 'react';
-import { DEFAULT_SETTINGS, type GameSettings, type Theme } from '@tichu/shared';
+import { DEFAULT_SETTINGS, isSelectableTheme, type GameSettings, type Theme } from '@tichu/shared';
 
 type Props = {
   playerName: string;
@@ -20,7 +20,10 @@ export default function CreateRoomForm({ playerName, initialSettings, initialRan
     clockwise: initialSettings?.clockwise ?? DEFAULT_SETTINGS.clockwise,
   });
   const [targetScore, setTargetScore] = useState(initialSettings?.targetScore ?? DEFAULT_SETTINGS.targetScore);
-  const [theme, setTheme] = useState<Theme>(initialSettings?.theme ?? DEFAULT_SETTINGS.theme ?? 'papercraft');
+  const [theme, setTheme] = useState<Theme>(
+    // A saved theme that's since left the picker (e.g. Kawaii) falls back to the default.
+    isSelectableTheme(initialSettings?.theme) ? initialSettings.theme : DEFAULT_SETTINGS.theme ?? 'papercraft',
+  );
 
   const isDefault = !randomPartners
     && RULES.every(r => toggles[r.key] === DEFAULT_SETTINGS[r.key])
