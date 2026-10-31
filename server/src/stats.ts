@@ -70,6 +70,8 @@ export function buildRoundLog(room: Room, roundResult: RoundResult): RoundLog {
     dragonGiveaways: acc.dragonGiveaways,
     mahJongWishes: acc.mahJongWishes,
     plays: acc.plays,
+    clockwise: state.settings.clockwise,
+    actions: acc.actions,
   };
   return log;
 }

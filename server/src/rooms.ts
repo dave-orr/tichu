@@ -3,7 +3,7 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
-  Card, NormalRank, PlayResult, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, cardId, identifyCombo, isBomb,
+  Card, NormalRank, PlayResult, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, RoundAction, cardId, identifyCombo, isBomb,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
@@ -19,6 +19,8 @@ export type RoundAccumulator = {
   plays: RoundPlay[];
   /** Index of the trick in progress; bumped when a play opens a new trick. */
   trick: number;
+  /** Every accepted play-phase action, in order (see `RoundLog.actions`). */
+  actions: RoundAction[];
   scoresAtRoundStart: [number, number];
   wasDown300: [boolean, boolean]; // per team, tracked across the whole game
 };
@@ -274,6 +276,7 @@ function createAccumulator(gameId: string, scores: [number, number], prevWasDown
     mahJongWishes: [],
     plays: [],
     trick: -1,
+    actions: [],
     scoresAtRoundStart: scores,
     wasDown300,
   };
@@ -520,6 +523,7 @@ export function registerRestoredRoom(room: Room): boolean {
   if (!room.accumulator.firstEight) room.accumulator.firstEight = new Map();
   if (!room.accumulator.plays) room.accumulator.plays = [];
   if (room.accumulator.trick === undefined) room.accumulator.trick = -1;
+  if (!room.accumulator.actions) room.accumulator.actions = [];
   // gameId is `${code}_${startMs}`, the best stand-in for snapshots that
   // predate these timestamps.
   if (!room.createdAt) room.createdAt = Number(room.gameId.split('_')[1]) || Date.now();
@@ -811,7 +815,9 @@ export function handleGrandTichu(room: Room, seat: Seat, call: boolean): void {
 }
 
 export function handleSmallTichu(room: Room, seat: Seat): void {
-  room.state = callSmallTichu(room.state, seat);
+  const next = callSmallTichu(room.state, seat);
+  if (next !== room.state) room.accumulator.actions.push({ type: 'smallTichu', at: Date.now(), seat });
+  room.state = next;
 }
 
 export function handlePassCards(room: Room, seat: Seat, pass: PassInfo): boolean {
@@ -869,27 +875,38 @@ export function handleUndoPass(room: Room, seat: Seat): boolean {
  * can arrive through either handler (a bomb on your own turn is a normal
  * play), so both feed `bombs` from here.
  */
-function recordPlay(room: Room, prev: GameState, seat: Seat, cards: Card[]): void {
+function recordPlay(
+  room: Room, prev: GameState, seat: Seat, cards: Card[], type: 'play' | 'bomb', phoenixAs?: NormalRank,
+): void {
   const acc = room.accumulator;
   if (prev.currentTrickPlays.length === 0) acc.trick++;
   acc.plays.push({ seat, cards: [...cards], trick: acc.trick });
   const combo = identifyCombo(cards);
   if (combo && isBomb(combo)) acc.bombs.push({ seat, cards: [...cards] });
+  const at = Date.now();
+  acc.actions.push(type === 'bomb'
+    ? { type, at, seat, cards: [...cards], trick: acc.trick }
+    : { type, at, seat, cards: [...cards], trick: acc.trick, ...(phoenixAs != null ? { phoenixAs } : {}) });
 }
 
 export function handlePlayCards(room: Room, seat: Seat, cards: Card[], phoenixAs?: NormalRank): PlayResult {
   const result = playCards(room.state, seat, cards, phoenixAs);
-  if (result.state !== room.state) recordPlay(room, room.state, seat, cards);
+  if (result.state !== room.state) recordPlay(room, room.state, seat, cards, 'play', phoenixAs);
   return result;
 }
 
-export function handlePassTurn(room: Room, seat: Seat): PlayResult {
-  return passTurn(room.state, seat);
+/** `auto`: the server is skipping a seat that can't possibly play. */
+export function handlePassTurn(room: Room, seat: Seat, auto = false): PlayResult {
+  const result = passTurn(room.state, seat);
+  if (result.state !== room.state) {
+    room.accumulator.actions.push(auto ? { type: 'pass', at: Date.now(), seat, auto } : { type: 'pass', at: Date.now(), seat });
+  }
+  return result;
 }
 
 export function handleBomb(room: Room, seat: Seat, cards: Card[]): PlayResult {
   const result = playBomb(room.state, seat, cards);
-  if (result.state !== room.state) recordPlay(room, room.state, seat, cards);
+  if (result.state !== room.state) recordPlay(room, room.state, seat, cards, 'bomb');
   return result;
 }
 
@@ -897,6 +914,7 @@ export function handleDragonGiveaway(room: Room, seat: Seat, to: Seat): PlayResu
   const result = giveDragonTrick(room.state, seat, to);
   if (result.state !== room.state) {
     room.accumulator.dragonGiveaways.push({ fromSeat: seat, toSeat: to });
+    room.accumulator.actions.push({ type: 'dragon', at: Date.now(), seat, to });
   }
   return result;
 }
@@ -909,16 +927,24 @@ export function handleMahJongWish(room: Room, seat: Seat, rank: NormalRank | nul
   if (authorized && rank != null) {
     room.accumulator.mahJongWishes.push({ seat, rank });
   }
+  if (authorized) room.accumulator.actions.push({ type: 'wish', at: Date.now(), seat, rank });
   room.state = setMahJongWish(room.state, seat, rank);
 }
 
 /** Offer to concede; the round ends once the opponents accept (see offerConcede). */
 export function handleConcede(room: Room, seat: Seat): PlayResult {
-  return offerConcede(room.state, seat);
+  return recordConcession(room, offerConcede(room.state, seat));
 }
 
 export function handleRespondConcede(room: Room, seat: Seat, accept: boolean): PlayResult {
-  return respondToConcede(room.state, seat, accept);
+  return recordConcession(room, respondToConcede(room.state, seat, accept));
+}
+
+/** Log the concession if this result ended the round with one. */
+function recordConcession(room: Room, result: PlayResult): PlayResult {
+  const by = result.roundResult?.concededBy;
+  if (by != null) room.accumulator.actions.push({ type: 'concede', at: Date.now(), seat: by });
+  return result;
 }
 
 export function handleWithdrawConcede(room: Room, seat: Seat): void {

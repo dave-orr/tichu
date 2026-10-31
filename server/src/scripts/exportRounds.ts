@@ -1,8 +1,10 @@
 /**
  * Round-log export for bot research (dave-orr/tichu-ai): prints summary
  * statistics of every logged round (1-2 rate, Tichu/Grand call and success
- * rates, bombs) and writes the rounds as anonymized JSON Lines (no uids or
- * names; game ids replaced by a sequence number).
+ * rates, bombs) and writes the rounds as anonymized JSON Lines: no uids or
+ * names, game ids replaced by a sequence number, and each signed-in player
+ * given a stable pseudonym (`player`, a short hash of the uid; null for
+ * guests) so per-player statistics work across games.
  *
  * Read-only: never writes to Firestore.
  *
@@ -10,8 +12,10 @@
  *   npm run export-rounds                          # stats + server/rounds-export.jsonl
  *   npm run export-rounds -- --out FILE            # choose the output file
  *   npm run export-rounds -- --stats-only          # just the stats
+ *   npm run export-rounds -- --names               # also keep display names
  */
 import 'dotenv/config';
+import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { RoundLog } from '@tichu/shared';
 import { firebaseAdmin } from '../firebase.js';
@@ -20,6 +24,10 @@ const args = process.argv.slice(2);
 const outIdx = args.indexOf('--out');
 const out = outIdx >= 0 ? args[outIdx + 1] : 'rounds-export.jsonl';
 const statsOnly = args.includes('--stats-only');
+const keepNames = args.includes('--names');
+
+/** Stable, non-reversible-in-practice stand-in for a uid. */
+const pseudonym = (uid: string | null) => (uid ? createHash('sha256').update(uid).digest('hex').slice(0, 10) : null);
 
 if (!firebaseAdmin) {
   console.error('Firebase is not configured (server/.env).');
@@ -35,7 +43,12 @@ const anon = rounds.map(r => {
   return {
     ...r,
     gameId: gameIds.get(r.gameId),
-    players: r.players.map(({ uid, name, ...p }) => ({ ...p, signedIn: uid != null })),
+    players: r.players.map(({ uid, name, ...p }) => ({
+      ...p,
+      signedIn: uid != null,
+      player: pseudonym(uid),
+      ...(keepNames ? { name } : {}),
+    })),
   };
 });
 
