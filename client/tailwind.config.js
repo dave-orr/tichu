@@ -54,8 +54,8 @@ RAMPS.blue[2] = nightfall(colors.violet);
 
 // Named tokens: [papercraft, kawaii, halloween, baroque].
 const TOKENS = {
-  felt: ['#2A6446', '#D3EEE2', '#2C1E3E', '#1F4636'],
-  'felt-dark': ['#1D4A34', '#C2E5D6', '#160F20', '#0F241A'],
+  felt: ['#2A6446', '#C8E2D6', '#2C1E3E', '#1F4636'],
+  'felt-dark': ['#1D4A34', '#B5D4C6', '#160F20', '#0F241A'],
   ink: ['#2B2233', '#5B4B63', '#1E1428', '#1E1A16'],          // dark text on light buttons
   paper: ['#F3EBDC', '#FFFFFF', '#F4EBDA', '#F3EAD6'],        // light button / surface
   cream: ['#FFF8EC', '#5B4B63', '#F6EFFF', '#F6EEDC'],        // foreground on the table
