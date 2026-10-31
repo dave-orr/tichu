@@ -326,10 +326,35 @@ export type RoundLog = {
   mahJongWishes: Array<{ seat: Seat; rank: NormalRank }>;
   /** Every play in order, grouped into tricks. Absent in older logs. */
   plays?: RoundPlay[];
+  /** Table direction this round was played in. Absent in older logs. */
+  clockwise?: boolean;
+  /**
+   * Every accepted action of the play phase, in order, with its time: plays
+   * and bombs (as in `plays`, plus the Phoenix's reading), turn passes
+   * (including the server's auto-skips), Small Tichu calls, wishes, Dragon
+   * gifts and a concession. Enough to replay the round exactly; for bot
+   * research (dave-orr/tichu-ai). Absent in older logs.
+   */
+  actions?: RoundAction[];
 };
 
 /** One accepted play. `trick` numbers the round's tricks from 0. */
 export type RoundPlay = { seat: Seat; cards: Card[]; trick: number };
+
+/** One accepted action in the round's play phase. `at` is epoch ms. */
+export type RoundAction =
+  /** A play on the seat's turn (bombs on your own turn and the Dog included). */
+  | { type: 'play'; at: number; seat: Seat; cards: Card[]; trick: number; phoenixAs?: NormalRank }
+  /** A bomb out of turn (or during the trick countdown). */
+  | { type: 'bomb'; at: number; seat: Seat; cards: Card[]; trick: number }
+  /** A turn pass. `auto`: the server skipped a seat that couldn't possibly play. */
+  | { type: 'pass'; at: number; seat: Seat; auto?: boolean }
+  | { type: 'smallTichu'; at: number; seat: Seat }
+  /** The Mah Jong wish (null = no wish). */
+  | { type: 'wish'; at: number; seat: Seat; rank: NormalRank | null }
+  | { type: 'dragon'; at: number; seat: Seat; to: Seat }
+  /** The round ended by this seat's accepted concession. */
+  | { type: 'concede'; at: number; seat: Seat };
 
 // ===== Completed-game summaries & history (for the stats page) =====
 

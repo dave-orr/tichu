@@ -1130,7 +1130,7 @@ function autoSkipHelpless(io: Server, room: Room): void {
     if (handSize >= state.currentTrick.length) break; // enough cards to potentially play
 
     // Auto-pass this player
-    const result = handlePassTurn(room, seat);
+    const result = handlePassTurn(room, seat, true);
     applyPlayResult(room, result);
 
     // Notify all players about the auto-skip
@@ -1289,6 +1289,7 @@ function roundAchievements(room: Room, log: RoundLog): AchievementEvent[] {
     ...log,
     players: log.players.map(p => ({ ...p, initialHand: [], firstEight: undefined })),
     plays: undefined,
+    actions: undefined,
     bombs: [],
   }];
   // A round's results show that round's achievements; the game-over screen
