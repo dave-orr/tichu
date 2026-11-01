@@ -165,4 +165,46 @@ describe('scoreRound', () => {
     expect(result.teamScores[0]).toBe(80);
     expect(result.teamScores[1]).toBe(20);
   });
+
+  it('breaks point cards down by source, summing to each team\'s card points', () => {
+    const dragon: Card = { type: 'special', name: 'dragon' };
+    const phoenix: Card = { type: 'special', name: 'phoenix' };
+    const state = makeState([
+      // Out 1st; won one plain trick and a bombed Dragon trick (bomb on top).
+      makePlayer(0, { outOrder: 1, tricksWon: [[c(5), c(2)], [dragon, c(9), c(9, 'sword'), c(9, 'pagoda'), c(9, 'star')]] }),
+      // Won a trick and was gifted a Dragon trick (Dragon on top).
+      makePlayer(1, { outOrder: 2, tricksWon: [[c(13), c(3)], [c(10), dragon]] }),
+      makePlayer(2, { outOrder: 3, tricksWon: [[phoenix, c(4)]] }),
+      // Last: tricks go to seat 0, hand to team 0.
+      makePlayer(3, { outOrder: 0, hand: [c(5, 'sword'), c(7)], tricksWon: [[c(10, 'star')]] }),
+    ]);
+    // Two Dragons only to cover both trick shapes in one test.
+    const result = scoreRound(state);
+    const groups = result.pointCards!;
+    expect(groups.map(g => [g.seat, g.source, g.from, g.points])).toEqual([
+      [0, 'won', undefined, 30],
+      [1, 'won', undefined, 10],
+      [1, 'dragon', undefined, 35],
+      [2, 'won', undefined, -25],
+      [0, 'lastTricks', 3, 10],
+      [null, 'lastHand', 3, 5],
+    ]);
+    // Point cards only, in display order (specials last).
+    expect(groups[0].cards).toEqual([c(5), dragon]);
+    expect(groups[2].cards).toEqual([c(10), dragon]);
+    for (const team of [0, 1] as const) {
+      const sum = groups.filter(g => g.team === team).reduce((s, g) => s + g.points, 0);
+      expect(sum).toBe(result.teamScores[team]);
+    }
+  });
+
+  it('has no point-card breakdown on a double victory', () => {
+    const state = makeState([
+      makePlayer(0, { outOrder: 1, tricksWon: [[c(5)]] }),
+      makePlayer(1, { outOrder: 3 }),
+      makePlayer(2, { outOrder: 2 }),
+      makePlayer(3, { outOrder: 0, hand: [c(10)] }),
+    ]);
+    expect(scoreRound(state).pointCards).toEqual([]);
+  });
 });

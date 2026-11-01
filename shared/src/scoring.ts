@@ -1,4 +1,4 @@
-import { Card, GameState, RoundResult, Seat, getTeamForSeat } from './types.js';
+import { Card, GameState, PointCardGroup, RoundResult, Seat, getTeamForSeat } from './types.js';
 
 /** Get the point value of a single card */
 export function cardPoints(card: Card): number {
@@ -20,6 +20,59 @@ export function cardPoints(card: Card): number {
 /** Sum points from a collection of cards */
 export function sumPoints(cards: Card[]): number {
   return cards.reduce((sum, c) => sum + cardPoints(c), 0);
+}
+
+/** True for a card that scores (5, 10, King, Dragon, Phoenix). */
+export function isPointCard(card: Card): boolean {
+  return cardPoints(card) !== 0;
+}
+
+// Display order inside a group: Kings, 10s, 5s, then Dragon and Phoenix.
+function pointCardOrder(card: Card): number {
+  if (card.type === 'special') return card.name === 'dragon' ? 3 : 4;
+  return card.rank === 13 ? 0 : card.rank === 10 ? 1 : 2;
+}
+
+/** A trick that ended with the Dragon on top was won by the Dragon and handed
+ *  to an opponent (a bombed Dragon trick ends with the bomb). */
+function isDragonGift(trick: Card[]): boolean {
+  const top = trick[trick.length - 1];
+  return top?.type === 'special' && top.name === 'dragon';
+}
+
+/**
+ * Where every point card ended up, grouped by why it counts for that team:
+ * tricks a seat won, Dragon tricks gifted to it, the last player's tricks
+ * (to first out) and cards left in hand (to the opponents). Groups with no
+ * point cards are left out; each team's group points sum to its card points.
+ * Empty on a double victory, where card points aren't counted.
+ */
+export function pointCardBreakdown(
+  players: GameState['players'],
+  firstOut: Seat,
+  lastPlayer: Seat,
+): PointCardGroup[] {
+  const groups: PointCardGroup[] = [];
+  const add = (group: Omit<PointCardGroup, 'cards' | 'points'>, cards: Card[]) => {
+    const scoring = cards.filter(isPointCard).sort((a, b) => pointCardOrder(a) - pointCardOrder(b));
+    if (scoring.length > 0) groups.push({ ...group, cards: scoring, points: sumPoints(scoring) });
+  };
+
+  for (const player of players) {
+    if (player.seat === lastPlayer) continue;
+    const team = getTeamForSeat(player.seat);
+    add({ team, seat: player.seat, source: 'won' },
+      player.tricksWon.filter(t => !isDragonGift(t)).flat());
+    add({ team, seat: player.seat, source: 'dragon' },
+      player.tricksWon.filter(isDragonGift).flat());
+  }
+  add({ team: getTeamForSeat(firstOut), seat: firstOut, source: 'lastTricks', from: lastPlayer },
+    players[lastPlayer].tricksWon.flat());
+  const handTeam = (1 - getTeamForSeat(lastPlayer)) as 0 | 1;
+  for (const player of players) {
+    add({ team: handTeam, seat: null, source: 'lastHand', from: player.seat }, player.hand);
+  }
+  return groups;
 }
 
 /** Calculate the result of a completed round */
@@ -104,6 +157,7 @@ export function scoreRound(state: GameState): RoundResult {
     doubleVictoryTeam: isDoubleVictory ? firstTeam : undefined,
     totalScores,
     outOrder,
+    pointCards: isDoubleVictory ? [] : pointCardBreakdown(players, firstOut, lastPlayer),
   };
 }
 
