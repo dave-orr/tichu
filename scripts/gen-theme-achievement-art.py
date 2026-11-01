@@ -13,10 +13,9 @@ scripts/gen-achievement-art.py):
 - `trick-or-treat`: flat cut shapes with a dark ink outline, a bat-wing rim
   and a black cat with glowing eyes against a crescent moon
   (palette from scripts/gen-halloween-art.py).
-- `spellbound`: storybook ink outlines like the painted Magic cards: a gold
-  rim studded with the five realms' orbs around a starry midnight disc, and
-  the Mah Jong parrot's starry wizard hat with a sparking wand
-  (palette from scripts/gen-magic-art.py).
+- `spellbound`: fine sepia ink like the watercolour Magic cards: a gold rim
+  studded with the five realms' orbs around a parchment pool, and the Mah
+  Jong card's black lotus on a lily pad (palette from scripts/gen-magic-art.py).
 
     python3 scripts/gen-theme-achievement-art.py client/public/achievements
 """
@@ -211,12 +210,12 @@ icons['trick-or-treat'] = svg(
 )
 
 # ===== Spellbound =====
-M_INK = '#2A1E33'
-M_NIGHT, M_NIGHT_LT = '#243263', '#3A4A86'
-M_GOLD, M_GOLD_LT, M_GOLD_DK = '#F5BA35', '#FCD670', '#B9841A'
-M_HAT, M_HAT_DK, M_HAT_LT = '#4B3AA8', '#2E2275', '#6E5CD0'
-M_WAND = '#6B3F22'
-M_REALMS = ('#FFF3C9', '#2F7BD8', '#2B2433', '#D8452E', '#2E8A4A')
+M_INK = '#5B4636'
+M_GOLD, M_GOLD_LT, M_GOLD_DK = '#D9AE52', '#F2D894', '#A8803A'
+M_FRAME = '#1F4A3A'
+M_LOTUS, M_LOTUS_DK, M_LOTUS_LT = '#3A3048', '#221B2C', '#6B5A86'
+M_PAD, M_PAD_DK = '#7FA88A', '#4F7A60'
+M_REALMS = ('#F1ECE2', '#5B86C4', '#4A4250', '#D2553F', '#5E9E6E')
 
 
 def m_sparkle(x, y, s, c=M_GOLD_LT):
@@ -224,38 +223,47 @@ def m_sparkle(x, y, s, c=M_GOLD_LT):
             f'Q{f(x - s * .2)} {f(y + s * .2)} {f(x - s)} {f(y)} Q{f(x - s * .2)} {f(y - s * .2)} {f(x)} {f(y - s)} Z" fill="{c}" stroke="none"/>')
 
 
+def m_petal(cx, cy, angle, length, width, fill):
+    a = math.radians(angle)
+    ux, uy = math.sin(a), -math.cos(a)
+    nx, ny = -uy, ux
+    pt = lambda u, n: f'{f(cx + ux * u + nx * n)} {f(cy + uy * u + ny * n)}'
+    return (f'<path d="M{pt(0, 0)} Q{pt(length * .45, width)} {pt(length, 0)} Q{pt(length * .45, -width)} {pt(0, 0)} Z" fill="{fill}" stroke-width="1.6"/>'
+            f'<path d="M{pt(length * .3, 0)} L{pt(length * .8, 0)}" stroke="{M_LOTUS_LT}" stroke-width="1"/>')
+
+
 icons['spellbound'] = svg(
-    f'<g stroke="{M_INK}">'
-    # gold rim with the five realms' orbs set into it, then the midnight disc
-    f'<circle cx="64" cy="64" r="58" fill="url(#mgold)" stroke-width="2.6"/>'
-    f'<circle cx="64" cy="64" r="46" fill="url(#msky)" stroke-width="2.4"/>'
+    f'<g stroke="{M_INK}" stroke-linejoin="round" stroke-linecap="round">'
+    # gold rim with the five realms' orbs set into it, then the parchment pool
+    f'<circle cx="64" cy="64" r="58" fill="url(#mgold)" stroke-width="2.2"/>'
+    f'<circle cx="64" cy="64" r="46" fill="url(#mpool)" stroke="{M_FRAME}" stroke-width="2.4"/>'
     + ''.join(f'<circle cx="{f(64 + 52 * math.cos(math.radians(-90 + 72 * i)))}" cy="{f(64 + 52 * math.sin(math.radians(-90 + 72 * i)))}" '
-              f'r="7" fill="{c}" stroke-width="2"/>'
+              f'r="7" fill="{c}" stroke-width="1.8"/>'
               f'<circle cx="{f(62 + 52 * math.cos(math.radians(-90 + 72 * i)))}" cy="{f(62 + 52 * math.sin(math.radians(-90 + 72 * i)))}" '
               f'r="2" fill="#fff" stroke="none" opacity=".6"/>' for i, c in enumerate(M_REALMS))
     + ''.join(f'<circle cx="{f(64 + 52 * math.cos(math.radians(-54 + 72 * i)))}" cy="{f(64 + 52 * math.sin(math.radians(-54 + 72 * i)))}" '
               f'r="1.8" fill="{M_GOLD_LT}" stroke="none"/>' for i in range(5))
     + f'<g clip-path="url(#mdisc)">'
-    + ''.join(f'<path d="{star_path(x, y, r, r * .45)}" fill="#fff" stroke="none" opacity=".8"/>' for x, y, r in ((36, 40, 2.2), (92, 38, 1.8), (30, 70, 1.6), (100, 66, 2)))
-    # the wizard hat: a crooked cone with a starry band and a bell at the tip
-    + f'<path d="M30 88 Q64 98 98 88 Q100 96 64 102 Q28 96 30 88 Z" fill="{M_HAT_DK}" stroke-width="2.4"/>'
-    f'<path d="M40 88 Q50 60 58 42 Q64 28 80 24 Q74 32 74 44 Q78 66 90 88 Q64 94 40 88 Z" fill="{M_HAT}" stroke-width="2.4"/>'
-    f'<path d="M50 70 Q56 50 64 38" fill="none" stroke="{M_HAT_LT}" stroke-width="3" opacity=".8"/>'
-    f'<path d="M42 82 Q64 88 88 82 L90 88 Q64 94 40 88 Z" fill="{M_GOLD}" stroke-width="2"/>'
-    f'<path d="{star_path(62, 62, 6, 2.6)}" fill="{M_GOLD_LT}" stroke-width="1.2"/>'
-    f'<path d="M74 52 A5 5 0 1 0 76 60 A4 4 0 1 1 74 52 Z" fill="{M_GOLD_LT}" stroke-width="1.2"/>'
-    f'<circle cx="81" cy="25" r="4" fill="{M_GOLD}" stroke-width="1.8"/>'
-    # the wand, sparking over the brim
-    f'<path d="M98 100 L84 76" stroke-width="5.6"/><path d="M98 100 L84 76" stroke="{M_WAND}" stroke-width="3.2"/>'
-    f'<path d="M86 79.5 L84 76" stroke="{M_GOLD_LT}" stroke-width="3.2"/>'
+    # ripples and lily pads on the water
+    + f'<path d="M24 92 Q44 88 64 92 Q84 96 104 92 M30 102 Q50 98 70 102 Q88 106 100 102" fill="none" stroke="#8FB3C2" stroke-width="1.4" opacity=".8"/>'
+    f'<ellipse cx="36" cy="96" rx="11" ry="3.6" fill="{M_PAD}" stroke-width="1.4"/>'
+    f'<ellipse cx="96" cy="88" rx="8" ry="2.8" fill="{M_PAD}" stroke-width="1.4"/>'
+    # the Mah Jong card's black lotus
+    f'<ellipse cx="64" cy="86" rx="30" ry="8" fill="{M_PAD}" stroke-width="1.8"/>'
+    f'<path d="M64 86 L82 82" stroke="{M_PAD_DK}" stroke-width="1.2"/>'
+    + ''.join(m_petal(64, 82, a, 26, 9, M_LOTUS_DK) for a in (-75, -45, 45, 75))
+    + ''.join(m_petal(64, 82, a, 21, 8, M_LOTUS) for a in (-62, 62))
+    + ''.join(m_petal(64, 82, a, 28, 9.6, M_LOTUS) for a in (-30, 0, 30))
+    + f'<ellipse cx="64" cy="76" rx="7" ry="3.2" fill="{M_GOLD}" stroke-width="1.2"/>'
+    + ''.join(f'<circle cx="{x}" cy="{y}" r="1.1" fill="{M_GOLD_LT}" stroke="none"/>' for x, y in ((60, 72), (64, 71), (68, 72)))
     + '</g>'
-    + m_sparkle(82, 70, 7) + m_sparkle(94, 60, 3.6, '#fff') + m_sparkle(72, 72, 3)
+    + m_sparkle(40, 40, 5) + m_sparkle(90, 44, 3.6) + m_sparkle(82, 32, 2.4)
     + '</g>',
     f'<clipPath id="mdisc"><circle cx="64" cy="64" r="45"/></clipPath>'
     f'<linearGradient id="mgold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{M_GOLD_LT}"/>'
     f'<stop offset=".5" stop-color="{M_GOLD}"/><stop offset="1" stop-color="{M_GOLD_DK}"/></linearGradient>'
-    f'<radialGradient id="msky" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="{M_NIGHT_LT}"/>'
-    f'<stop offset="1" stop-color="{M_NIGHT}"/></radialGradient>',
+    f'<radialGradient id="mpool" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#FFFDF6"/>'
+    f'<stop offset=".55" stop-color="#F6EFDC"/><stop offset="1" stop-color="#BFD6DA"/></radialGradient>',
 )
 
 out = sys.argv[1]
