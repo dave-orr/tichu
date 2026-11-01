@@ -286,6 +286,68 @@ h1, h2, h3 {
 [data-theme="baroque"] .dragon-arc-head { fill: rgb(var(--c-ochre)); }
 [data-theme="baroque"] .paw-print-ink { fill: rgb(var(--c-ochre-light)); opacity: 0.6; }
 
+/* ===== Magic theme =====
+   A dark theme: a starlit midnight-blue table with the five realms' colours
+   glowing faintly at its rim, dragon-gold keylines on the chrome, and the
+   painted full-face cards (cards/magic/, drawn whole by Card.tsx, each game
+   on four of its five suits). Tichu calls are wizard-hat violet seals. */
+[data-theme="magic"] .table-felt {
+  background-color: rgb(var(--c-felt-dark));
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.4) 0.8px, transparent 1.2px),
+    radial-gradient(rgb(252 214 112 / 0.28) 0.7px, transparent 1.1px),
+    radial-gradient(circle at 8% 10%, rgb(245 186 53 / 0.12) 0%, transparent 22%),
+    radial-gradient(circle at 92% 12%, rgb(80 150 255 / 0.12) 0%, transparent 22%),
+    radial-gradient(circle at 6% 92%, rgb(70 190 100 / 0.11) 0%, transparent 22%),
+    radial-gradient(circle at 94% 90%, rgb(240 80 50 / 0.11) 0%, transparent 22%),
+    radial-gradient(circle at 50% 104%, rgb(170 110 230 / 0.14) 0%, transparent 24%),
+    radial-gradient(ellipse 80% 70% at 50% 42%, rgb(var(--c-felt)) 0%, rgb(var(--c-felt-dark)) 100%);
+  background-size: 101px 93px, 67px 71px, auto, auto, auto, auto, auto, auto;
+  background-position: 0 0, 29px 37px, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+}
+[data-theme="magic"] .font-display, [data-theme="magic"] h1, [data-theme="magic"] h2, [data-theme="magic"] h3 {
+  font-weight: 700;
+}
+[data-theme="magic"] .surface {
+  background-color: rgb(16 18 44 / 0.72);
+  box-shadow: inset 0 0 0 1px rgb(245 186 53 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="magic"] [data-seat-panel] {
+  background-color: rgb(16 18 44 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(245 186 53 / 0.35), 0 10px 24px -10px rgb(0 0 0 / 0.6);
+}
+[data-theme="magic"] .btn-pass { --edge: #B4AC98; }
+[data-theme="magic"] .tichu-badge {
+  background-color: rgb(var(--c-clay));
+  color: rgb(var(--c-cream));
+  box-shadow: inset 0 0 0 1.5px rgb(var(--c-ochre-light) / 0.8), 0 2px 0 rgb(var(--c-clay-dark));
+}
+[data-theme="magic"] .tichu-badge-grand {
+  background-color: rgb(var(--c-clay-dark));
+  color: rgb(var(--c-ochre-light));
+}
+/* Full-face cards: the art carries its own white stock, coloured border and
+   rounded (transparent) corners, so the card box adds only the shadow. */
+[data-theme="magic"] .card.card-face {
+  background: none;
+  border-radius: 7% / 5%;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.35), -2px 0 4px -2px rgb(0 0 0 / 0.35), 0 5px 10px -3px rgb(0 0 0 / 0.55);
+}
+[data-theme="magic"] .card.card-face:hover {
+  box-shadow: 0 2px 2px rgb(0 0 0 / 0.3), 0 10px 16px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="magic"] .card.card-face.selected {
+  box-shadow: 0 0 0 3px rgb(var(--c-ochre)), 0 0 16px rgb(var(--c-ochre) / 0.55), 0 14px 20px -6px rgb(0 0 0 / 0.6);
+}
+[data-theme="magic"] .card-back {
+  background-image: url('/cards/magic/back.svg');
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.55);
+}
+/* The Dragon's flight path and the Dog's paw prints in dragon gold. */
+[data-theme="magic"] .dragon-arc { stroke: rgb(var(--c-ochre)); }
+[data-theme="magic"] .dragon-arc-head { fill: rgb(var(--c-ochre)); }
+[data-theme="magic"] .paw-print-ink { fill: rgb(var(--c-ochre-light)); opacity: 0.6; }
+
 /* Animations */
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }
@@ -512,6 +574,7 @@ h1, h2, h3 {
 [data-theme="kawaii"] { --phoenix-glow: 240 92 140; }
 [data-theme="halloween"] { --phoenix-glow: 255 128 24; }
 [data-theme="baroque"] { --phoenix-glow: 255 176 64; }
+[data-theme="magic"] { --phoenix-glow: 255 150 40; }
 @keyframes phoenix-glow {
   0%, 100% {
     box-shadow:

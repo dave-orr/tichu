@@ -59,7 +59,7 @@ export default function ThemeGallery({ value, onChange, compact, disabled }: {
   disabled?: boolean;
 }) {
   return (
-    <div className={`grid gap-4 ${compact ? '' : 'h-full'} ${compact ? 'grid-cols-[repeat(auto-fit,minmax(8rem,1fr))]' : 'grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]'}`} role="radiogroup" aria-label="Theme">
+    <div className={`grid gap-4 ${compact ? '' : 'h-full'} ${compact ? 'grid-cols-[repeat(auto-fit,minmax(8rem,1fr))]' : 'grid-cols-1 sm:grid-cols-2'}`} role="radiogroup" aria-label="Theme">
       {THEMES.filter(t => t.selectable || t.id === value).map(t => {
         const selected = value === t.id;
         return (

@@ -5,7 +5,7 @@ import type { UserProfile } from './hooks/useAuth.js';
 import Lobby from './pages/Lobby.js';
 import Game from './pages/Game.js';
 import FitToViewport from './components/FitToViewport.js';
-import { ThemeContext } from './theme.js';
+import { ThemeContext, ThemeSuitsContext } from './theme.js';
 
 export default function App() {
   const authState = useAuth();
@@ -44,6 +44,7 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
+    <ThemeSuitsContext.Provider value={socket.gameState?.themeSuits ?? null}>
     <div className="min-h-screen table-felt text-white">
       {socket.connectionState === 'disconnected' && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-red-800 text-white text-center py-2 px-4 text-2xl font-medium shadow-lg">
@@ -74,6 +75,7 @@ export default function App() {
         </FitToViewport>
       )}
     </div>
+    </ThemeSuitsContext.Provider>
     </ThemeContext.Provider>
   );
 }

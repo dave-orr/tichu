@@ -1,4 +1,4 @@
-import { Card, NormalCard, NormalRank, SpecialCard, Suit } from './types.js';
+import { Card, MAGIC_SUITS, NormalCard, NormalRank, SpecialCard, Suit, Theme, ThemeSuits } from './types.js';
 
 const SUITS: Suit[] = ['jade', 'sword', 'pagoda', 'star'];
 const RANKS: NormalRank[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
@@ -32,6 +32,22 @@ export function shuffle<T>(arr: T[]): T[] {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+/**
+ * The suits a new game's cards are drawn as: on the Magic table, four of its
+ * five suits at random, assigned to the four game suits in random order;
+ * null on every other table. Chosen once per game by the server so every
+ * seat sees the same deck.
+ */
+export function pickThemeSuits(theme: Theme | undefined, random: () => number = Math.random): ThemeSuits | null {
+  if (theme !== 'magic') return null;
+  const pool = [...MAGIC_SUITS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return Object.fromEntries(SUITS.map((suit, i) => [suit, pool[i]])) as ThemeSuits;
 }
 
 /** Get the sort value of a card (for hand ordering) */

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ClientGameState, RoundResult, Card, Combo } from '@tichu/shared';
-import { RANK_NAMES, NormalRank, SUIT_SYMBOLS, SPECIAL_NAMES, cardId } from '@tichu/shared';
+import { RANK_NAMES, NormalRank, SUIT_SYMBOLS, MAGIC_SUIT_SYMBOLS, SPECIAL_NAMES, cardId, type ThemeSuits } from '@tichu/shared';
 
 export type LogEntry = {
   id: number;
@@ -22,10 +22,10 @@ function comboName(combo: Combo): string {
   }
 }
 
-function describeCards(cards: Card[]): string {
+function describeCards(cards: Card[], themeSuits?: ThemeSuits | null): string {
   return cards.map(c => {
     if (c.type === 'special') return SPECIAL_NAMES[c.name];
-    return `${RANK_NAMES[c.rank]}${SUIT_SYMBOLS[c.suit]}`;
+    return `${RANK_NAMES[c.rank]}${themeSuits ? MAGIC_SUIT_SYMBOLS[themeSuits[c.suit]] : SUIT_SYMBOLS[c.suit]}`;
   }).join(' ');
 }
 
@@ -78,7 +78,7 @@ export function useEventLog(
         if (gameState.lastPlayedBy !== null && gameState.currentTrick) {
           const playerName = names[gameState.lastPlayedBy];
           const combo = gameState.currentTrick;
-          newEntries.push(`${playerName} played ${comboName(combo)}: ${describeCards(newPlay)}`);
+          newEntries.push(`${playerName} played ${comboName(combo)}: ${describeCards(newPlay, gameState.themeSuits)}`);
         }
       }
 

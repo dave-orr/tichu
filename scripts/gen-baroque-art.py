@@ -285,8 +285,9 @@ ART = {
     'anim-dragon-fly-1': dragon_fly(True), 'anim-dragon-fly-2': dragon_fly(False),
 }
 
-out = sys.argv[1]
-os.makedirs(out, exist_ok=True)
-for name, content in ART.items():
-    open(os.path.join(out, f'{name}.svg'), 'w').write(content)
-print('wrote', len(ART))
+if __name__ == '__main__':
+    out = sys.argv[1]
+    os.makedirs(out, exist_ok=True)
+    for name, content in ART.items():
+        open(os.path.join(out, f'{name}.svg'), 'w').write(content)
+    print('wrote', len(ART))

@@ -1,5 +1,5 @@
 import {
-  GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound,
+  GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound, pickThemeSuits,
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
@@ -697,7 +697,7 @@ export function startGame(room: Room): void {
     shuffleSeats(room);
   }
   room.gameId = `${room.code}_${Date.now()}`;
-  room.state = startNewRound(room.state);
+  room.state = startNewRound({ ...room.state, themeSuits: pickThemeSuits(room.state.settings.theme) });
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
   room.gameRoundLogs = [];
   room.gameAchievements = [];

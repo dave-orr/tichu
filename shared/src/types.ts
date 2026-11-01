@@ -97,7 +97,7 @@ export type EloUpdate = {
 // ===== Game Settings =====
 
 /** Look and feel of the table and cards, chosen by the room creator. */
-export type Theme = 'papercraft' | 'kawaii' | 'halloween' | 'baroque';
+export type Theme = 'papercraft' | 'kawaii' | 'halloween' | 'baroque' | 'magic';
 /**
  * `selectable: false` keeps a theme built and shipped but out of the picker
  * (and rejected by the server) until it's switched on, e.g. a seasonal one.
@@ -108,6 +108,7 @@ export const THEMES: readonly { id: Theme; name: string; description: string; se
   // DEFAULT_SETTINGS.theme back).
   { id: 'halloween', name: 'Halloween', description: 'Moonlit table, pumpkins, bats and friendly monsters', selectable: true },
   { id: 'baroque', name: 'Classic Baroque', description: 'Hand-painted court cards on jade lacquer', selectable: true },
+  { id: 'magic', name: 'Magic', description: 'Five storybook realms of magic; each game deals four', selectable: true },
   // Retired from the picker; rooms already on it keep drawing it.
   { id: 'kawaii', name: 'Kawaii', description: 'Pastel table, cute faces on everything', selectable: false },
 ];
@@ -130,6 +131,17 @@ export const DEFAULT_SETTINGS: GameSettings = {
   targetScore: 1000,
   theme: 'halloween',
 };
+
+/**
+ * The Magic theme's five painted suits (sun, water, skull, fire, forest),
+ * named after their colours. A game on that table deals with four of them,
+ * drawn at random when it starts (GameState.themeSuits).
+ */
+export const MAGIC_SUITS = ['white', 'blue', 'black', 'red', 'green'] as const;
+export type MagicSuit = typeof MAGIC_SUITS[number];
+/** Which themed suit each of the game's four suits is drawn as (four
+ *  different ones). Only the art changes: rules and play see the usual suits. */
+export type ThemeSuits = Record<Suit, MagicSuit>;
 
 /** True if new rooms may use this theme (see THEMES `selectable`). */
 export function isSelectableTheme(theme: unknown): theme is Theme {
@@ -210,6 +222,10 @@ export type GameState = {
   roundEndReady: Seat[];       // seats that have acknowledged round results
   roundHistory: RoundHistoryEntry[]; // score history for all completed rounds
   receivedCards: [ReceivedCard[], ReceivedCard[], ReceivedCard[], ReceivedCard[]]; // cards received from passing, per seat
+  /** Magic theme: which four of its five suits this game's cards wear
+   *  (see pickThemeSuits), drawn when the game starts. Null for every other
+   *  theme and before a game starts; absent in older room snapshots. */
+  themeSuits?: ThemeSuits | null;
 };
 
 export type ConcedeOffer = {
@@ -459,6 +475,14 @@ export const SUIT_SYMBOLS: Record<Suit, string> = {
   sword: '⚔',
   pagoda: '🏯',
   star: '★',
+};
+
+export const MAGIC_SUIT_SYMBOLS: Record<MagicSuit, string> = {
+  white: '☀',
+  blue: '💧',
+  black: '💀',
+  red: '🔥',
+  green: '🌲',
 };
 
 export const SPECIAL_NAMES: Record<SpecialCardName, string> = {

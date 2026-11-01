@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createDeck, shuffle, sortHand, cardSortValue } from './deck.js';
+import { createDeck, shuffle, sortHand, cardSortValue, pickThemeSuits } from './deck.js';
+import { MAGIC_SUITS } from './types.js';
 
 describe('createDeck', () => {
   it('creates 56 cards', () => {
@@ -62,5 +63,32 @@ describe('sortHand', () => {
     for (let i = 1; i < values.length; i++) {
       expect(values[i]).toBeGreaterThanOrEqual(values[i - 1]);
     }
+  });
+});
+
+describe('pickThemeSuits', () => {
+  it('is null for themes without extra suits', () => {
+    expect(pickThemeSuits('papercraft')).toBeNull();
+    expect(pickThemeSuits('baroque')).toBeNull();
+    expect(pickThemeSuits(undefined)).toBeNull();
+  });
+
+  it('gives each game suit a different Magic suit', () => {
+    for (let n = 0; n < 50; n++) {
+      const picked = pickThemeSuits('magic')!;
+      expect(Object.keys(picked).sort()).toEqual(['jade', 'pagoda', 'star', 'sword']);
+      const used = Object.values(picked);
+      expect(new Set(used).size).toBe(4);
+      for (const s of used) expect(MAGIC_SUITS).toContain(s);
+    }
+  });
+
+  it('can leave out any of the five', () => {
+    const left = new Set<string>();
+    for (let n = 0; n < 500; n++) {
+      const used = Object.values(pickThemeSuits('magic')!);
+      left.add(MAGIC_SUITS.find(s => !used.includes(s))!);
+    }
+    expect(left.size).toBe(5);
   });
 });
