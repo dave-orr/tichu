@@ -13,7 +13,8 @@ own: a golden western dragon with bat wings that beat between the two
 frames, the Dragon card's thick ridged cream horns, a fanged open jaw and
 cream belly plates (no whiskers). The
 back is a midnight spellbook cover: the five realms' orbs (sun, water,
-skull, fire, forest, as ringed on the Dragon card) around a gold star.
+skull, fire, forest, as ringed on the Dragon card) around the Mah Jong
+parrot's starry wizard hat, which also marks the seat-panel card icons.
 
     python3 scripts/gen-magic-art.py client/public/cards/magic
 """
@@ -38,7 +39,7 @@ REALMS = [('#FFF3C9', '#E59A1C'), ('#2F7BD8', '#E6F1FF'), ('#2B2433', '#EDE6F2')
 B.INK = INK
 B.FUR, B.FUR_DK, B.FUR_LT = '#E3A64A', '#B9792A', '#F2C778'   # golden retriever
 B.CREAM = '#FBEBC8'
-B.LACQUER, B.LACQUER_DK = '#C8352A', '#7E1A14'                # red cape collar
+B.LACQUER, B.LACQUER_DK = '#7A4A26', '#4E2C14'                # leather harness
 B.GOLD, B.GOLD_LT = IVORY, GOLD_LT                             # ivory antlers, whiskers, claws
 B.LAPIS, B.LAPIS_DK, B.LAPIS_LT = '#EAC24A', '#B98B1E', '#FFE592'  # golden dragon
 B.VERMILION, B.VERMILION_DK = VIOLET, VIOLET_DK
@@ -74,6 +75,98 @@ B.shiba_head = retriever_head
 B.curl_tail = plume_tail
 
 
+# ----- The Dog card's rider and kit -----
+GOB, GOB_DK = '#8ED45A', '#5E9E34'
+CAPE, CAPE_DK = '#E0352B', '#9C1E18'
+TIN, TIN_DK = '#B8BEC6', '#7E8690'
+TUNIC = '#7A4A26'
+WOOD, WOOD_DK = '#C98A44', '#8A5A26'
+STICK = '#8A5A32'
+
+
+def medallion(x, y):
+    return (f'<circle cx="{x}" cy="{y}" r="3" fill="{GOLD}" stroke-width="1.3"/>'
+            f'<circle cx="{x - .7}" cy="{y - .7}" r="1" fill="{GOLD_LT}" stroke="none"/>')
+
+
+def harness(x1, y1, cx, cy, x2, y2):
+    """The leather chest strap with its gold medallion (the card's harness)."""
+    mx, my = (x1 + 2 * cx + x2) / 4, (y1 + 2 * cy + y2) / 4
+    return B.collar(x1, y1, cx, cy, x2, y2) + medallion(round(mx, 1), round(my + 1, 1))
+
+
+def stick(x, y, rot=0):
+    """The stick carried crosswise in the mouth."""
+    return (f'<g transform="rotate({rot} {x} {y})">'
+            f'<path d="M{x - 9} {y} L{x + 9} {y}" stroke-width="5"/><path d="M{x - 9} {y} L{x + 9} {y}" stroke="{STICK}" stroke-width="3"/>'
+            f'<path d="M{x + 4} {y} l3 -3.4" stroke-width="3.4"/><path d="M{x + 4} {y} l3 -3.4" stroke="{STICK}" stroke-width="1.6"/>'
+            f'<circle cx="{x + 9}" cy="{y}" r="1.4" fill="{WOOD}" stroke-width=".8"/></g>')
+
+
+def goblin(x, y, flap, arm_up=True, s=1.0):
+    """The goblin rider in profile facing right, seated at (x, y): red cape
+    streaming behind, colander helmet, big ear, grin, wooden spoon raised."""
+    p = lambda dx, dy: f'{B.f(x + dx * s)} {B.f(y + dy * s)}'
+    cape = (f'<path d="M{p(-1, -14)} Q{p(-10, -16 + flap)} {p(-20, -12 + flap * 1.6)} L{p(-17, -8 + flap)} L{p(-22, -5 + flap * 1.4)} '
+            f'Q{p(-11, -6)} {p(-2, -6)} Z" fill="{CAPE}" stroke-width="1.8"/>')
+    leg = (f'<path d="M{p(-1, -2)} Q{p(3, 2)} {p(2, 8)}" fill="none" stroke-width="5"/>'
+           f'<path d="M{p(-1, -2)} Q{p(3, 2)} {p(2, 8)}" fill="none" stroke="#5A5F6A" stroke-width="3"/>'
+           f'<path d="M{p(0, 8)} Q{p(5, 7)} {p(6, 10)} L{p(0, 11)} Z" fill="{TUNIC}" stroke-width="1.4"/>')
+    body = f'<path d="M{p(-5, -1)} Q{p(-6, -12)} {p(1, -14)} Q{p(6, -12)} {p(5, -1)} Z" fill="{TUNIC}" stroke-width="1.8"/>'
+    if arm_up:
+        arm = (f'<path d="M{p(3, -11)} L{p(8, -18)}" stroke-width="4"/><path d="M{p(3, -11)} L{p(8, -18)}" stroke="{GOB}" stroke-width="2.2"/>'
+               f'<path d="M{p(7, -15)} L{p(12, -30)}" stroke-width="3.6"/><path d="M{p(7, -15)} L{p(12, -30)}" stroke="{WOOD}" stroke-width="2"/>'
+               f'<ellipse cx="{B.f(x + 12.8 * s)}" cy="{B.f(y - 32 * s)}" rx="{B.f(2.6 * s)}" ry="{B.f(3.8 * s)}" transform="rotate(18 {B.f(x + 12.8 * s)} {B.f(y - 32 * s)})" fill="{WOOD}" stroke-width="1.4"/>'
+               f'<circle cx="{B.f(x + 8 * s)}" cy="{B.f(y - 18 * s)}" r="{B.f(1.8 * s)}" fill="{GOB}" stroke-width="1.1"/>')
+    else:
+        arm = (f'<path d="M{p(3, -10)} L{p(9, -5)}" stroke-width="4"/><path d="M{p(3, -10)} L{p(9, -5)}" stroke="{GOB}" stroke-width="2.2"/>')
+    head = (f'<path d="M{p(-3, -20)} L{p(-13, -24)} L{p(-4, -16)} Z" fill="{GOB}" stroke-width="1.5"/>'  # ear, swept back
+            f'<circle cx="{B.f(x + 1 * s)}" cy="{B.f(y - 19 * s)}" r="{B.f(6 * s)}" fill="{GOB}" stroke-width="1.8"/>'
+            f'<path d="M{p(1, -16.5)} Q{p(4, -13)} {p(6.5, -17)} Z" fill="#E86A6A" stroke-width="1"/>'  # open grin
+            f'<path d="M{p(2.5, -21)} Q{p(4, -22.6)} {p(5.5, -21)}" fill="none" stroke-width="1.2"/>'  # happy closed eye
+            f'<circle cx="{B.f(x + 3 * s)}" cy="{B.f(y - 18.4 * s)}" r="{B.f(1 * s)}" fill="#F6A0A0" stroke="none" opacity=".8"/>')
+    helmet = (f'<path d="M{p(-6.5, -21)} Q{p(-6, -30)} {p(1, -30)} Q{p(8, -30)} {p(8, -21)} Z" fill="{TIN}" stroke-width="1.8"/>'
+              f'<path d="M{p(-7.5, -21)} L{p(9, -21)}" stroke-width="3"/><path d="M{p(-7.5, -21)} L{p(9, -21)}" stroke="{TIN_DK}" stroke-width="1.6"/>'
+              + ''.join(f'<circle cx="{B.f(x + dx * s)}" cy="{B.f(y + dy * s)}" r="{B.f(.7 * s)}" fill="{TIN_DK}" stroke="none"/>' for dx, dy in ((-2, -25), (1.5, -26), (5, -24.5), (-3.6, -23), (2.4, -23)))
+              + f'<path d="M{p(-6.5, -24)} q-3 0 -2.6 2.4" fill="none" stroke="{TIN_DK}" stroke-width="1.4"/>')
+    return cape + leg + body + arm + head + helmet
+
+
+def dog_run(stretch):
+    """The Dog card in a gallop: retriever with a stick in its mouth and the
+    goblin riding, cape flapping between the frames."""
+    cx, cy = 46, 60
+    leg = B.leg
+    if stretch:
+        legs = (leg(cx - 20, cy + 6, cx - 34, cy + 20) + leg(cx - 14, cy + 6, cx - 26, cy + 22)
+                + leg(cx + 18, cy + 6, cx + 34, cy + 16) + leg(cx + 13, cy + 6, cx + 30, cy + 21))
+    else:
+        legs = (leg(cx - 19, cy + 6, cx - 8, cy + 22) + leg(cx - 14, cy + 6, cx - 2, cy + 24)
+                + leg(cx + 17, cy + 6, cx + 6, cy + 22) + leg(cx + 12, cy + 6, cx + 2, cy + 23))
+    bob = -3 if stretch else 2
+    girth = f'<path d="M{cx - 3} {cy - 13} Q{cx - 5} {cy} {cx - 2} {cy + 11}" fill="none" stroke-width="5"/><path d="M{cx - 3} {cy - 13} Q{cx - 5} {cy} {cx - 2} {cy + 11}" fill="none" stroke="{B.LACQUER}" stroke-width="3"/>'
+    return B.svg(f'<g transform="translate(0 {bob})">' + legs + B.curl_tail(cx - 25, cy - 13)
+                 + B.shiba_body(cx, cy) + girth + B.shiba_head(cx + 27, cy - 18)
+                 + stick(cx + 42, cy - 12, -8)
+                 + harness(cx + 18, cy - 10, cx + 23, cy - 2, cx + 30, cy - 9)
+                 + goblin(cx - 4, cy - 12, 4 if stretch else -2, arm_up=True, s=1.25) + '</g>')
+
+
+def dog_lie():
+    """Arrived: lying down with the stick, the goblin still aboard, spoon down."""
+    cx, cy = 46, 66
+    leg = B.leg
+    return B.svg(
+        B.curl_tail(cx - 24, cy - 12)
+        + f'<path d="M{cx - 26} {cy + 2} Q{cx - 26} {cy - 13} {cx - 10} {cy - 13} L{cx + 12} {cy - 14} Q{cx + 26} {cy - 14} {cx + 26} {cy + 2} '
+        f'Q{cx + 26} {cy + 10} {cx + 14} {cy + 10} L{cx - 18} {cy + 10} Q{cx - 26} {cy + 10} {cx - 26} {cy + 2} Z" fill="{B.FUR}" stroke-width="2.8"/>'
+        f'<ellipse cx="{cx - 14}" cy="{cy + 3}" rx="9" ry="7" fill="{B.FUR_LT}" stroke-width="2.2"/>'
+        + leg(cx + 14, cy + 6, cx + 36, cy + 8) + leg(cx + 8, cy + 7, cx + 31, cy + 10)
+        + B.shiba_head(cx + 26, cy - 22) + stick(cx + 41, cy - 16, -4)
+        + harness(cx + 17, cy - 14, cx + 22, cy - 6, cx + 29, cy - 13)
+        + goblin(cx - 4, cy - 13, 0, arm_up=False, s=1.25))
+
+
 def dog_back(a):
     """Running away up the screen: rump, feathery tail, ears down the sides."""
     lift = 5 if a else -5
@@ -87,15 +180,30 @@ def dog_back(a):
         + f'<path d="M28 52 Q28 34 50 34 Q72 34 72 52 Q72 72 50 72 Q28 72 28 52 Z" fill="{B.FUR}" stroke-width="2.8"/>'
         f'<path d="M40 70 Q50 62 60 70 Q56 73 50 73 Q44 73 40 70 Z" fill="{B.CREAM}" stroke="none"/>'
         f'<g transform="rotate({wag} 50 50)"><path d="M47 50 Q44 36 50 24 Q56 36 53 50 Z" fill="{B.FUR_LT}" stroke-width="2.2"/>'
-        f'<path d="M50 28 L50 46" fill="none" stroke="{B.FUR}" stroke-width="1.6"/></g>')
+        f'<path d="M50 28 L50 46" fill="none" stroke="{B.FUR}" stroke-width="1.6"/></g>'
+        # the goblin from behind: ears out, colander helmet, cape over the dog's back
+        f'<path d="M41 22 L30 16 L42 27 Z M59 22 L70 16 L58 27 Z" fill="{GOB}" stroke-width="1.6"/>'
+        f'<path d="M42 26 Q50 22 58 26 Q{62 + (3 if a else -3)} 44 {58 + (3 if a else -3)} 50 L50 47 L{42 - (3 if a else -3)} 50 Q{38 - (3 if a else -3)} 44 42 26 Z" fill="{CAPE}" stroke-width="2"/>'
+        f'<path d="M50 30 L50 46" fill="none" stroke="{CAPE_DK}" stroke-width="1.2"/>'
+        f'<path d="M41 22 Q41 10 50 10 Q59 10 59 22 Z" fill="{TIN}" stroke-width="1.8"/>'
+        f'<path d="M39.5 22 L60.5 22" stroke-width="3"/><path d="M39.5 22 L60.5 22" stroke="{TIN_DK}" stroke-width="1.6"/>'
+        + ''.join(f'<circle cx="{x}" cy="{y}" r=".8" fill="{TIN_DK}" stroke="none"/>' for x, y in ((45, 16), (50, 15), (55, 16), (47.5, 19), (52.5, 19))))
 
 
 def dog_front(a):
     """Running toward the viewer: full face, floppy ears, red cape collar."""
     lift = 5 if a else -5
     leg = B.leg
+    wave = 3 if a else -3
+    rider = (f'<path d="M36 14 L24 {8 + wave} L38 20 Z M64 14 L76 {8 - wave} L62 20 Z" fill="{GOB}" stroke-width="1.6"/>'
+             f'<path d="M37 18 Q37 6 50 6 Q63 6 63 18 Z" fill="{GOB}" stroke-width="1.8"/>'
+             f'<path d="M43 12 Q45 10 47 12 M53 12 Q55 10 57 12" fill="none" stroke-width="1.2"/>'
+             f'<path d="M37 9 Q37 -2 50 -2 Q63 -2 63 9 Z" fill="{TIN}" stroke-width="1.8"/>'
+             f'<path d="M35.5 9 L64.5 9" stroke-width="3"/><path d="M35.5 9 L64.5 9" stroke="{TIN_DK}" stroke-width="1.6"/>'
+             f'<path d="M67 18 L{74 + wave} 2" stroke-width="3.6"/><path d="M67 18 L{74 + wave} 2" stroke="{WOOD}" stroke-width="2"/>'
+             f'<ellipse cx="{75 + wave}" cy="0" rx="2.6" ry="3.6" fill="{WOOD}" stroke-width="1.4"/>')
     return B.svg(
-        f'<g transform="translate(0 {2 if a else -2})">'
+        f'<g transform="translate(5 {8 + (2 if a else -2)}) scale(.9)">' + rider
         + leg(40, 66, 39, 86 - lift) + leg(60, 66, 61, 86 + lift)
         + f'<path d="M30 58 Q30 44 50 44 Q70 44 70 58 Q70 74 50 74 Q30 74 30 58 Z" fill="{B.FUR}" stroke-width="2.8"/>'
         f'<path d="M40 50 Q50 46 60 50 Q62 66 50 72 Q38 66 40 50 Z" fill="{B.CREAM}" stroke="none"/>'
@@ -107,7 +215,7 @@ def dog_front(a):
         f'<ellipse cx="50" cy="40" rx="3.8" ry="2.8" fill="{INK}" stroke="none"/>'
         f'<path d="M50 42 L50 45 M45 45 Q50 49 55 45" fill="none" stroke-width="1.6"/>'
         f'<path d="M47.5 46 Q50 53 52.5 46 Z" fill="#E86A6A" stroke-width="1"/>'
-        + B.collar(33, 50, 50, 59, 67, 50, (50, 57, 3 if a else -3)) + '</g>')
+        + stick(50, 45, 0) + harness(33, 52, 50, 61, 67, 52) + '</g>')
 
 
 # ===== Card back and icons =====
@@ -138,6 +246,28 @@ def realm_symbol(i, cx, cy, col):
             f'<rect x="{cx - .6}" y="{cy + 2}" width="1.2" height="1.6" fill="{col}" stroke="none"/>')
 
 
+HAT, HAT_DK, HAT_LT = '#4B3AA8', '#2E2275', '#6E5CD0'
+
+
+def wizard_hat(cx, cy, s=1.0, detail=True):
+    """The Mah Jong parrot's wizard hat, centred on (cx, cy): a wide brim,
+    a gold band, and a starry cone whose tip flops over to the right."""
+    p = lambda x, y: f'{B.f(cx + x * s)} {B.f(cy + y * s)}'
+    brim = f'<path d="M{p(-13, 6)} Q{p(0, 1)} {p(13, 6)} Q{p(10, 10)} {p(0, 10)} Q{p(-10, 10)} {p(-13, 6)} Z" fill="{HAT_DK}" stroke-width="{1.6 * s:.2f}"/>'
+    cone = (f'<path d="M{p(-9, 6)} Q{p(-7, -4)} {p(-3, -10)} Q{p(1, -16)} {p(7, -15)} Q{p(12, -14)} {p(12, -9)} '
+            f'Q{p(8, -12)} {p(5, -9)} Q{p(6, -2)} {p(9, 6)} Q{p(0, 8)} {p(-9, 6)} Z" fill="{HAT}" stroke-width="{1.6 * s:.2f}"/>')
+    shine = f'<path d="M{p(-5, 2)} Q{p(-4, -5)} {p(-1, -9)}" fill="none" stroke="{HAT_LT}" stroke-width="{1.4 * s:.2f}"/>'
+    band = f'<path d="M{p(-8.6, 3)} Q{p(0, 5)} {p(8.4, 3)} L{p(9, 6)} Q{p(0, 8)} {p(-9, 6)} Z" fill="{GOLD}" stroke-width="{1.1 * s:.2f}"/>'
+    bell = f'<circle cx="{B.f(cx + 12 * s)}" cy="{B.f(cy - 8 * s)}" r="{B.f(1.8 * s)}" fill="{GOLD}" stroke-width="{.9 * s:.2f}"/>'
+    deco = ''
+    if detail:
+        deco = (f'<path d="{star(cx + 1.6 * s, cy - 2.4 * s, 2.6 * s, 1.1 * s)}" fill="{GOLD_LT}" stroke="none"/>'
+                f'<path d="{star(cx - 4.4 * s, cy - 6 * s, 1.5 * s, .65 * s)}" fill="{GOLD_LT}" stroke="none"/>'
+                f'<path d="{star(cx + 4.6 * s, cy - 11.6 * s, 1.3 * s, .55 * s)}" fill="{GOLD_LT}" stroke="none"/>'
+                f'<path d="M{p(-3.6, 1.4)} A2.4 2.4 0 1 0 {p(-2.4, -2.6)} A1.9 1.9 0 1 1 {p(-3.6, 1.4)} Z" fill="{GOLD_LT}" stroke="none"/>')
+    return brim + cone + shine + band + deco + bell
+
+
 def back():
     sky = (f'<radialGradient id="sky" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="{MIDNIGHT_LT}"/>'
            f'<stop offset=".55" stop-color="{MIDNIGHT}"/><stop offset="1" stop-color="{MIDNIGHT_DK}"/></radialGradient>'
@@ -151,7 +281,7 @@ def back():
         x = 12 + (seed % 7600) / 100
         seed = (seed * 1103515245 + 12345) % 2 ** 31
         y = 12 + (seed % 11600) / 100
-        if math.hypot(x - 50, y - 70) < 30:
+        if math.hypot(x - 50, y - 70) < 34:
             continue
         seed = (seed * 1103515245 + 12345) % 2 ** 31
         r = .35 + (seed % 50) / 100
@@ -159,12 +289,12 @@ def back():
     orbs = ''
     for i, (fill, sym) in enumerate(REALMS):
         a = math.radians(-90 + 72 * i)
-        ox, oy = 50 + 19 * math.cos(a), 70 + 19 * math.sin(a)
+        ox, oy = 50 + 22 * math.cos(a), 70 + 22 * math.sin(a)
         orbs += (f'<circle cx="{B.f(ox)}" cy="{B.f(oy)}" r="6.4" fill="{fill}" stroke="{GOLD}" stroke-width="1.4"/>'
                  + realm_symbol(i, round(ox, 1), round(oy, 1), sym))
     ring = ''.join(
-        f'<path d="M{B.f(50 + 19 * math.cos(math.radians(-90 + 72 * i) + .38))} {B.f(70 + 19 * math.sin(math.radians(-90 + 72 * i) + .38))} '
-        f'A19 19 0 0 1 {B.f(50 + 19 * math.cos(math.radians(-18 + 72 * i) - .38))} {B.f(70 + 19 * math.sin(math.radians(-18 + 72 * i) - .38))}" '
+        f'<path d="M{B.f(50 + 22 * math.cos(math.radians(-90 + 72 * i) + .38))} {B.f(70 + 22 * math.sin(math.radians(-90 + 72 * i) + .38))} '
+        f'A22 22 0 0 1 {B.f(50 + 22 * math.cos(math.radians(-18 + 72 * i) - .38))} {B.f(70 + 22 * math.sin(math.radians(-18 + 72 * i) - .38))}" '
         f'fill="none" stroke="{GOLD}" stroke-opacity=".7" stroke-width=".8"/>' for i in range(5))
     corners = ''.join(f'<path d="{star(x, y, 3.2, 1.3)}" fill="{GOLD}" stroke="none"/>' for x, y in ((18, 18), (82, 18), (18, 122), (82, 122)))
     return B.svg(
@@ -176,10 +306,10 @@ def back():
         f'<rect x="11" y="11" width="78" height="118" rx="2" fill="none" stroke="{GOLD}" stroke-width="1.3"/>'
         f'<rect x="13.5" y="13.5" width="73" height="113" rx="1.5" fill="none" stroke="{GOLD}" stroke-opacity=".55" stroke-width=".6"/>'
         + corners +
-        f'<circle cx="50" cy="70" r="30" fill="url(#halo)" stroke="none"/>'
+        f'<circle cx="50" cy="70" r="33" fill="url(#halo)" stroke="none"/>'
         + ring + orbs +
-        f'<circle cx="50" cy="70" r="9" fill="{VIOLET_DK}" stroke="{GOLD}" stroke-width="1.4"/>'
-        f'<path d="{star(50, 70, 7, 2.9)}" fill="{GOLD_LT}" stroke="{GOLD_DK}" stroke-width=".6"/>',
+        f'<circle cx="50" cy="70" r="15" fill="{MIDNIGHT_LT}" stroke="{GOLD}" stroke-width="1.4"/>'
+        + wizard_hat(50, 71, 1.05),
         '0 0 100 140')
 
 
@@ -187,7 +317,7 @@ def mini_back(x, y, rot=0, cx=20, cy=36):
     return (f'<g transform="rotate({rot} {cx} {cy})">'
             f'<rect x="{x}" y="{y}" width="15" height="22" rx="2" fill="{MIDNIGHT}" stroke="{INK}" stroke-width="1.5"/>'
             f'<rect x="{x + 2.5}" y="{y + 2.5}" width="10" height="17" rx="1" fill="none" stroke="{GOLD}" stroke-width="1.1"/>'
-            f'<path d="{star(x + 7.5, y + 11, 3.6, 1.5)}" fill="{GOLD_LT}" stroke="none"/></g>')
+            + f'<g stroke="{INK}">' + wizard_hat(x + 7.5, y + 11.5, .48, detail=False) + '</g></g>')
 
 
 # ===== Golden dragon (Dragon flight) =====
@@ -289,10 +419,10 @@ ART = {
     'back': back(),
     'icon-hand': B.icon(''.join(mini_back(12.5, 9, r) for r in (-24, 0, 24))),
     'icon-tricks': B.icon(''.join(mini_back(9 + 4 * i, 5 + 4 * i) for i in range(3))),
-    'anim-doodle-run-1': B.dog_run(True), 'anim-doodle-run-2': B.dog_run(False),
+    'anim-doodle-run-1': dog_run(True), 'anim-doodle-run-2': dog_run(False),
     'anim-doodle-back-1': dog_back(True), 'anim-doodle-back-2': dog_back(False),
     'anim-doodle-front-1': dog_front(True), 'anim-doodle-front-2': dog_front(False),
-    'anim-doodle-lie': B.dog_lie(),
+    'anim-doodle-lie': dog_lie(),
     'anim-dragon-fly-1': dragon_fly(True), 'anim-dragon-fly-2': dragon_fly(False),
 }
 
