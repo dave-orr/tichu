@@ -116,6 +116,10 @@ export default function Game({ socket, auth }: Props) {
     setSelectedCards(new Set());
     setBombMode(false);
     setPassNextPlay(false);
+    // Confirm popovers are gated on phase === 'playing', so one left open as a
+    // round ends would otherwise pop back up once the next hand starts playing.
+    setShowConcedeConfirm(false);
+    setShowTichuConfirm(false);
     // A fresh deal: last round's pass must not pre-fill this round's picks.
     if (phase === 'grandTichuWindow') setPassRecord(null);
   }, [phase]);
@@ -1040,7 +1044,7 @@ export default function Game({ socket, auth }: Props) {
                 <button onClick={() => setShowPhoenixChoice(false)} className="btn btn-quiet shrink-0 py-1 px-4 text-base">Cancel</button>
               </div>
             )}
-            {showTichuConfirm && (
+            {showTichuConfirm && canCallTichu && (
               <ConfirmPopover
                 message={`${players.filter(p => p.seat !== mySeat && p.tichuCall !== 'none').map(p =>
                   `${p.name} called ${p.tichuCall === 'grand' ? 'Grand Tichu' : 'Tichu'}`).join(', ')}. Still call?`}
@@ -1050,7 +1054,9 @@ export default function Game({ socket, auth }: Props) {
                 onCancel={() => setShowTichuConfirm(false)}
               />
             )}
-            {showConcedeConfirm && (
+            {/* Gated on partnerIsOut as well: the offer is only valid while the
+                Concede button is, and a stale flag must never resurface it. */}
+            {showConcedeConfirm && partnerIsOut && (
               <ConfirmPopover
                 message="Offer to concede? If your opponents accept, the round ends and your hand goes to them."
                 confirmLabel="Offer to Concede"
