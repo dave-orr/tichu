@@ -5,7 +5,7 @@ import {
   GameRecord, UserStats, TeamStats, PairingPlayer, EMPTY_STAT_TOTALS,
   computePlayerStats, computePartnerSummaries, computePairingBreakdown,
   Comeback, biggestComeback, computeAchievements, GUEST_PARTNER,
-  AchievementEvent, currentWinStreak, streakMilestone,
+  AchievementEvent, AchievementId, currentWinStreak, streakMilestone, isFirstGameOnTheme, THEME_ACHIEVEMENTS,
 } from '@tichu/shared';
 import { firebaseAdmin } from './firebase.js';
 import { Room } from './rooms.js';
@@ -124,27 +124,39 @@ export async function saveGameSummary(room: Room): Promise<void> {
 }
 
 /**
- * Win-streak achievements (Hot Streak, Unstoppable) the game that just ended
- * earned its winners. Streaks span games, so this reads each winner's
- * history; call after saveGameSummary so the finished game is included.
- * Teammates who hit the same milestone share one event.
+ * Game-end achievements that depend on each player's history, so call this
+ * after saveGameSummary (the finished game must be included):
+ * - win streaks (Hot Streak, Unstoppable) for the winners;
+ * - the table's theme badge, once per player: only for a player's first
+ *   finished game on that theme. Seats with no account (or with Firebase
+ *   unavailable) have no history to check, so they always get it.
+ * Seats that earn the same achievement share one event.
  */
-export async function fetchStreakAchievements(room: Room): Promise<AchievementEvent[]> {
-  if (!firebaseAdmin) return [];
-  const db = firebaseAdmin.firestore();
+export async function fetchHistoryAchievements(room: Room): Promise<AchievementEvent[]> {
   const [s0, s1] = [room.state.teams[0].score, room.state.teams[1].score];
-  if (s0 === s1) return [];
-  const winners = room.state.players.filter(p => getTeamForSeat(p.seat) === (s0 > s1 ? 0 : 1));
-  const events = new Map<string, AchievementEvent>();
-  await Promise.all(winners.map(async p => {
-    const uid = room.seatUids.get(p.seat);
-    if (!uid) return;
-    const snap = await db.collection('games').where('playerUids', 'array-contains', uid).get();
-    const id = streakMilestone(currentWinStreak(snap.docs.map(d => toSummary(d.data())), uid));
-    if (!id) return;
+  const winningTeam = s0 === s1 ? null : s0 > s1 ? 0 : 1;
+  const theme = room.state.settings.theme ?? 'papercraft';
+  const themeId = THEME_ACHIEVEMENTS[theme];
+  const db = firebaseAdmin?.firestore();
+  const events = new Map<AchievementId, AchievementEvent>();
+  const award = (id: AchievementId, seat: Seat) => {
     const e = events.get(id) ?? { id, seats: [], roundNumber: null };
-    e.seats.push(p.seat);
+    e.seats.push(seat);
     events.set(id, e);
+  };
+  await Promise.all(room.state.players.map(async p => {
+    const uid = room.seatUids.get(p.seat);
+    if (!uid || !db) {
+      award(themeId, p.seat);
+      return;
+    }
+    const snap = await db.collection('games').where('playerUids', 'array-contains', uid).get();
+    const summaries = snap.docs.map(d => toSummary(d.data()));
+    if (isFirstGameOnTheme(summaries, uid, theme, room.accumulator.gameId)) award(themeId, p.seat);
+    if (winningTeam !== null && getTeamForSeat(p.seat) === winningTeam) {
+      const id = streakMilestone(currentWinStreak(summaries, uid));
+      if (id) award(id, p.seat);
+    }
   }));
   return [...events.values()].map(e => ({ ...e, seats: [...e.seats].sort() }));
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAchievements, achievementEvents, currentWinStreak, AchievementId } from './achievements.js';
+import { computeAchievements, achievementEvents, currentWinStreak, isFirstGameOnTheme, AchievementId } from './achievements.js';
 import { GameRecord } from './stats.js';
 import {
   Card, GameSummary, NormalRank, RoundLog, RoundPlay, Seat, Suit, TichuCall,
@@ -349,7 +349,7 @@ describe('theme achievements', () => {
     expect(events.filter(e => e.id === 'old-master')).toEqual([{ id: 'old-master', seats: [0, 1, 2, 3], roundNumber: null }]);
   });
 
-  it('counts per theme on the stats page, and not for summaries without one', () => {
+  it('counts each theme once per player on the stats page, and not for summaries without one', () => {
     const records: GameRecord[] = [
       { summary: summary('g1', { theme: 'kawaii' }), rounds: [round('g1', 1)] },
       { summary: summary('g2', { theme: 'kawaii', winningTeam: 1 }), rounds: [round('g2', 1)] },
@@ -358,10 +358,32 @@ describe('theme achievements', () => {
     ];
     for (const uid of UIDS) {
       const c = counts(records, uid);
-      expect(c['totally-kawaii']).toBe(2);
+      expect(c['totally-kawaii']).toBe(1);
       expect(c.crafty).toBe(1);
       expect(c['old-master']).toBe(0);
       expect(c['trick-or-treat']).toBe(0);
     }
+  });
+
+  it('dates a once-only badge to the first game that earned it', () => {
+    const records: GameRecord[] = [
+      { summary: summary('late', { theme: 'magic', finishedAt: 3000 }), rounds: [round('late', 1)] },
+      { summary: summary('early', { theme: 'magic', finishedAt: 2000 }), rounds: [round('early', 1)] },
+    ];
+    const spell = computeAchievements(records, 'A').find(a => a.id === 'spellbound')!;
+    expect(spell.count).toBe(1);
+    expect(spell.lastGame?.gameId).toBe('early');
+  });
+
+  it('knows whether a game was the first on its theme for a player', () => {
+    const games = [
+      summary('m1', { theme: 'magic', finishedAt: 2000 }),
+      summary('m2', { theme: 'magic', finishedAt: 3000 }),
+      summary('b1', { theme: 'baroque', finishedAt: 1000 }),
+    ];
+    expect(isFirstGameOnTheme(games, 'A', 'magic', 'm1')).toBe(true);
+    expect(isFirstGameOnTheme(games, 'A', 'magic', 'm2')).toBe(false);
+    expect(isFirstGameOnTheme(games, 'A', 'baroque', 'b1')).toBe(true);
+    expect(isFirstGameOnTheme(games, 'nobody', 'magic', 'm1')).toBe(false);
   });
 });

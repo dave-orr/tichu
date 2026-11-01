@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   leaveRoom, clearSocketUid, setRoomChangedCallback,
@@ -17,7 +17,7 @@ import {
 } from './rooms.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
-import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, fetchStreakAchievements, updateEloForGameEnd } from './stats.js';
+import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, fetchHistoryAchievements, updateEloForGameEnd } from './stats.js';
 import {
   isValidCard, isValidCardArray, isValidSeat, isValidNormalRank,
   isValidPlayerName, isValidPassCards, sanitizeSettings,
@@ -1220,10 +1220,11 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
         }
       })
       .catch(err => console.error('Failed to fetch head-to-head record:', err));
-    // Win streaks span games, so they're only known once the summary is
-    // saved; they join the game-over screen's achievements when they arrive.
+    // Win streaks span games and theme badges are once per player, so both
+    // are only known once the summary is saved; they join the game-over
+    // screen's achievements when they arrive.
     saved
-      .then(() => fetchStreakAchievements(room))
+      .then(() => fetchHistoryAchievements(room))
       .then(events => {
         if (events.length === 0) return;
         if (room.lastRoundResult) {
@@ -1234,7 +1235,7 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
         }
         io.to(room.code).emit('streak-achievements', { events });
       })
-      .catch(err => console.error('Failed to compute win streaks:', err));
+      .catch(err => console.error('Failed to compute history achievements:', err));
 
     // Elo: recompute ratings, then broadcast the changes to the room so the
     // game-over screen can show new ratings and deltas.
@@ -1294,5 +1295,7 @@ function roundAchievements(room: Room, log: RoundLog): AchievementEvent[] {
   }];
   // A round's results show that round's achievements; the game-over screen
   // shows everything earned across the game.
-  return outcome ? [...room.gameAchievements, ...all.filter(e => e.roundNumber === null)] : thisRound;
+  // Theme badges are once per player, which needs each player's history:
+  // fetchHistoryAchievements sends them after the summary is saved.
+  return outcome ? [...room.gameAchievements, ...all.filter(e => e.roundNumber === null && !isThemeAchievement(e.id))] : thisRound;
 }

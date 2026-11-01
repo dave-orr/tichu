@@ -44,6 +44,8 @@ export type AchievementDef = {
    * the first 8 cards), so it only counts games played since.
    */
   newLogsOnly?: boolean;
+  /** Earned at most once per player: later qualifying games don't add to it. */
+  once?: boolean;
 };
 
 /** Win streak lengths that earn Hot Streak and Unstoppable. */
@@ -108,13 +110,14 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     name: 'With a Flourish',
     description: `Make a Grand on the match-winning hand and finish ${FLOURISH_MARGIN}+ points ahead`,
   },
-  // Theme achievements: the whole table earns one for finishing a game.
-  // Only games since summaries started recording the theme count.
-  { id: 'crafty', name: 'Crafty', description: 'Finish a game on the Papercraft table', newLogsOnly: true },
-  { id: 'totally-kawaii', name: 'Totally Kawaii', description: 'Finish a game on the Kawaii table', newLogsOnly: true },
-  { id: 'old-master', name: 'Old Master', description: 'Finish a game on the Classic Baroque table', newLogsOnly: true },
-  { id: 'trick-or-treat', name: 'Trick or Treat', description: 'Finish a game on the Halloween table', newLogsOnly: true },
-  { id: 'spellbound', name: 'Spellbound', description: 'Finish a game on the Magic table', newLogsOnly: true },
+  // Theme achievements: the whole table earns one for finishing a game, once
+  // per player per theme. Only games since summaries started recording the
+  // theme count.
+  { id: 'crafty', name: 'Crafty', description: 'Finish a game on the Papercraft table', newLogsOnly: true, once: true },
+  { id: 'totally-kawaii', name: 'Totally Kawaii', description: 'Finish a game on the Kawaii table', newLogsOnly: true, once: true },
+  { id: 'old-master', name: 'Old Master', description: 'Finish a game on the Classic Baroque table', newLogsOnly: true, once: true },
+  { id: 'trick-or-treat', name: 'Trick or Treat', description: 'Finish a game on the Halloween table', newLogsOnly: true, once: true },
+  { id: 'spellbound', name: 'Spellbound', description: 'Finish a game on the Magic table', newLogsOnly: true, once: true },
 ];
 
 /** The achievement every seat earns for finishing a game in each theme. */
@@ -310,7 +313,30 @@ export function currentWinStreak(summaries: readonly GameSummary[], uid: string)
   return streakRun(summaries, uid).at(-1)?.streak ?? 0;
 }
 
-/** Achievement counts for `uid` across `records`, in `ACHIEVEMENTS` order. */
+const ONCE: ReadonlySet<AchievementId> = new Set(ACHIEVEMENTS.filter(a => a.once).map(a => a.id));
+
+/** True for achievements a player earns at most once (see AchievementDef.once). */
+export const isOnceAchievement = (id: AchievementId) => ONCE.has(id);
+
+/** True for the per-theme "finish a game on this table" badges. */
+export const isThemeAchievement = (id: AchievementId) => (Object.values(THEME_ACHIEVEMENTS) as AchievementId[]).includes(id);
+
+/**
+ * Whether the game `gameId` was `uid`'s first finished game on `theme`, so it
+ * earns them that theme's (once-only) badge. `summaries` must include it.
+ */
+export function isFirstGameOnTheme(summaries: readonly GameSummary[], uid: string, theme: Theme, gameId: string): boolean {
+  const first = summaries
+    .filter(s => s.theme === theme && teamOf(s, uid) !== null)
+    .reduce<GameSummary | null>((a, s) => (!a || s.finishedAt < a.finishedAt ? s : a), null);
+  return first?.gameId === gameId;
+}
+
+/**
+ * Achievement counts for `uid` across `records`, in `ACHIEVEMENTS` order.
+ * A once-only achievement counts at most 1, and its game is the first one
+ * that earned it.
+ */
 export function computeAchievements(records: readonly GameRecord[], uid: string): AchievementCount[] {
   const counts = new Map<AchievementId, AchievementCount>(
     ACHIEVEMENTS.map(a => [a.id, { id: a.id, count: 0, lastGame: null }]),
@@ -330,6 +356,11 @@ export function computeAchievements(records: readonly GameRecord[], uid: string)
         : !!roundsByNumber.get(e.roundNumber)?.players.some(p => e.seats.includes(p.seat) && p.uid === uid);
       if (!mine) continue;
       const c = counts.get(e.id)!;
+      if (ONCE.has(e.id)) {
+        c.count = 1;
+        if (!c.lastGame || summary.finishedAt < c.lastGame.finishedAt) c.lastGame = summary;
+        continue;
+      }
       c.count++;
       if (!c.lastGame || summary.finishedAt > c.lastGame.finishedAt) c.lastGame = summary;
     }
