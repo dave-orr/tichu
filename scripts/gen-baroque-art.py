@@ -259,6 +259,15 @@ def mini_back(x, y, rot=0, cx=20, cy=36):
             f'<circle cx="{x + 7.5}" cy="{y + 11}" r="2.8" fill="{JADE}" stroke="{GOLD_LT}" stroke-width=".9"/></g>')
 
 
+def table_deck(top, stroke, sw, edge, inner):
+    """Tricks-won icon: a squared deck lying on the table, seen from the front,
+    so it reads flat and wide next to the hand icon's upright fan."""
+    return (f'<g stroke-linejoin="round">'
+            f'<rect x="6" y="18" width="28" height="13" rx="1.5" fill="{edge}" stroke="{stroke}" stroke-width="{sw}"/>'
+            f'<path d="M6.8 22.5H33.2M6.8 26.8H33.2" stroke="{stroke}" stroke-width="1" opacity=".55"/>'
+            f'<path d="M10 9H30L34 18H6Z" fill="{top}" stroke="{stroke}" stroke-width="{sw}"/>{inner}</g>')
+
+
 def icon(body):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 3 34 34" stroke-linejoin="round">{body}</svg>\n'
 
@@ -266,7 +275,9 @@ def icon(body):
 ART = {
     'back': back(),
     'icon-hand': icon(''.join(mini_back(12.5, 9, r) for r in (-24, 0, 24))),
-    'icon-tricks': icon(''.join(mini_back(9 + 4 * i, 5 + 4 * i) for i in range(3))),
+    'icon-tricks': icon(table_deck(LACQUER, INK, 1.5, PARCH,
+                                 f'<path d="M12.7 10.8H27.3L29.8 16.2H10.2Z" fill="none" stroke="{GOLD}" stroke-width="1.1"/>'
+                                 f'<ellipse cx="20" cy="13.5" rx="3.2" ry="1.7" fill="{JADE}" stroke="{GOLD_LT}" stroke-width=".9"/>')),
     'anim-doodle-run-1': dog_run(True), 'anim-doodle-run-2': dog_run(False),
     'anim-doodle-back-1': dog_back(True), 'anim-doodle-back-2': dog_back(False),
     'anim-doodle-front-1': dog_front(True), 'anim-doodle-front-2': dog_front(False),

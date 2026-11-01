@@ -564,16 +564,26 @@ def back_svg():
             + '</g></svg>\n')
 art['back'] = back_svg()
 
-# Table icons: cards in hand (a fan of backs) and tricks won (a squared pile).
+# Table icons: cards in hand (a fan of backs) and tricks won (a deck lying on the table).
 def mini_back(x, y, rot=0, cx=20, cy=36):
     return (f'<g transform="rotate({rot} {cx} {cy})">'
             f'<rect x="{x}" y="{y}" width="15" height="22" rx="2.5" fill="{BACK}" stroke="{INK}" stroke-width="1.5"/>'
             f'<rect x="{x + 3}" y="{y + 3}" width="9" height="16" rx="1.2" fill="none" stroke="{CREAM}" stroke-width="1.3"/>'
             f'<circle cx="{x + 7.5}" cy="{y + 11}" r="2.2" fill="{OCHRE}" stroke="none"/></g>')
+def table_deck(top, stroke, sw, edge, inner):
+    """Tricks-won icon: a squared deck lying on the table, seen from the front,
+    so it reads flat and wide next to the hand icon's upright fan."""
+    return (f'<g stroke-linejoin="round">'
+            f'<rect x="6" y="18" width="28" height="13" rx="1.5" fill="{edge}" stroke="{stroke}" stroke-width="{sw}"/>'
+            f'<path d="M6.8 22.5H33.2M6.8 26.8H33.2" stroke="{stroke}" stroke-width="1" opacity=".55"/>'
+            f'<path d="M10 9H30L34 18H6Z" fill="{top}" stroke="{stroke}" stroke-width="{sw}"/>{inner}</g>')
+
 def icon_svg(body):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 3 34 34">{body}</svg>\n'
 art['icon-hand'] = icon_svg(''.join(mini_back(12.5, 9, r) for r in (-24, 0, 24)))
-art['icon-tricks'] = icon_svg(''.join(mini_back(9 + 4 * i, 5 + 4 * i, 0) for i in range(3)))
+art['icon-tricks'] = icon_svg(table_deck(BACK, INK, 1.5, CREAM,
+    f'<path d="M12.5 11H27.5L30 16H10Z" fill="none" stroke="{CREAM}" stroke-width="1.2"/>'
+    f'<ellipse cx="20" cy="13.5" rx="2.6" ry="1.4" fill="{OCHRE}"/>'))
 
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
