@@ -317,7 +317,7 @@ def mini_back(x, y, rot=0, cx=20, cy=36):
     return (f'<g transform="rotate({rot} {cx} {cy})">'
             f'<rect x="{x}" y="{y}" width="15" height="22" rx="2" fill="{MIDNIGHT}" stroke="{INK}" stroke-width="1.5"/>'
             f'<rect x="{x + 2.5}" y="{y + 2.5}" width="10" height="17" rx="1" fill="none" stroke="{GOLD}" stroke-width="1.1"/>'
-            + f'<g stroke="{INK}">' + wizard_hat(x + 7.5, y + 11.5, .48, detail=False) + '</g></g>')
+            + f'<g stroke="{INK}">' + wizard_hat(x + 7.5, y + 11.4, .3, detail=False) + '</g></g>')
 
 
 # ===== Golden dragon (Dragon flight) =====
