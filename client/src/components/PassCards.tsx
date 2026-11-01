@@ -15,7 +15,8 @@ type Props = {
   onPass: (left: CardType, partner: CardType, right: CardType) => void;
 };
 
-const TARGETS: PassTarget[] = ['left', 'partner', 'right'];
+/** Order clicked cards fill the slots: both opponents first, then partner. */
+const FILL_ORDER: PassTarget[] = ['left', 'right', 'partner'];
 
 export default function PassCards({ hand, mySeat, playerNames, initialSelections, onPass }: Props) {
   const [selections, setSelections] = useState<Record<PassTarget, CardType | null>>(() => {
@@ -34,7 +35,7 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
       const card = initialSelections?.[t];
       return !!card && handIds.has(cardId(card));
     };
-    return TARGETS.find(t => !filled(t)) ?? 'left';
+    return FILL_ORDER.find(t => !filled(t)) ?? 'left';
   });
   const [dragOverTarget, setDragOverTarget] = useState<PassTarget | null>(null);
 
@@ -59,10 +60,9 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
 
     setSelections(s => ({ ...s, [currentTarget]: card }));
 
-    const targets: PassTarget[] = ['left', 'partner', 'right'];
-    const nextTargetIdx = targets.indexOf(currentTarget);
+    const nextTargetIdx = FILL_ORDER.indexOf(currentTarget);
     for (let i = 1; i <= 3; i++) {
-      const next = targets[(nextTargetIdx + i) % 3];
+      const next = FILL_ORDER[(nextTargetIdx + i) % 3];
       const updatedSelections = { ...selections, [currentTarget]: card };
       if (!updatedSelections[next]) {
         setCurrentTarget(next);
@@ -91,8 +91,7 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
       setSelections(newSelections);
 
       // Advance currentTarget to next empty slot
-      const targets: PassTarget[] = ['left', 'partner', 'right'];
-      for (const t of targets) {
+      for (const t of FILL_ORDER) {
         if (!newSelections[t]) {
           setCurrentTarget(t);
           return;
