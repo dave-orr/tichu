@@ -16,7 +16,9 @@ WHITE = '#FFFFFF'
 NIGHT, NIGHT_LT = '#2C1E3E', '#45305E'
 MOON = '#FFE9A8'
 PUMPKIN, PUMPKIN_DK, PUMPKIN_LT = '#F2851F', '#B95A0E', '#FFB15E'
-SLIME, SLIME_DK, SLIME_LT = '#6CC24A', '#3F8A2A', '#A6E67F'
+# A saturated, slightly yellow green, so the jade suit can never read as the
+# near-black bat (sword) suit at pip size.
+SLIME, SLIME_DK, SLIME_LT = '#4FD33A', '#1F9A2A', '#A8F27A'
 HAUNT, HAUNT_DK, HAUNT_LT = '#8E5CD9', '#5B3A9A', '#C4A2F2'
 BAT, BAT_LT = '#2E2638', '#5E536B'
 BLOOD = '#C2352B'
@@ -45,11 +47,11 @@ def pumpkin(sw=4):
 def cauldron(sw=4):
     return (f'<circle cx="34" cy="20" r="7" fill="{SLIME_LT}" stroke-width="{sw * .6}"/>'
             f'<circle cx="60" cy="13" r="5" fill="{SLIME_LT}" stroke-width="{sw * .6}"/>'
-            f'<path d="M14 40 Q14 92 50 92 Q86 92 86 40 Z" fill="{BAT}" stroke-width="{sw}"/>'
+            f'<path d="M14 40 Q14 92 50 92 Q86 92 86 40 Z" fill="{SLIME_DK}" stroke-width="{sw}"/>'
             f'<path d="M22 84 L18 96 M78 84 L82 96" stroke-width="{sw * 1.4}"/>'
             f'<path d="M12 38 Q30 26 50 34 Q70 26 88 38 Q88 46 50 46 Q12 46 12 38 Z" fill="{SLIME}" stroke-width="{sw}"/>'
             f'<path d="M30 46 Q30 58 35 58 Q40 58 39 46 M60 46 Q61 54 65 54 Q69 54 68 46" fill="{SLIME}" stroke-width="{sw * .7}"/>'
-            f'<path d="M24 60 Q30 74 44 80" fill="none" stroke="{BAT_LT}" stroke-width="{sw}"/>')
+            f'<path d="M24 60 Q30 74 44 80" fill="none" stroke="{SLIME_LT}" stroke-width="{sw}"/>')
 
 
 def haunted_house(sw=4):
@@ -79,13 +81,34 @@ SYMBOLS = {'star': pumpkin, 'jade': cauldron, 'pagoda': haunted_house, 'sword': 
 
 
 # ===== Court cards (100x150 portraits, cropped to a 2:3 frame) =====
-def backdrop(suit):
+# Each rank gets its own sky so J, Q and K tell apart at a glance even at
+# hand size, where the faces themselves are only ~50px tall: the Jack under a
+# blood-red sky, the Queen silhouetted against a huge full moon, the King in a
+# pumpkin-orange glow. Each fades to night at the bottom so the suit-coloured
+# robes still stand out.
+SKY = {'J': ('#B3263A', '#5A1020'), 'Q': ('#4A2E7A', NIGHT), 'K': ('#F28A1E', '#8A3A0C')}
+
+
+def backdrop(suit, rank):
     acc = SUIT[suit][0]
-    return (f'<rect width="100" height="150" fill="{NIGHT}"/>'
-            f'<circle cx="78" cy="26" r="15" fill="{MOON}" stroke="none" opacity=".9"/>'
-            f'<circle cx="84" cy="22" r="13" fill="{NIGHT}" stroke="none"/>'
-            + ''.join(f'<circle cx="{x}" cy="{y}" r="1.3" fill="{WHITE}" stroke="none" opacity=".7"/>' for x, y in ((14, 16), (30, 34), (90, 60), (8, 70)))
-            + f'<path d="M0 150 L0 132 Q50 118 100 132 L100 150 Z" fill="{acc}" stroke="none" opacity=".25"/>')
+    top, mid = SKY[rank]
+    gid = f'sky{rank}'
+    sky = (f'<defs><linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">'
+           f'<stop offset="0" stop-color="{top}"/><stop offset=".62" stop-color="{mid}"/><stop offset="1" stop-color="{NIGHT}"/>'
+           f'</linearGradient></defs><rect width="100" height="150" fill="url(#{gid})" stroke="none"/>')
+    if rank == 'Q':   # a giant full moon right behind the witch's hat
+        sky += (f'<circle cx="50" cy="44" r="40" fill="{MOON}" stroke="none"/>'
+                f'<circle cx="34" cy="30" r="6" fill="{BONE_DK}" stroke="none" opacity=".35"/>'
+                f'<circle cx="70" cy="58" r="4" fill="{BONE_DK}" stroke="none" opacity=".35"/>')
+    elif rank == 'J':  # thin crescent and bats against the red
+        sky += (f'<circle cx="80" cy="22" r="12" fill="{MOON}" stroke="none"/>'
+                f'<circle cx="85" cy="18" r="10.5" fill="{top}" stroke="none"/>'
+                + ''.join(f'<g transform="translate({x} {y}) scale(.1)">{bat(5)}</g>' for x, y in ((8, 14), (18, 30))))
+    else:              # radiating glow behind the crown
+        sky += ''.join(f'<path d="M50 40 L{50 + 90 * math.cos(math.radians(a - 5)):.1f} {40 + 90 * math.sin(math.radians(a - 5)):.1f} '
+                       f'L{50 + 90 * math.cos(math.radians(a + 5)):.1f} {40 + 90 * math.sin(math.radians(a + 5)):.1f} Z" fill="{GLOW}" stroke="none" opacity=".35"/>'
+                       for a in range(-180, 1, 30))
+    return sky + f'<path d="M0 150 L0 132 Q50 118 100 132 L100 150 Z" fill="{acc}" stroke="none" opacity=".25"/>'
 
 
 def emblem(suit, x=37, y=118, s=.26):
@@ -101,7 +124,7 @@ def eyes(cx, cy, r=3.4, glint=True):
 def vampire(suit):  # Jack: slicked widow's-peak hair, high collar, tiny fangs
     acc, acc_dk = SUIT[suit]
     return svg(
-        backdrop(suit)
+        backdrop(suit, 'J')
         + f'<path d="M8 150 L16 104 Q50 92 84 104 L92 150 Z" fill="{BAT}" stroke-width="3"/>'
         f'<path d="M22 104 L14 78 L40 98 Z M78 104 L86 78 L60 98 Z" fill="{acc}" stroke-width="3"/>'  # collar, suit-lined
         f'<path d="M36 150 L40 104 L60 104 L64 150 Z" fill="{WHITE}" stroke-width="3"/>'
@@ -119,7 +142,7 @@ def vampire(suit):  # Jack: slicked widow's-peak hair, high collar, tiny fangs
 def witch(suit):  # Queen: tall bent hat with a suit band, long hair, little smile
     acc, acc_dk = SUIT[suit]
     return svg(
-        backdrop(suit)
+        backdrop(suit, 'Q')
         + f'<path d="M22 150 L20 70 Q50 60 80 70 L78 150 Z" fill="{HAUNT_DK if suit != "pagoda" else PUMPKIN_DK}" stroke-width="3"/>'  # hair
         + f'<path d="M12 150 Q14 104 50 100 Q86 104 88 150 Z" fill="{acc}" stroke-width="3"/>'
         f'<ellipse cx="50" cy="72" rx="24" ry="27" fill="{SKIN}" stroke-width="3.5"/>'
@@ -138,7 +161,7 @@ def skeleton_king(suit):  # King: friendly skull, crown, robe in the suit colour
     acc, acc_dk = SUIT[suit]
     teeth = ''.join(f'<path d="M{x} 86 L{x} 92" stroke-width="1.6"/>' for x in (44, 48, 52, 56))
     return svg(
-        backdrop(suit)
+        backdrop(suit, 'K')
         + f'<path d="M10 150 Q12 102 50 98 Q88 102 90 150 Z" fill="{acc}" stroke-width="3"/>'
         f'<path d="M30 102 Q50 116 70 102" fill="none" stroke="{WHITE}" stroke-width="5"/>'           # ermine trim
         f'<path d="M30 102 Q50 116 70 102" fill="none" stroke-width="1.5" stroke-dasharray="2 5"/>'
