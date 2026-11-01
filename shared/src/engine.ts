@@ -42,6 +42,7 @@ export function createInitialState(settings?: GameSettings): GameState {
     roundEndReady: [],
     roundHistory: [],
     receivedCards: [[], [], [], []],
+    themeSuits: null,
   };
 }
 
@@ -1049,5 +1050,6 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     myHand: state.players[forSeat].hand,
     mySeat: forSeat,
     myReceivedCards: state.receivedCards[forSeat],
+    themeSuits: state.themeSuits ?? null,
   };
 }
