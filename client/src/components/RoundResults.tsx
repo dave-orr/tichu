@@ -1,4 +1,5 @@
 import AchievementsEarned from './AchievementsEarned.js';
+import PointCardBreakdown from './PointCardBreakdown.js';
 import { RoundResult, RoundHistoryEntry, RoundTichuCall, ClientPlayer, Seat, EloUpdate, HeadToHead, getTeamForSeat } from '@tichu/shared';
 
 type Props = {
@@ -168,6 +169,12 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
         </tr>
       </tbody>
     </table>
+  );
+
+  // Absent in results replayed from older room snapshots; empty on a double
+  // victory, where card points don't count.
+  const pointCardsBlock = result.pointCards && result.pointCards.length > 0 && (
+    <PointCardBreakdown groups={result.pointCards} players={players} />
   );
 
   const outOrderBlock = (
@@ -382,6 +389,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
               <div>
                 {doubleVictoryBlock}
                 {scoringTable}
+                {pointCardsBlock}
                 {outOrderBlock}
                 {historyBlock}
               </div>
@@ -412,6 +420,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
             {achievementsBlock}
             {doubleVictoryBlock}
             {scoringTable}
+            {pointCardsBlock}
             {outOrderBlock}
             {historyBlock}
             {iAmReady ? (

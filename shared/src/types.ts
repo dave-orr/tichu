@@ -281,6 +281,23 @@ export type RoundHistoryEntry = {
 
 import type { AchievementEvent } from './achievements.js';
 
+/** One batch of point cards on the scoring screen, and why it counts for `team`. */
+export type PointCardGroup = {
+  team: 0 | 1;
+  /** Seat holding the cards: the trick winner / Dragon recipient / first out.
+   *  null for the last player's hand, which goes to the whole opposing team. */
+  seat: Seat | null;
+  /** won: tricks this seat won. dragon: Dragon tricks gifted to this seat.
+   *  lastTricks: the last player's tricks, handed to the first out.
+   *  lastHand: cards left in `from`'s hand, handed to the opposing team. */
+  source: 'won' | 'dragon' | 'lastTricks' | 'lastHand';
+  /** The seat the cards came from, for lastTricks / lastHand. */
+  from?: Seat;
+  /** Only the point cards (5, 10, K, Dragon, Phoenix). */
+  cards: Card[];
+  points: number;
+};
+
 export type RoundResult = {
   teamScores: [number, number]; // card points this round
   tichuBonuses: [number, number];
@@ -289,6 +306,9 @@ export type RoundResult = {
   totalScores: [number, number]; // cumulative
   outOrder: [Seat, Seat, Seat, Seat]; // order players went out (last = still had cards)
   concededBy?: Seat; // set when the round ended via concession
+  /** Where the point cards went (empty on a double victory). Optional: absent
+   *  in results replayed from room snapshots taken before this field existed. */
+  pointCards?: PointCardGroup[];
   /** Achievements earned this round (and, at game end, by the game). Set by the server. */
   achievements?: AchievementEvent[];
 };
