@@ -9,8 +9,9 @@ Dragon-flight animation frames.
 The sprites reuse the Classic Baroque rigs (scripts/gen-baroque-art.py) in
 the painted Magic cards' colours: the Dog card's golden retriever, with soft
 floppy ears and the goblin rider's red cape for a collar. The Dragon is its
-own: a red western dragon with bat wings that beat between the two frames,
-ivory horns, a fanged open jaw and gold belly plates. The
+own: a golden western dragon with bat wings that beat between the two
+frames, the Dragon card's thick ridged cream horns, a fanged open jaw and
+cream belly plates (no whiskers). The
 back is a midnight spellbook cover: the five realms' orbs (sun, water,
 skull, fire, forest, as ringed on the Dragon card) around a gold star.
 
@@ -189,11 +190,13 @@ def mini_back(x, y, rot=0, cx=20, cy=36):
             f'<path d="{star(x + 7.5, y + 11, 3.6, 1.5)}" fill="{GOLD_LT}" stroke="none"/></g>')
 
 
-# ===== Red dragon (Dragon flight) =====
-RED, RED_DK, RED_LT = '#C42A2A', '#7E1418', '#E8574A'
-WING, WING_DK = '#A41E24', '#6A1016'
-BELLY_GOLD, BELLY_GOLD_DK = '#F2C46A', '#C48A2E'
-HORN = '#F3E3B8'
+# ===== Golden dragon (Dragon flight) =====
+SCALE, SCALE_DK, SCALE_LT = '#EDC33E', '#B5861A', '#FFE37A'
+WING, WING_DK = '#E0A93A', '#B27B22'
+BELLY, BELLY_DK = '#FFF0C2', '#C9A04A'
+EYE = '#E8572A'
+SPINE, SPINE_DK = '#FBE7B0', '#C9A04A'
+HORN, HORN_BAND = '#FBEBC2', '#C8A666'
 
 
 def wing(sx, sy, up, far):
@@ -215,50 +218,69 @@ def wing(sx, sy, up, far):
         cx, cy = mx + (wrist[0] - mx) * .5, my + (wrist[1] - my) * .5
         pts.append(f'Q{f(cx)} {f(cy)} {f(b[0])} {f(b[1])}')
     pts.append(f'Q{f((tips[0][0] + root_back[0]) / 2 + 2)} {f((tips[0][1] + root_back[1]) / 2 + (6 if up else -6))} {f(root_back[0])} {f(root_back[1])} Z')
-    fill, edge = (WING_DK, RED_DK) if far else (WING, RED_DK)
-    bones = ''.join(f'<path d="M{f(wrist[0])} {f(wrist[1])} L{f(x)} {f(y)}" fill="none" stroke="{RED_LT if not far else RED}" stroke-width="1.6"/>' for x, y in tips)
+    fill, edge = (WING_DK, SCALE_DK) if far else (WING, SCALE_DK)
+    bones = ''.join(f'<path d="M{f(wrist[0])} {f(wrist[1])} L{f(x)} {f(y)}" fill="none" stroke="{SCALE_LT if not far else SCALE}" stroke-width="1.6"/>' for x, y in tips)
     arm = (f'<path d="M{f(sx)} {f(sy)} L{f(wrist[0])} {f(wrist[1])}" fill="none" stroke-width="4.6"/>'
-           f'<path d="M{f(sx)} {f(sy)} L{f(wrist[0])} {f(wrist[1])}" fill="none" stroke="{RED if not far else RED_DK}" stroke-width="2.6"/>'
+           f'<path d="M{f(sx)} {f(sy)} L{f(wrist[0])} {f(wrist[1])}" fill="none" stroke="{SCALE if not far else SCALE_DK}" stroke-width="2.6"/>'
            f'<path d="M{f(wrist[0] - 1.5)} {f(wrist[1] + (-1 if up else 1))} l-2 {-2.5 if up else 2.5} l3.5 1 Z" fill="{HORN}" stroke-width=".8"/>')
     return f'<path d="{" ".join(pts)}" fill="{fill}" stroke-width="2"/>' + bones + arm
 
 
-def red_dragon_fly(up):
-    """A red western dragon flying right, wings beating between the frames:
+def dragon_fly(up):
+    """A golden western dragon flying right, wings beating between the frames:
     horned head with a fanged open jaw and a spiked frill, gold belly plates,
     a long spined tail ending in a spade."""
     bob = 3 if up else -3
     f = B.f
     # Tail: a tapering curve back from the hip, spade at the tip.
-    tail = (f'<path d="M30 58 Q16 60 10 68 Q6 74 2 74 Q8 70 10 64 Q16 54 30 52 Z" fill="{RED}" stroke-width="2.2"/>'
-            f'<path d="M2 74 L-1 68 L5 70 L4 64 L8 71 Z" fill="{RED_DK}" stroke-width="1.4"/>')
-    tail_spines = ''.join(f'<path d="M{x} {y} l2 -4 l2 3.4 Z" fill="{RED_DK}" stroke-width="1"/>' for x, y in ((12, 61.5), (18, 56.5), (24, 53.6)))
-    body = (f'<path d="M28 54 Q34 44 50 44 Q60 44 66 40 Q70 36 72 30 L78 33 Q76 42 70 48 Q64 56 52 60 Q38 64 28 58 Z" fill="{RED}" stroke-width="2.4"/>'
-            f'<path d="M32 58 Q42 62 52 58 Q62 54 68 47 Q66 52 60 56 Q48 64 34 61 Z" fill="{BELLY_GOLD}" stroke="none"/>')
-    plates = ''.join(f'<path d="M{x} {y} l1.6 3.4" fill="none" stroke="{BELLY_GOLD_DK}" stroke-width="1"/>'
+    tail = (f'<path d="M30 58 Q16 60 10 68 Q6 74 2 74 Q8 70 10 64 Q16 54 30 52 Z" fill="{SCALE}" stroke-width="2.2"/>'
+            f'<path d="M2 74 L-1 68 L5 70 L4 64 L8 71 Z" fill="{SCALE_DK}" stroke-width="1.4"/>')
+    tail_spines = ''.join(f'<path d="M{x} {y} l2 -4 l2 3.4 Z" fill="{SPINE}" stroke-width="1"/>' for x, y in ((12, 61.5), (18, 56.5), (24, 53.6)))
+    body = (f'<path d="M28 54 Q34 44 50 44 Q60 44 66 40 Q70 36 72 30 L78 33 Q76 42 70 48 Q64 56 52 60 Q38 64 28 58 Z" fill="{SCALE}" stroke-width="2.4"/>'
+            f'<path d="M32 58 Q42 62 52 58 Q62 54 68 47 Q66 52 60 56 Q48 64 34 61 Z" fill="{BELLY}" stroke="none"/>')
+    plates = ''.join(f'<path d="M{x} {y} l1.6 3.4" fill="none" stroke="{BELLY_DK}" stroke-width="1"/>'
                      for x, y in ((38, 59), (44, 58.6), (50, 57.4), (55, 55.4), (60, 52.6), (64, 49.4)))
-    back_spines = ''.join(f'<path d="M{x} {y} l2.4 -5 l2.2 4.4 Z" fill="{RED_DK}" stroke-width="1"/>'
+    back_spines = ''.join(f'<path d="M{x} {y} l2.4 -5 l2.2 4.4 Z" fill="{SPINE}" stroke-width="1"/>'
                           for x, y in ((36, 47.4), (43, 44.6), (51, 44), (59, 42.6), (66, 38.6)))
-    legs = (f'<path d="M36 58 Q34 66 40 70" fill="none" stroke-width="5"/><path d="M36 58 Q34 66 40 70" fill="none" stroke="{RED_DK}" stroke-width="3"/>'
+    legs = (f'<path d="M36 58 Q34 66 40 70" fill="none" stroke-width="5"/><path d="M36 58 Q34 66 40 70" fill="none" stroke="{SCALE_DK}" stroke-width="3"/>'
             f'<path d="M40 70 l3 -1 M40 70 l3 1.4 M40 70 l1.6 2.6" stroke="{HORN}" stroke-width="1.2"/>'
-            f'<path d="M60 54 Q62 62 66 62" fill="none" stroke-width="4.4"/><path d="M60 54 Q62 62 66 62" fill="none" stroke="{RED}" stroke-width="2.6"/>'
+            f'<path d="M60 54 Q62 62 66 62" fill="none" stroke-width="4.4"/><path d="M60 54 Q62 62 66 62" fill="none" stroke="{SCALE}" stroke-width="2.6"/>'
             f'<path d="M66 62 l2.6 -1.4 M66 62 l2.8 .8 M66 62 l1.2 2.6" stroke="{HORN}" stroke-width="1.2"/>')
     # Head: brow ridge, swept-back horns, open fanged jaw, spiked frill.
     hx, hy = 78, 30
-    horns = (f'<path d="M{hx - 2} {hy - 4} Q{hx - 8} {hy - 12} {hx - 16} {hy - 14} Q{hx - 8} {hy - 8} {hx - 4} {hy - 1} Z" fill="{HORN}" stroke-width="1.4"/>'
-             f'<path d="M{hx + 2} {hy - 5} Q{hx - 1} {hy - 14} {hx - 6} {hy - 19} Q{hx + 1} {hy - 12} {hx + 5} {hy - 4} Z" fill="{HORN}" stroke-width="1.4"/>')
-    frill = ''.join(f'<path d="M{hx - 4 - 2.4 * i} {hy + 2 + 2.6 * i} l-5 1 l4 2.6 Z" fill="{RED_DK}" stroke-width="1"/>' for i in range(3))
+    def horn(bx, by, tx, ty, cx, cy, w):
+        """A thick curved horn from base (bx, by) to tip (tx, ty) bowing
+        through (cx, cy), with ridge bands across it."""
+        pts = [B.bez((bx, by), (cx, cy), (cx, cy), (tx, ty), i / 10) for i in range(11)]
+        nrm = []
+        for i, (x, y) in enumerate(pts):
+            ax, ay = pts[max(i - 1, 0)]
+            zx, zy = pts[min(i + 1, 10)]
+            dx, dy = zx - ax, zy - ay
+            ln = math.hypot(dx, dy) or 1
+            nrm.append((-dy / ln, dx / ln))
+        half = lambda i: w * (1 - i / 10) ** .8 / 2
+        side1 = [(x + nx * half(i), y + ny * half(i)) for i, ((x, y), (nx, ny)) in enumerate(zip(pts, nrm))]
+        side2 = [(x - nx * half(i), y - ny * half(i)) for i, ((x, y), (nx, ny)) in enumerate(zip(pts, nrm))]
+        outline = 'M' + ' L'.join(f'{f(x)} {f(y)}' for x, y in side1 + side2[::-1]) + ' Z'
+        bands = ''.join(f'<path d="M{f(side1[i][0])} {f(side1[i][1])} L{f(side2[i][0])} {f(side2[i][1])}" stroke="{HORN_BAND}" stroke-width=".8"/>'
+                        for i in (2, 4, 6))
+        return f'<path d="{outline}" fill="{HORN}" stroke-width="1.3"/>' + bands
+
+    horns = (horn(hx - 3, hy - 3, hx - 17, hy - 13, hx - 6, hy - 17, 4.4)
+             + horn(hx + 2, hy - 5, hx - 11, hy - 20, hx + 1, hy - 22, 4.8))
+    frill = ''.join(f'<path d="M{hx - 4 - 2.4 * i} {hy + 2 + 2.6 * i} l-5 1 l4 2.6 Z" fill="{SPINE}" stroke-width="1"/>' for i in range(3))
     head = (f'<path d="M{hx - 6} {hy + 2} Q{hx - 6} {hy - 6} {hx + 2} {hy - 6} Q{hx + 10} {hy - 7} {hx + 18} {hy - 3} '
-            f'Q{hx + 21} {hy - 1} {hx + 19} {hy + 1} L{hx + 8} {hy + 2} Q{hx + 2} {hy + 7} {hx - 6} {hy + 2} Z" fill="{RED}" stroke-width="2.2"/>'
-            f'<path d="M{hx + 3} {hy + 4} Q{hx + 11} {hy + 6} {hx + 17} {hy + 10} Q{hx + 9} {hy + 11} {hx + 2} {hy + 8} Z" fill="{RED_DK}" stroke-width="1.8"/>'  # jaw, dropped open
+            f'Q{hx + 21} {hy - 1} {hx + 19} {hy + 1} L{hx + 8} {hy + 2} Q{hx + 2} {hy + 7} {hx - 6} {hy + 2} Z" fill="{SCALE}" stroke-width="2.2"/>'
+            f'<path d="M{hx + 3} {hy + 4} Q{hx + 11} {hy + 6} {hx + 17} {hy + 10} Q{hx + 9} {hy + 11} {hx + 2} {hy + 8} Z" fill="{SCALE_DK}" stroke-width="1.8"/>'  # jaw, dropped open
             f'<path d="M{hx + 6} {hy + 3} Q{hx + 12} {hy + 5} {hx + 16} {hy + 8.6}" fill="none" stroke="#E86A7A" stroke-width="1.6"/>'  # tongue
             f'<path d="M{hx + 9} {hy + 1.8} l1 2.4 l1 -2.3 M{hx + 13} {hy + 1.2} l1 2.4 l1 -2.4 M{hx + 16.5} {hy + .6} l.8 2.2 l.9 -2" fill="#fff" stroke-width=".7"/>'
             f'<path d="M{hx + 8} {hy + 6} l.8 -2 l1 1.8 M{hx + 12} {hy + 7.4} l.8 -2 l1 1.9" fill="#fff" stroke-width=".7"/>'
-            f'<path d="M{hx + 1} {hy - 4} Q{hx + 5} {hy - 8} {hx + 10} {hy - 4.6}" fill="{RED_LT}" stroke-width="1.3"/>'  # brow ridge
-            f'<ellipse cx="{hx + 5.4}" cy="{hy - 2.4}" rx="2.2" ry="1.5" fill="{BELLY_GOLD}" stroke-width="1"/>'
+            f'<path d="M{hx + 1} {hy - 4} Q{hx + 5} {hy - 8} {hx + 10} {hy - 4.6}" fill="{SCALE_LT}" stroke-width="1.3"/>'  # brow ridge
+            f'<ellipse cx="{hx + 5.4}" cy="{hy - 2.4}" rx="2.2" ry="1.5" fill="{EYE}" stroke-width="1"/>'
             f'<ellipse cx="{hx + 5.8}" cy="{hy - 2.4}" rx=".6" ry="1.3" fill="{INK}" stroke="none"/>'
             f'<circle cx="{hx + 17}" cy="{hy - 2}" r=".8" fill="{INK}" stroke="none"/>'
-            + ''.join(f'<path d="M{hx + 11 + 3 * i} {hy - 5.6 + .6 * i} l1 -2.6 l1.4 2.4" fill="{RED_DK}" stroke-width=".8"/>' for i in range(2)))
+            + ''.join(f'<path d="M{hx + 11 + 3 * i} {hy - 5.6 + .6 * i} l1 -2.6 l1.4 2.4" fill="{SCALE_DK}" stroke-width=".8"/>' for i in range(2)))
     return B.svg(f'<g transform="translate(3 {bob + 3}) scale(.94)">' + wing(54, 44, up, True) + tail + tail_spines + legs + body + plates
                  + back_spines + frill + horns + head + wing(50, 46, up, False) + '</g>')
 
@@ -271,7 +293,7 @@ ART = {
     'anim-doodle-back-1': dog_back(True), 'anim-doodle-back-2': dog_back(False),
     'anim-doodle-front-1': dog_front(True), 'anim-doodle-front-2': dog_front(False),
     'anim-doodle-lie': B.dog_lie(),
-    'anim-dragon-fly-1': red_dragon_fly(True), 'anim-dragon-fly-2': red_dragon_fly(False),
+    'anim-dragon-fly-1': dragon_fly(True), 'anim-dragon-fly-2': dragon_fly(False),
 }
 
 if __name__ == '__main__':
