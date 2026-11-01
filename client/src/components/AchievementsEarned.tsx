@@ -22,10 +22,14 @@ export default function AchievementsEarned({ events, players, isGameOver }: {
         {events.map((e, i) => {
           const def = DEFS.get(e.id);
           if (!def) return null;
+          // Each card's pop-in animation (fill-mode both) leaves a transform
+          // on it, so every card is its own stacking context and the badge
+          // tooltip's z-index can't escape it: later cards would paint over
+          // it. Lifting the hovered card keeps its tooltip on top.
           return (
             <div
               key={`${e.id}-${e.roundNumber}-${e.seats.join()}-${i}`}
-              className="achievement-pop flex items-center gap-3 rounded-xl border border-yellow-600/60 bg-gray-900/70 pl-2 pr-4 py-2"
+              className="achievement-pop relative hover:z-10 flex items-center gap-3 rounded-xl border border-yellow-600/60 bg-gray-900/70 pl-2 pr-4 py-2"
               style={{ animationDelay: `${i * 120}ms` }}
             >
               <AchievementBadge id={e.id} />
