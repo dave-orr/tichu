@@ -418,7 +418,10 @@ def dragon_fly(up):
 ART = {
     'back': back(),
     'icon-hand': B.icon(''.join(mini_back(12.5, 9, r) for r in (-24, 0, 24))),
-    'icon-tricks': B.icon(''.join(mini_back(9 + 4 * i, 5 + 4 * i) for i in range(3))),
+    'icon-tricks': B.icon(B.table_deck(MIDNIGHT, INK, 1.5, IVORY,
+                                       f'<path d="M12.7 10.8H27.3L29.8 16.2H10.2Z" fill="none" stroke="{GOLD}" stroke-width="1.1"/>'
+                                       f'<g stroke="{INK}" transform="translate(20 14) scale(1 .6) translate(-20 -14)">'
+                                       + wizard_hat(20, 14.4, .26, detail=False) + '</g>')),
     'anim-doodle-run-1': dog_run(True), 'anim-doodle-run-2': dog_run(False),
     'anim-doodle-back-1': dog_back(True), 'anim-doodle-back-2': dog_back(False),
     'anim-doodle-front-1': dog_front(True), 'anim-doodle-front-2': dog_front(False),

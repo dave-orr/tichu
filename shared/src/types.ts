@@ -104,12 +104,11 @@ export type Theme = 'papercraft' | 'kawaii' | 'halloween' | 'baroque' | 'magic';
  */
 export const THEMES: readonly { id: Theme; name: string; description: string; selectable: boolean }[] = [
   { id: 'papercraft', name: 'Papercraft', description: 'Cut-paper cards on green felt', selectable: true },
-  // Seasonal: set selectable to false after Halloween to retire it (and move
-  // DEFAULT_SETTINGS.theme back).
-  { id: 'halloween', name: 'Halloween', description: 'Moonlit table, pumpkins, bats and friendly monsters', selectable: true },
   { id: 'baroque', name: 'Classic Baroque', description: 'Hand-painted court cards on jade lacquer', selectable: true },
   { id: 'magic', name: 'Magic', description: 'Five storybook realms of magic; each game deals four', selectable: true },
-  // Retired from the picker; rooms already on it keep drawing it.
+  // Retired from the picker; rooms already on them keep drawing them.
+  // Halloween is seasonal: set it selectable again next October.
+  { id: 'halloween', name: 'Halloween', description: 'Moonlit table, pumpkins, bats and friendly monsters', selectable: false },
   { id: 'kawaii', name: 'Kawaii', description: 'Pastel table, cute faces on everything', selectable: false },
 ];
 
@@ -129,7 +128,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showPassedCards: false,
   clockwise: false,
   targetScore: 1000,
-  theme: 'halloween',
+  theme: 'magic',
 };
 
 /**
