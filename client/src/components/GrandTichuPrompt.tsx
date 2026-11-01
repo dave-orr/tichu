@@ -78,7 +78,7 @@ export default function GrandTichuPrompt({ cards, decided, onDecide, otherCaller
           </button>
           <button
             onClick={() => onDecide(false)}
-            className="py-2 px-6 btn btn-quiet"
+            className="py-2 px-6 btn btn-decline"
           >
             Decline
           </button>
