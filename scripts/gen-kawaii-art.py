@@ -226,6 +226,15 @@ def mini_back(x, y, rot=0, cx=20, cy=36):
             + heart(x + 7.5, y + 11, 3, WHITE) + '</g>')
 
 
+def table_deck(top, stroke, sw, edge, inner):
+    """Tricks-won icon: a squared deck lying on the table, seen from the front,
+    so it reads flat and wide next to the hand icon's upright fan."""
+    return (f'<g stroke-linejoin="round">'
+            f'<rect x="6" y="18" width="28" height="13" rx="1.5" fill="{edge}" stroke="{stroke}" stroke-width="{sw}"/>'
+            f'<path d="M6.8 22.5H33.2M6.8 26.8H33.2" stroke="{stroke}" stroke-width="1" opacity=".55"/>'
+            f'<path d="M10 9H30L34 18H6Z" fill="{top}" stroke="{stroke}" stroke-width="{sw}"/>{inner}</g>')
+
+
 def icon(body):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 3 34 34">{body}</svg>\n'
 
@@ -287,7 +296,8 @@ ART = {
     'mahjong': chick(), 'dog': dog(), 'phoenix': phoenix(), 'dragon': dragon(),
     'back': back(),
     'icon-hand': icon(''.join(mini_back(12.5, 9, r) for r in (-24, 0, 24))),
-    'icon-tricks': icon(''.join(mini_back(9 + 4 * i, 5 + 4 * i) for i in range(3))),
+    'icon-tricks': icon(table_deck('#C9B6EE', '#8E6CC9', 1.6, WHITE,
+                                 f'<g transform="translate(0 6.1) scale(1 .55)">{heart(20, 13.5, 3, WHITE)}</g>')),
     'anim-doodle-run-1': shiba_run(True), 'anim-doodle-run-2': shiba_run(False),
     'anim-doodle-back-1': shiba_back(True), 'anim-doodle-back-2': shiba_back(False),
     'anim-doodle-front-1': shiba_front(True), 'anim-doodle-front-2': shiba_front(False),
