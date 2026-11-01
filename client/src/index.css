@@ -56,6 +56,11 @@ h1, h2, h3 {
 .btn-tichu { @apply bg-clay text-cream hover:bg-clay-hover; --edge: rgb(var(--c-clay-dark)); }
 .btn-bomb { @apply bg-brick text-cream hover:bg-brick-hover; --edge: rgb(var(--c-brick-dark)); }
 .btn-quiet { @apply bg-white/10 text-cream/80 hover:bg-white/20; --edge: rgba(0, 0, 0, 0.3); }
+/* Grand Tichu "Decline": as loud as the Call button, in the theme's gold
+   (pumpkin on Halloween). Kawaii's ochre is pink like its Call button, so it
+   takes the mint instead. */
+.btn-decline { @apply bg-ochre text-ink hover:brightness-110; --edge: rgb(var(--c-ochre-dark)); }
+[data-theme="kawaii"] .btn-decline { @apply bg-sap hover:bg-sap-hover; --edge: rgb(var(--c-sap-dark)); }
 
 /* Card styles. Size (w/h) comes from the component's small/default/large
    classes: set here it would override them, since this rule sits after the
