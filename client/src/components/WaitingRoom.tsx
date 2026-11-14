@@ -3,6 +3,7 @@ import type { Seat, ClientGameState, GameSettings, InvitablePlayer, RoomElos } f
 import InvitePanel from './InvitePanel.js';
 import HouseRules, { SectionLabel } from './HouseRules.js';
 import ThemeGallery from './ThemeGallery.js';
+import { WhatsNewButton } from './WhatsNew.js';
 
 const SEAT_NAMES = ['North', 'East', 'South', 'West'];
 // Each seat's cell in the 3x3 table diagram (the table top is the centre).
@@ -35,6 +36,9 @@ type Props = {
   fetchRoomElos: () => Promise<RoomElos>;
   sendInvite: (targetUid: string) => void;
   expiredInviteUids: Set<string>;
+  /** Updates since the player's last game (0 when none, or signed out). */
+  whatsNewCount: number;
+  onShowWhatsNew: () => void;
 };
 
 function Icon({ children, className = 'w-5 h-5' }: { children: React.ReactNode; className?: string }) {
@@ -50,6 +54,7 @@ export default function WaitingRoom({
   aiOpenSeats, disconnectedSeats, onSwapSeats, onShuffleSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
   onCancelRoom, onLeaveRoom, onUnmarkSeatAi,
   fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
+  whatsNewCount, onShowWhatsNew,
 }: Props) {
   // A seat picked up for rearranging, by click (then click the destination)
   // or by drag.
@@ -235,7 +240,7 @@ export default function WaitingRoom({
       <div className="w-full max-w-6xl">
         {/* Header: leave / cancel, title, invite + room code */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 mb-4">
-          <div>
+          <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-3">
             <button
               onClick={isOrganizer ? () => setShowCancelConfirm(true) : onLeaveRoom}
               className="btn btn-quiet flex items-center gap-2 pl-3 pr-4 py-2 text-base"
@@ -243,6 +248,7 @@ export default function WaitingRoom({
               <Icon><polyline points="15 18 9 12 15 6" /></Icon>
               {isOrganizer ? 'Cancel room' : 'Leave room'}
             </button>
+            <WhatsNewButton count={whatsNewCount} onClick={onShowWhatsNew} labelClassName="hidden sm:inline" className="px-3 sm:px-4 py-2 text-base" />
           </div>
           <div className="text-center">
             <h1 className="text-3xl sm:text-4xl text-cream leading-tight">Tichu</h1>

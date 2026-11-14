@@ -4,6 +4,8 @@ import type { useAuth } from '../hooks/useAuth.js';
 import UserStats from '../components/UserStats.js';
 import WaitingRoom from '../components/WaitingRoom.js';
 import CreateRoomForm from '../components/CreateRoomForm.js';
+import WhatsNew, { WhatsNewButton, whatsNewCount } from '../components/WhatsNew.js';
+import { useLastPlayed } from '../hooks/useLastPlayed.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -16,6 +18,7 @@ export default function Lobby({ socket, auth }: Props) {
   const [joinCode, setJoinCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [showStats, setShowStats] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const namePrefilledRef = useRef(false);
 
   // Pre-fill name from profile
@@ -27,6 +30,12 @@ export default function Lobby({ socket, auth }: Props) {
   }, [profile]);
 
   const { connectionState, gameState, roomCode, error, isOrganizer } = socket;
+
+  const lastPlayed = useLastPlayed(profile?.uid, connectionState === 'connected' && !!auth.idToken, socket.fetchRecentGames);
+  const newCount = whatsNewCount(lastPlayed);
+  const whatsNewModal = showWhatsNew && (
+    <WhatsNew lastPlayed={lastPlayed} signedIn={!!profile} onClose={() => setShowWhatsNew(false)} />
+  );
 
   const isInRoom = roomCode && gameState;
 
@@ -43,6 +52,7 @@ export default function Lobby({ socket, auth }: Props) {
 
   if (isInRoom) {
     return (
+      <>
       <WaitingRoom
         roomCode={roomCode}
         gameState={gameState}
@@ -64,7 +74,11 @@ export default function Lobby({ socket, auth }: Props) {
         fetchRoomElos={socket.fetchRoomElos}
         sendInvite={socket.sendInvite}
         expiredInviteUids={socket.expiredInviteUids}
+        whatsNewCount={newCount}
+        onShowWhatsNew={() => setShowWhatsNew(true)}
       />
+      {whatsNewModal}
+      </>
     );
   }
 
@@ -157,6 +171,15 @@ export default function Lobby({ socket, auth }: Props) {
             </button>
           )}
         </div>
+
+        {profile && (
+          <WhatsNewButton
+            count={newCount}
+            onClick={() => setShowWhatsNew(true)}
+            className={`w-full justify-center py-2 mb-6 text-lg ${newCount > 0 ? 'ring-2 ring-ochre' : ''}`}
+          />
+        )}
+        {whatsNewModal}
 
         {/* Stats modal */}
         {showStats && profile && (

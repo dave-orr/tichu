@@ -6,3 +6,4 @@ export * from './engine.js';
 export * from './stats.js';
 export * from './historyRepair.js';
 export * from './achievements.js';
+export * from './changelog.js';

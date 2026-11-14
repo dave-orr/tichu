@@ -53,6 +53,19 @@ design — do not add TTL there.
 `shared/src/engine.ts`, `combinations.ts`, `scoring.ts`, `deck.ts`, and
 `types.ts` card helpers. Verify changes against it rather than from memory.
 
+## Changelog ("What's new")
+
+`shared/src/changelog.ts` (`CHANGELOG`) is the player-facing changelog, shown
+by `client/src/components/WhatsNew.tsx` from the front page (signed-in
+players) and the waiting room. Entries merged since the player's last finished
+game (newest `finishedAt` from `fetch-recent-games`, taken before the page was
+opened) are highlighted. **Every PR adds its own entry at the top**: one short
+player-facing line; new achievements and themes are counted
+(`achievements: n` / `themes: n`) and never named, to keep the surprise; use
+`kind: 'internal'` for behind-the-scenes work, and a `YYYY-MM-DD` `mergedAt`
+when the merge time isn't known yet. The data is committed, so production
+never calls GitHub. History starts at #80.
+
 ## TODO Trackers
 
 `CODE_SMELLS_TODO.md` (bugs / code smells grouped by severity) and
