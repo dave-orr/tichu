@@ -270,7 +270,12 @@ export default function Game({ socket, auth }: Props) {
     return choice;
   }, [selectedCardList, currentTrick]);
   const [showPhoenixChoice, setShowPhoenixChoice] = useState(false);
-  useEffect(() => setShowPhoenixChoice(false), [selectedCardList]);
+  // Close the picker when the selection changes. Keyed on the card ids, not
+  // selectedCardList itself: that array is rebuilt every render, so depending
+  // on it closed the picker in the same render that opened it and Play did
+  // nothing for any straight the Phoenix could extend at either end.
+  const selectedKey = selectedCardList.map(cardId).join(',');
+  useEffect(() => setShowPhoenixChoice(false), [selectedKey]);
 
   const canBombNow = useMemo(() => {
     if (phase !== 'playing' || selectedCardList.length < 4) return false;
