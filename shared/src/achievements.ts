@@ -33,7 +33,8 @@ export type AchievementId =
   | 'totally-kawaii'
   | 'old-master'
   | 'trick-or-treat'
-  | 'spellbound';
+  | 'spellbound'
+  | 'rain-of-bombs';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -54,6 +55,9 @@ export const UNSTOPPABLE_STREAK = 10;
 
 /** With a Flourish: winning margin at least this. */
 export const FLOURISH_MARGIN = 400;
+
+/** Rain of Bombs: bombs the other team plays in one game to earn it. */
+export const RAIN_OF_BOMBS = 5;
 
 /** Photo Finish: winning margin at most this. */
 export const PHOTO_FINISH_MARGIN = 10;
@@ -109,6 +113,11 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     id: 'with-a-flourish',
     name: 'With a Flourish',
     description: `Make a Grand on the match-winning hand and finish ${FLOURISH_MARGIN}+ points ahead`,
+  },
+  {
+    id: 'rain-of-bombs',
+    name: 'Rain of Bombs',
+    description: `Have the other team play ${RAIN_OF_BOMBS} or more bombs against you in one game`,
   },
   // Theme achievements: the whole table earns one for finishing a game, once
   // per player per theme. Only games since summaries started recording the
@@ -243,7 +252,17 @@ export function achievementEvents(rounds: readonly RoundLog[], outcome?: GameOut
   // Hat trick: made calls by a seat in consecutive rounds. Each run of three
   // counts once, then the streak starts over.
   const streak = [0, 0, 0, 0];
+  // Bombs each team has played so far this game. The other team earns Rain
+  // of Bombs in the round where the count reaches the threshold (once a game).
+  const bombsBy = [0, 0];
   for (const r of sorted) {
+    for (const t of [0, 1] as const) {
+      const before = bombsBy[t];
+      bombsBy[t] += r.bombs.filter(b => getTeamForSeat(b.seat) === t).length;
+      if (before < RAIN_OF_BOMBS && bombsBy[t] >= RAIN_OF_BOMBS) {
+        events.push({ id: 'rain-of-bombs', seats: t === 0 ? [1, 3] : [0, 2], roundNumber: r.roundNumber });
+      }
+    }
     for (const e of roundEvents(r)) events.push({ id: e.id, seats: [e.seat], roundNumber: r.roundNumber });
     for (const seat of [0, 1, 2, 3] as Seat[]) {
       const pl = r.players.find(p => p.seat === seat);

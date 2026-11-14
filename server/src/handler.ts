@@ -1285,13 +1285,13 @@ function roundAchievements(room: Room, log: RoundLog): AchievementEvent[] {
   const thisRound = all.filter(e => e.roundNumber === log.roundNumber);
   room.gameAchievements = [...room.gameAchievements.filter(e => e.roundNumber !== log.roundNumber), ...thisRound];
   // Hands and plays only matter within their own round; drop them so the
-  // room snapshot stays small.
+  // room snapshot stays small. Bombs stay: Rain of Bombs counts them across
+  // the whole game.
   room.gameRoundLogs = [...rounds.slice(0, -1), {
     ...log,
     players: log.players.map(p => ({ ...p, initialHand: [], firstEight: undefined })),
     plays: undefined,
     actions: undefined,
-    bombs: [],
   }];
   // A round's results show that round's achievements; the game-over screen
   // shows everything earned across the game.

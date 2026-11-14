@@ -137,6 +137,19 @@ describe('computeAchievements', () => {
     expect(counts(records, 'B')['double-tap']).toBe(0);
   });
 
+  it('Rain of Bombs: the other team plays 5+ bombs in one game, counted once', () => {
+    const records: GameRecord[] = [
+      // Team 1 bombs 3 + 2 = 5 times across rounds (team 0's own bomb doesn't count).
+      { summary: summary('g'), rounds: [round('g', 1, { bombs: [1, 3, 1, 0] }), round('g', 2, { bombs: [3, 1, 1, 3] })] },
+      // Only 4 opposing bombs.
+      { summary: summary('h'), rounds: [round('h', 1, { bombs: [1, 1, 3, 3, 0] })] },
+    ];
+    expect(counts(records, 'A')['rain-of-bombs']).toBe(1);
+    expect(counts(records, 'C')['rain-of-bombs']).toBe(1);
+    expect(counts(records, 'B')['rain-of-bombs']).toBe(0);
+    expect(achievementEvents(records[0].rounds)).toContainEqual({ id: 'rain-of-bombs', seats: [0, 2], roundNumber: 2 });
+  });
+
   it("Out-Bombed and Friendly Fire read the play log", () => {
     const plays: RoundPlay[] = [
       { seat: 0, cards: [sp('dragon')], trick: 0 },

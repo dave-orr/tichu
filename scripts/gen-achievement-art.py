@@ -641,6 +641,57 @@ icons['with-a-flourish'] = badge(INDIGO, layer(rays),
     + layer(sparkle(24, 60, 4, CREAM), sparkle(104, 60, 4, CREAM), sparkle(64, 22, 3.5, CREAM))
 )
 
+# ---- Rain of Bombs: the other team bombed you five times in one game. Five
+# scowling bombs come down in a V across a full moon onto a little house of
+# cards.
+def falling_bomb(cx, cy, r):
+    fx, fy = cx + r * .4, cy - r * .9
+    return (f'<path d="M{fx} {fy} q2 -5 6 -6" fill="none" stroke="{INK}" stroke-width="3.6"/>'
+            f'<path d="M{fx} {fy} q2 -5 6 -6" fill="none" stroke="{OCHRE}" stroke-width="1.6"/>'
+            f'<rect x="{fx - 3.5}" y="{fy - 2.5}" width="7" height="5" rx="1.2" fill="{OCHRE}" stroke-width="1.4" '
+            f'transform="rotate(35 {fx} {fy})"/>'
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{NIGHT}" stroke-width="1.6"/>'
+            f'<path d="M{cx - r * .55} {cy - r * .1} Q{cx - r * .5} {cy - r * .6} {cx - r * .1} {cy - r * .65}" '
+            f'fill="none" stroke="{SKY}" stroke-width="1.8" opacity="0.7"/>'
+            f'<circle cx="{cx - r * .3}" cy="{cy + r * .05}" r="1.2" fill="{WHITE}" stroke="none"/>'
+            f'<circle cx="{cx + r * .3}" cy="{cy + r * .05}" r="1.2" fill="{WHITE}" stroke="none"/>'
+            f'<path d="M{cx - r * .55} {cy - r * .35} l{r * .4} {r * .2} M{cx + r * .55} {cy - r * .35} l{-r * .4} {r * .2}" '
+            f'stroke="{WHITE}" stroke-width="1.1"/>'
+            f'<path d="M{cx - r * .35} {cy + r * .4} Q{cx} {cy + r * .7} {cx + r * .35} {cy + r * .4}" '
+            f'fill="none" stroke="{WHITE}" stroke-width="1.2"/>'
+            + spark(fx + 6, fy - 6, 4))
+
+
+def leaning_card(x0, y0, x1, y1, pip, w=7):
+    """A card standing from (x0, y0) at its foot to (x1, y1) at its top."""
+    dx, dy = x1 - x0, y1 - y0
+    length = math.hypot(dx, dy)
+    nx, ny = -dy / length * w / 2, dx / length * w / 2
+    return (f'<path d="M{x0 + nx:.1f} {y0 + ny:.1f} L{x1 + nx:.1f} {y1 + ny:.1f} L{x1 - nx:.1f} {y1 - ny:.1f} '
+            f'L{x0 - nx:.1f} {y0 - ny:.1f} Z" fill="{WHITE}" stroke-width="1.5"/>'
+            f'<circle cx="{(x0 + x1) / 2:.1f}" cy="{(y0 + y1) / 2:.1f}" r="1.7" fill="{pip}" stroke="none"/>')
+
+
+def a_frame(x, base, p1, p2, h=20, spread=8):
+    return leaning_card(x - spread, base, x - 1.5, base - h, p1) + leaning_card(x + spread, base, x + 1.5, base - h, p2)
+
+
+V_FORMATION = [(64, 54), (50, 45), (78, 45), (36, 36), (92, 36)]
+icons['rain-of-bombs'] = badge(INDIGO, layer(
+    f'<circle cx="64" cy="44" r="40" fill="{CREAM}" stroke="none" opacity="0.9"/>'
+    f'<circle cx="50" cy="34" r="5" fill="{STONE}" stroke="none" opacity="0.5"/>'
+    f'<circle cx="82" cy="56" r="7" fill="{STONE}" stroke="none" opacity="0.5"/>'
+    + sparkle(22, 60, 2, CREAM) + sparkle(106, 62, 2, CREAM) + sparkle(64, 22, 2, CREAM)
+    + f'<path d="M14 108 Q64 102 114 108 L114 120 L14 120 Z" fill="{NIGHT}" stroke="none"/>'),
+    layer(''.join(f'<path d="M{x + dx} {y - 10} l0 -6" stroke="{WHITE}" stroke-width="1.6" opacity="0.75"/>'
+                  for x, y in V_FORMATION for dx in (-3, 3)))
+    + layer(''.join(falling_bomb(x, y, 6.5) for x, y in V_FORMATION))
+    + layer('<g transform="translate(64 108) scale(0.78) translate(-64 -108)">'
+            + a_frame(52, 108, CLAY, SAP) + a_frame(76, 108, ROSE, TEAL)
+            + f'<rect x="40" y="84" width="48" height="4" rx="1.5" fill="{CREAM}" stroke-width="1.5"/>'
+            + a_frame(64, 84, INDIGO, CLAY) + '</g>')
+)
+
 # ---- Crafty: finish a game on the Papercraft table. A paper crane folded
 # from a playing card takes off over the green felt. (The other themes'
 # badges are drawn in their own styles by scripts/gen-theme-achievement-art.py.)
