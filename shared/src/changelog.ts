@@ -34,7 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
-  { pr: 142, mergedAt: '2026-11-15', kind: 'new', summary: 'The room creator can switch the play direction mid-game from the gear menu; the turn order stays the same' },
+  { pr: 143, mergedAt: '2026-11-15', kind: 'new', summary: 'The room creator can switch the play direction mid-game from the gear menu; the turn order stays the same' },
   { pr: 141, mergedAt: '2026-11-15', kind: 'new', achievements: 1 },
   { pr: 140, mergedAt: '2026-11-14', kind: 'new', summary: 'This What’s new panel, highlighting changes since your last game' },
   { pr: 139, mergedAt: '2026-11-14T16:50:42Z', kind: 'new', achievements: 1 },
