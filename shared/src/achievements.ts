@@ -34,7 +34,8 @@ export type AchievementId =
   | 'old-master'
   | 'trick-or-treat'
   | 'spellbound'
-  | 'rain-of-bombs';
+  | 'rain-of-bombs'
+  | 'buried';
 
 export type AchievementDef = {
   id: AchievementId;
@@ -66,6 +67,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'grand-theft', name: 'Grand Theft', description: 'Make a Grand Tichu when an opponent also called Grand' },
   { id: 'phoenix-rising', name: 'Phoenix Rising', description: 'Win a game after trailing by 500 or more' },
   { id: 'lazarus', name: 'Lazarus', description: 'Win a game after trailing by 1000 or more' },
+  { id: 'buried', name: 'Buried', description: 'Lose a game with a negative score' },
   { id: 'out-bombed', name: 'Out-Bombed', description: 'Have your bomb bombed', newLogsOnly: true },
   { id: 'double-tap', name: 'Double Tap', description: 'Play two bombs in the same hand' },
   { id: 'photo-finish', name: 'Photo Finish', description: `Win a game by ${PHOTO_FINISH_MARGIN} points or less` },
@@ -282,6 +284,8 @@ export function achievementEvents(rounds: readonly RoundLog[], outcome?: GameOut
     const deficit = Math.max(0, ...sorted.map(r => r.scoresBeforeRound[other] - r.scoresBeforeRound[team]));
     if (deficit >= 500) game('phoenix-rising');
     if (deficit >= 1000) game('lazarus');
+    // Buried goes to the losers: the game ended with their score below zero.
+    if (outcome.finalScores[other] < 0) events.push({ id: 'buried', seats: other === 0 ? [0, 2] : [1, 3], roundNumber: null });
     if (outcome.finalScores[team] - outcome.finalScores[other] <= PHOTO_FINISH_MARGIN) game('photo-finish');
     if (sorted.length > 0 && sorted.every(r => r.scoresAfterRound[team] > r.scoresAfterRound[other])) {
       game('wire-to-wire');

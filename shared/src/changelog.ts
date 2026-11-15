@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 141, mergedAt: '2026-11-15', kind: 'new', achievements: 1 },
   { pr: 140, mergedAt: '2026-11-14', kind: 'new', summary: 'This What’s new panel, highlighting changes since your last game' },
   { pr: 139, mergedAt: '2026-11-14T16:50:42Z', kind: 'new', achievements: 1 },
   { pr: 138, mergedAt: '2026-11-14T16:09:09Z', kind: 'fixed', summary: 'Play works again for Phoenix straights that extend either end' },

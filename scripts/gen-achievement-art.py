@@ -714,6 +714,40 @@ icons['crafty'] = badge(SAP, layer(
     + layer(sparkle(100, 34, 4, CREAM), sparkle(22, 72, 3, CREAM), sparkle(108, 92, 3, OCHRE))
 )
 
+# ---- Buried: lose a game below zero. Lazarus's opposite: the grave stays
+# shut. A tombstone carved with a red minus over a fresh mound, shovel left
+# standing in the dirt, a wilted flower, a crow keeping watch.
+icons['buried'] = badge(INDIGO, layer(
+    f'<circle cx="34" cy="34" r="10" fill="{CREAM}" stroke="none"/>'
+    f'<circle cx="38" cy="31" r="2.2" fill="{PAPER}" stroke="none"/>'
+    + ''.join(sparkle(x, y, s, CREAM) for x, y, s in [(58, 22, 2.4), (100, 30, 2.8), (100, 50, 2)])
+    + f'<path d="M14 92 Q40 84 64 88 Q90 84 114 90 L114 120 L14 120 Z" fill="{NIGHT}" stroke="none"/>'),
+    layer(  # tombstone, cracked, carved RIP and a red minus
+        f'<path d="M44 96 L44 52 A20 20 0 0 1 84 52 L84 96 Z" fill="{STONE}"/>'
+        f'<path d="M48 94 L48 54 A16 16 0 0 1 56 40" fill="none" stroke="{WHITE}" stroke-width="1.6" opacity="0.6"/>'
+        f'<text x="64" y="60" font-family="Georgia, serif" font-size="11" font-weight="700" text-anchor="middle" '
+        f'fill="{STONE_DK}" stroke="none">R.I.P.</text>'
+        f'<rect x="54" y="68" width="20" height="6" rx="2" fill="{CRIMSON}" stroke-width="1.5"/>'
+        f'<path d="M80 44 l-4 7 l4 4 l-3 6" fill="none" stroke="{INK}" stroke-width="1.4"/>')
+    + layer(  # crow perched on top
+        f'<path d="M56 34 Q60 24 70 26 Q76 22 80 26 L86 25 L81 29 Q80 36 70 37 Q62 38 56 34 Z" fill="{INK}"/>'
+        f'<path d="M58 34 L48 37 L56 30 Z" fill="{INK}"/>'
+        f'<circle cx="77" cy="27.5" r="1.3" fill="{OCHRE}" stroke="none"/>')
+    + layer(  # shovel stuck in the dirt
+        f'<path d="M100 62 L96 94" stroke="{INK}" stroke-width="5"/>'
+        f'<path d="M100 62 L96 94" stroke="{OCHRE_DK}" stroke-width="2.6"/>'
+        f'<path d="M95 60 L106 61" stroke="{INK}" stroke-width="5"/><path d="M95 60 L106 61" stroke="{OCHRE_DK}" stroke-width="2.6"/>'
+        f'<path d="M89 90 L103 92 L101 104 Q95 108 89 102 Z" fill="{ASH}"/>')
+    + layer(  # fresh mound of dirt
+        f'<path d="M14 120 L14 108 Q28 96 46 98 Q64 90 82 98 Q100 96 114 108 L114 120 Z" fill="{CLAY_DK}"/>'
+        f'<circle cx="38" cy="106" r="2" fill="{CLAY}" stroke="none"/><circle cx="66" cy="102" r="2.4" fill="{CLAY}" stroke="none"/>'
+        f'<circle cx="88" cy="108" r="1.8" fill="{CLAY}" stroke="none"/>')
+    + layer(  # one wilted flower
+        f'<path d="M34 104 Q33 90 26 88" fill="none" stroke="{SAP_DK}" stroke-width="2"/>'
+        f'<ellipse cx="25" cy="90" rx="4.5" ry="3.2" fill="{ROSE}" transform="rotate(40 25 90)"/>'
+        f'<path d="M33 98 q-6 -1 -7 3" fill="{SAP}" stroke-width="1.2"/>')
+)
+
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for name, svg in icons.items():
