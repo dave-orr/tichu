@@ -7,7 +7,7 @@ import TichuBadge, { type TichuStatus } from './TichuBadge.js';
 import { SeatBubbles, seatGlow, type GameEvent } from './GameAnnouncement.js';
 
 type Props = {
-  player: { name: string; cardCount: number; isOut: boolean; tichuCall: TichuCall; trickCount: number; capturedPoints: number };
+  player: { name: string; cardCount: number; isOut: boolean; outOrder: number; tichuCall: TichuCall; trickCount: number; capturedPoints: number };
   isCurrentTurn: boolean;
   label?: string;
   showPoints?: boolean;
@@ -31,6 +31,8 @@ type Props = {
   bubbleSide?: 'above' | 'below' | 'left' | 'right';
 };
 
+const ORDINALS = ['', '1st', '2nd', '3rd', '4th'];
+
 /**
  * Compact panel showing a player's identity + their most recent play in the
  * current trick, side by side. Used for all four seats so the whole table fits
@@ -42,9 +44,13 @@ export default function PlayerPanel({
 }: Props) {
   const glow = seatGlow(announcements);
   const theme = useTheme();
+  const out = player.isOut;
+  const place = ORDINALS[player.outOrder] ?? '';
   // Attention: panels are deliberately quiet so the cards (hand, trick) carry
   // the table; whoever is to play gets the one strong signal, an ochre ring
-  // plus a "to play" tab.
+  // plus a "to play" tab. A player who has gone out gets a settled, green
+  // "finished" state instead: a dashed sap ring, an "Out · 1st" tab, and a
+  // stamp where their play would be, so an empty-handed seat reads at a glance.
   return (
     <div
       data-seat-panel={seat}
@@ -55,9 +61,21 @@ export default function PlayerPanel({
           ? `bg-black/25 ${glow}`
           : isCurrentTurn
           ? 'bg-ochre/10 ring-[3px] ring-ochre shadow-[0_0_0_8px_rgba(232,170,56,0.14),0_12px_28px_-10px_rgba(0,0,0,0.55)]'
+          : out
+          ? 'bg-sap/10 outline-dashed outline-[3px] outline-offset-0 outline-good/70'
           : 'bg-black/15 ring-1 ring-cream/10'
       }`}
     >
+      {out && !isCurrentTurn && (
+        <div
+          className={`seat-out-tab absolute -top-3.5 ${mirror ? 'right-6' : 'left-6'} inline-flex items-center gap-1.5 rounded-full bg-sap px-3 py-0.5 text-lg font-extrabold uppercase tracking-[0.15em] text-white shadow-[0_2px_0_rgb(var(--c-sap-dark))]`}
+        >
+          <svg viewBox="0 0 16 16" className="w-4 h-4" aria-hidden="true">
+            <path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Out{place && ` · ${place}`}
+        </div>
+      )}
       {isCurrentTurn && (
         <div
           className={`absolute -top-3.5 ${mirror ? 'right-6' : 'left-6'} rounded-full bg-ochre px-3 py-0.5 text-lg font-extrabold uppercase tracking-[0.15em] text-ink shadow-[0_2px_0_rgb(var(--c-ochre-dark))]`}
@@ -81,8 +99,11 @@ export default function PlayerPanel({
           </div>
         )}
         <div className={`flex items-center gap-4 text-2xl mt-1 font-bold text-cream/75 ${mirror ? 'justify-end' : ''}`}>
-          {player.isOut ? (
-            <span className="italic text-cream/60">Out</span>
+          {out ? (
+            <span className="inline-flex items-center gap-1.5 text-good" title="no cards left">
+              <img src={cardArt(theme, 'icon-hand.svg')} alt="" className="w-8 h-8 opacity-40 grayscale" />
+              0
+            </span>
           ) : (
             <span className="inline-flex items-center gap-1.5" title="cards in hand">
               <img src={cardArt(theme, 'icon-hand.svg')} alt="" className="w-8 h-8" />
@@ -112,6 +133,12 @@ export default function PlayerPanel({
             style={sweepOffset ? ({ '--sx': `${sweepOffset.x}px`, '--sy': `${sweepOffset.y}px` } as CSSProperties) : undefined}
           >
             <SeatPlay key={play.map(cardId).join('|')} cards={play} isTopOfTrick={isTopOfTrick} combo={combo} />
+          </div>
+        )}
+        {out && play.length === 0 && (
+          <div className="seat-out-stamp flex flex-col items-center rounded-xl border-4 border-good/80 px-5 py-1 text-good" aria-label={`Out ${place}`}>
+            <span className="font-display text-5xl font-black uppercase leading-none tracking-[0.12em]">Out</span>
+            {place && <span className="text-xl font-extrabold uppercase tracking-[0.2em] opacity-85">{place}</span>}
           </div>
         )}
         {passed && (
