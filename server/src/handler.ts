@@ -596,6 +596,26 @@ export function setupHandlers(io: Server): Promise<void> {
       broadcastState(io, room);
     });
 
+    // Mid-game: mirror how the table is drawn for everyone, so turns visually
+    // run the other way. Display only: seats, turn order and partnerships
+    // are untouched, so it is safe in any phase.
+    guarded(socket, 'set-mirror-table', ({ mirrored }: { mirrored: unknown }) => {
+      if (typeof mirrored !== 'boolean') {
+        socket.emit('error', { message: 'Invalid table direction' });
+        return;
+      }
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can change the play direction' });
+        return;
+      }
+      if (!!room.state.settings.mirrorTable === mirrored) return;
+      room.state.settings = { ...room.state.settings, mirrorTable: mirrored };
+      broadcastState(io, room);
+    });
+
     guarded(socket, 'update-random-partners', ({ randomPartners }: { randomPartners: boolean }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
