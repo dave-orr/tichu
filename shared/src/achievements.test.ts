@@ -97,6 +97,19 @@ describe('computeAchievements', () => {
     expect(a.lazarus).toBe(1);
   });
 
+  it('Buried: the losing team finishes below zero', () => {
+    const records: GameRecord[] = [
+      { summary: summary('g1', { finalScores: [1020, -40] }), rounds: [round('g1', 1)] },
+      { summary: summary('g2', { finalScores: [-10, 1000], winningTeam: 1 }), rounds: [round('g2', 1)] },
+      // Losing on exactly zero doesn't count.
+      { summary: summary('g3', { finalScores: [1000, 0] }), rounds: [round('g3', 1)] },
+    ];
+    expect(counts(records, 'B')['buried']).toBe(1);
+    expect(counts(records, 'D')['buried']).toBe(1);
+    expect(counts(records, 'A')['buried']).toBe(1);
+    expect(counts(records, 'C')['buried']).toBe(1);
+  });
+
   it('Photo Finish and Wire to Wire are game-level wins', () => {
     const records: GameRecord[] = [
       {
