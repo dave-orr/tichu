@@ -121,3 +121,37 @@ export function playGongSound(): void {
     // Audio not available
   }
 }
+
+/** Play a bright "ta-da" when a player goes out (plays their last card):
+ *  a quick rising arpeggio landing on a ringing chord, distinct from the
+ *  soft turn chime and the Tichu gong. */
+export function playOutFanfare(): void {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+
+    // G5 → C6 pickup, then a C6 + E6 + G6 chord that rings out.
+    const notes: { freq: number; at: number; len: number; gain: number }[] = [
+      { freq: 783.99, at: 0, len: 0.18, gain: 0.12 },
+      { freq: 1046.5, at: 0.09, len: 0.7, gain: 0.12 },
+      { freq: 1318.51, at: 0.09, len: 0.7, gain: 0.08 },
+      { freq: 1567.98, at: 0.09, len: 0.7, gain: 0.06 },
+    ];
+    for (const n of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = n.freq;
+      const t = now + n.at;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(n.gain, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + n.len);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + n.len + 0.05);
+    }
+  } catch {
+    // Audio not available
+  }
+}
