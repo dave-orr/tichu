@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAchievements, achievementEvents, currentWinStreak, isFirstGameOnTheme, AchievementId } from './achievements.js';
+import { computeAchievements, achievementEvents, currentWinStreak, isFirstGameOnTheme, AchievementId, THEME_ACHIEVEMENTS } from './achievements.js';
 import { GameRecord } from './stats.js';
 import {
   Card, GameSummary, NormalRank, RoundLog, RoundPlay, Seat, Suit, TichuCall,
@@ -373,6 +373,12 @@ describe('theme achievements', () => {
   it('everyone at the table earns the theme badge for finishing, win or lose', () => {
     const events = achievementEvents([round('g', 1)], { winningTeam: 1, finalScores: [500, 1000], theme: 'baroque' });
     expect(events.filter(e => e.id === 'old-master')).toEqual([{ id: 'old-master', seats: [0, 1, 2, 3], roundNumber: null }]);
+  });
+
+  it("gives every theme its own badge, including the Kids' Table", () => {
+    const events = achievementEvents([round('g', 1)], { winningTeam: 0, finalScores: [1000, 300], theme: 'kids-table' });
+    expect(events.filter(e => e.id === 'gobble-gobble')).toEqual([{ id: 'gobble-gobble', seats: [0, 1, 2, 3], roundNumber: null }]);
+    expect(new Set(Object.values(THEME_ACHIEVEMENTS)).size).toBe(Object.keys(THEME_ACHIEVEMENTS).length);
   });
 
   it('counts each theme once per player on the stats page, and not for summaries without one', () => {

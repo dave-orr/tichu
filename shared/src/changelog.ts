@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 143, mergedAt: '2026-11-21', kind: 'new', themes: 1, achievements: 1 },
   { pr: 142, mergedAt: '2026-11-15', kind: 'improved', summary: 'Players who have gone out are marked on their seat, with a sound when it happens' },
   { pr: 141, mergedAt: '2026-11-15', kind: 'new', achievements: 1 },
   { pr: 140, mergedAt: '2026-11-14', kind: 'new', summary: 'This What’s new panel, highlighting changes since your last game' },

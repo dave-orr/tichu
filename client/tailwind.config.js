@@ -38,6 +38,10 @@ const GOLD = ramp(['#FFF9E8', '#FCF0CF', '#F6E0A2', '#EED07A', '#E5BF5A', '#D4A9
 const ARCANE_GRAY = ramp(['#F3F1FF', '#E4E1F7', '#CDC8EA', '#AFA8D6', '#8C84B8', '#6A6396', '#4C4775', '#343157', '#232242', '#171731', '#0D0D1F']);
 const DRAGON_GOLD = ramp(['#FFF9E5', '#FFF0C2', '#FFE08A', '#FCCD58', '#F5BA35', '#E5A422', '#C48618', '#9A6714', '#744C12', '#55370F', '#341F08']);
 const KAWAII_GRAY = ramp(['#3E3146', '#4A3D52', '#5B4B63', '#6E5E78', '#8A7B93', '#A597AD', '#C9BED0', '#E6DCEC', '#F6F0F9', '#FCF9FD', '#FFFFFF']);
+// Kids' Table: a dark theme (no inversion): a brown-paper tablecloth with
+// kraft greys, and a sunny crayon-orange ramp in place of ochre.
+const KRAFT_GRAY = ramp(['#FFF8EE', '#F6EAD6', '#E8D5B8', '#D2B894', '#AE916C', '#8A6E4E', '#6A5038', '#4E3826', '#3A281A', '#2A1C11', '#1A1009']);
+const CRAYON = ramp(['#FFF7E0', '#FFEDB8', '#FFDE85', '#FFCC4D', '#FBBA2A', '#F5A00F', '#D9820A', '#AD6208', '#844A08', '#5F3507', '#3A2004']);
 const ROSE = ramp(['#7A2843', '#8E3050', '#B03E64', '#D2507A', '#E06489', '#EC7C9C', '#F49AB3', '#F9BCCD', '#FCD9E3', '#FEEDF2', '#FFF7FA']);
 
 // Dark-theme version of a Tailwind ramp for Halloween: the dark end (panel
@@ -48,12 +52,15 @@ const lacquered = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#14291F', 0.4)
 // Dark-theme version of a Tailwind ramp for Magic: panel shades dimmed
 // toward the midnight table.
 const midnight = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#1A1F3F', 0.42) : r[s])));
+// Dark-theme version of a Tailwind ramp for Kids' Table: panel shades dimmed
+// toward the brown-paper table.
+const kraft = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#3A2614', 0.42) : r[s])));
 const nightfall = r => ramp(STEPS.map(s => (s >= 600 ? mix(r[s], '#2C1E3E', 0.45) : r[s])));
-// Each entry: [papercraft, kawaii, halloween, baroque, magic].
+// Each entry: [papercraft, kawaii, halloween, baroque, magic, kids-table].
 const RAMPS = {
-  gray: [PAPER_GRAY, KAWAII_GRAY, NIGHT_GRAY, LACQUER_GRAY, ARCANE_GRAY],
-  yellow: [OCHRE, ROSE, PUMPKIN, GOLD, DRAGON_GOLD],
-  ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n]), nightfall(colors[n]), lacquered(colors[n]), midnight(colors[n])]])),
+  gray: [PAPER_GRAY, KAWAII_GRAY, NIGHT_GRAY, LACQUER_GRAY, ARCANE_GRAY, KRAFT_GRAY],
+  yellow: [OCHRE, ROSE, PUMPKIN, GOLD, DRAGON_GOLD, CRAYON],
+  ...Object.fromEntries(['green', 'blue', 'red', 'amber', 'purple', 'sky'].map(n => [n, [colors[n], inverted(colors[n]), nightfall(colors[n]), lacquered(colors[n]), midnight(colors[n]), kraft(colors[n])]])),
 };
 // Blue marks Grand Tichu (badges, bubbles, results). Halloween has no blue in
 // its palette, so its Grand Tichu goes haunted-house violet instead.
@@ -61,31 +68,31 @@ RAMPS.blue[2] = nightfall(colors.violet);
 // Magic's table is already blue, so its Grand Tichu goes wizard-hat violet.
 RAMPS.blue[4] = midnight(colors.violet);
 
-// Named tokens: [papercraft, kawaii, halloween, baroque, magic].
+// Named tokens: [papercraft, kawaii, halloween, baroque, magic, kids-table].
 const TOKENS = {
-  felt: ['#2A6446', '#C8E2D6', '#2C1E3E', '#1F4636', '#243263'],
-  'felt-dark': ['#1D4A34', '#B5D4C6', '#160F20', '#0F241A', '#121735'],
-  ink: ['#2B2233', '#5B4B63', '#1E1428', '#1E1A16', '#221E3A'],          // dark text on light buttons
-  paper: ['#F3EBDC', '#FFFFFF', '#F4EBDA', '#F3EAD6', '#F6F1E4'],        // light button / surface
-  cream: ['#FFF8EC', '#5B4B63', '#F6EFFF', '#F6EEDC', '#F5F2FF'],        // foreground on the table
-  'clay': ['#D97757', '#FF9AA9', '#8E5CD9', '#A8322A', '#8E4FC9'],
-  'clay-dark': ['#B85C3E', '#E8798B', '#5B3A9A', '#6E1512', '#5E2E96'],
-  'clay-hover': ['#E2876A', '#FFAAB7', '#9D70E0', '#BD4034', '#9E63D6'],
-  ochre: ['#E8AA38', '#FFB3C7', '#F2851F', '#D4A945', '#F5BA35'],        // highlight: turn ring, primary action
-  'ochre-light': ['#F6CF7A', '#D2507A', '#FFB15E', '#EBCB7A', '#FCD670'], // highlighted text (on the table)
-  'ochre-dark': ['#B97F1E', '#F49AB0', '#B95A0E', '#8E6A20', '#B9841A'],
-  sap: ['#5E9150', '#86D9B4', '#5DAF3E', '#2F7D55', '#3E9A5A'],
-  'sap-dark': ['#456E3A', '#5DB893', '#3F8A2A', '#1B5035', '#276B3D'],
-  'sap-hover': ['#6CA25D', '#9BE3C2', '#6CC24A', '#3A9065', '#4BAD69'],
-  brick: ['#C8443A', '#FF8A8A', '#C2352B', '#8E1B1B', '#CF3E2E'],
-  'brick-dark': ['#9C2F28', '#E06666', '#8A2018', '#560E0E', '#952418'],
-  'brick-hover': ['#D65247', '#FF9E9E', '#D2463B', '#A52626', '#DC5040'],
-  good: ['#A9CF8A', '#2E9A6A', '#A6E67F', '#A9D39A', '#9EDC8C'],         // made / captured points text
-  bad: ['#F08A7E', '#D9456A', '#FF8A7A', '#F08A7E', '#FF8E7E'],          // failed text
-  grand: ['#8FB0F0', '#5B74D6', '#C4A2F2', '#EBCB7A', '#C9A8FF'],        // Grand Tichu label text
-  dragon: ['#8FCB9B', '#2E9A6A', '#A6E67F', '#8FCB9B', '#FCD670'],
-  white: ['#FFFFFF', '#5B4B63', '#FFFFFF', '#FFFFFF', '#FFFFFF'],
-  black: ['#000000', '#FFFFFF', '#000000', '#000000', '#000000'],
+  felt: ['#2A6446', '#C8E2D6', '#2C1E3E', '#1F4636', '#243263', '#8C5B33'],
+  'felt-dark': ['#1D4A34', '#B5D4C6', '#160F20', '#0F241A', '#121735', '#5B381D'],
+  ink: ['#2B2233', '#5B4B63', '#1E1428', '#1E1A16', '#221E3A', '#2E2218'],          // dark text on light buttons
+  paper: ['#F3EBDC', '#FFFFFF', '#F4EBDA', '#F3EAD6', '#F6F1E4', '#FFF8EC'],        // light button / surface
+  cream: ['#FFF8EC', '#5B4B63', '#F6EFFF', '#F6EEDC', '#F5F2FF', '#FFF6E8'],        // foreground on the table
+  'clay': ['#D97757', '#FF9AA9', '#8E5CD9', '#A8322A', '#8E4FC9', '#E0402F'],
+  'clay-dark': ['#B85C3E', '#E8798B', '#5B3A9A', '#6E1512', '#5E2E96', '#A82A1E'],
+  'clay-hover': ['#E2876A', '#FFAAB7', '#9D70E0', '#BD4034', '#9E63D6', '#EA5444'],
+  ochre: ['#E8AA38', '#FFB3C7', '#F2851F', '#D4A945', '#F5BA35', '#F5A00F'],        // highlight: turn ring, primary action
+  'ochre-light': ['#F6CF7A', '#D2507A', '#FFB15E', '#EBCB7A', '#FCD670', '#FFCC4D'], // highlighted text (on the table)
+  'ochre-dark': ['#B97F1E', '#F49AB0', '#B95A0E', '#8E6A20', '#B9841A', '#B86E06'],
+  sap: ['#5E9150', '#86D9B4', '#5DAF3E', '#2F7D55', '#3E9A5A', '#45A845'],
+  'sap-dark': ['#456E3A', '#5DB893', '#3F8A2A', '#1B5035', '#276B3D', '#2E7A2E'],
+  'sap-hover': ['#6CA25D', '#9BE3C2', '#6CC24A', '#3A9065', '#4BAD69', '#55BA55'],
+  brick: ['#C8443A', '#FF8A8A', '#C2352B', '#8E1B1B', '#CF3E2E', '#D23A2C'],
+  'brick-dark': ['#9C2F28', '#E06666', '#8A2018', '#560E0E', '#952418', '#9A2418'],
+  'brick-hover': ['#D65247', '#FF9E9E', '#D2463B', '#A52626', '#DC5040', '#E04A3C'],
+  good: ['#A9CF8A', '#2E9A6A', '#A6E67F', '#A9D39A', '#9EDC8C', '#A6E67F'],         // made / captured points text
+  bad: ['#F08A7E', '#D9456A', '#FF8A7A', '#F08A7E', '#FF8E7E', '#FF9A8A'],          // failed text
+  grand: ['#8FB0F0', '#5B74D6', '#C4A2F2', '#EBCB7A', '#C9A8FF', '#9CC4FF'],        // Grand Tichu label text
+  dragon: ['#8FCB9B', '#2E9A6A', '#A6E67F', '#8FCB9B', '#FCD670', '#8FD68A'],
+  white: ['#FFFFFF', '#5B4B63', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF'],
+  black: ['#000000', '#FFFFFF', '#000000', '#000000', '#000000', '#000000'],
 };
 
 const v = name => `rgb(var(--c-${name}) / <alpha-value>)`;
@@ -133,6 +140,7 @@ export default {
         '[data-theme="halloween"]': { ...vars(2), '--font-display': 'Creepster, "Nunito Variable", system-ui, sans-serif' },
         '[data-theme="baroque"]': { ...vars(3), '--font-display': '"Cormorant Garamond", Georgia, serif' },
         '[data-theme="magic"]': { ...vars(4), '--font-display': '"Fraunces Variable", Georgia, serif' },
+        '[data-theme="kids-table"]': { ...vars(5), '--font-display': '"Gochi Hand", "Nunito Variable", system-ui, sans-serif' },
       });
     }),
   ],

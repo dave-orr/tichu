@@ -97,7 +97,7 @@ export type EloUpdate = {
 // ===== Game Settings =====
 
 /** Look and feel of the table and cards, chosen by the room creator. */
-export type Theme = 'papercraft' | 'kawaii' | 'halloween' | 'baroque' | 'magic';
+export type Theme = 'papercraft' | 'kawaii' | 'halloween' | 'baroque' | 'magic' | 'kids-table';
 /**
  * `selectable: false` keeps a theme built and shipped but out of the picker
  * (and rejected by the server) until it's switched on, e.g. a seasonal one.
@@ -106,6 +106,8 @@ export const THEMES: readonly { id: Theme; name: string; description: string; se
   { id: 'papercraft', name: 'Papercraft', description: 'Cut-paper cards on green felt', selectable: true },
   { id: 'baroque', name: 'Classic Baroque', description: 'Hand-painted court cards on jade lacquer', selectable: true },
   { id: 'magic', name: 'Magic', description: 'Five storybook realms of magic; each game deals four', selectable: true },
+  // Seasonal (Thanksgiving): set selectable: false once the holiday's over.
+  { id: 'kids-table', name: "Kids' Table", description: 'Crayon hand turkeys on the kids\' menu placemat', selectable: true },
   // Retired from the picker; rooms already on them keep drawing them.
   // Halloween is seasonal: set it selectable again next October.
   { id: 'halloween', name: 'Halloween', description: 'Moonlit table, pumpkins, bats and friendly monsters', selectable: false },
