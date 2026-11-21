@@ -34,6 +34,7 @@ export type AchievementId =
   | 'old-master'
   | 'trick-or-treat'
   | 'spellbound'
+  | 'gobble-gobble'
   | 'rain-of-bombs'
   | 'buried';
 
@@ -129,6 +130,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'old-master', name: 'Old Master', description: 'Finish a game on the Classic Baroque table', newLogsOnly: true, once: true },
   { id: 'trick-or-treat', name: 'Trick or Treat', description: 'Finish a game on the Halloween table', newLogsOnly: true, once: true },
   { id: 'spellbound', name: 'Spellbound', description: 'Finish a game on the Magic table', newLogsOnly: true, once: true },
+  { id: 'gobble-gobble', name: 'Gobble Gobble', description: "Finish a game at the Kids' Table", newLogsOnly: true, once: true },
 ];
 
 /** The achievement every seat earns for finishing a game in each theme. */
@@ -138,6 +140,7 @@ export const THEME_ACHIEVEMENTS: Record<Theme, AchievementId> = {
   baroque: 'old-master',
   halloween: 'trick-or-treat',
   magic: 'spellbound',
+  'kids-table': 'gobble-gobble',
 };
 
 export type AchievementCount = {
