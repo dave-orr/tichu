@@ -538,16 +538,25 @@ h1, h2, h3 {
 }
 
 /* Dog dash: a quick run along its path (0.8s), then it lies down for a moment. */
-@keyframes dog-dash {
-  0% { offset-distance: 0%; opacity: 0; }
-  4% { opacity: 1; }
-  36% { offset-distance: 100%; }
-  88% { offset-distance: 100%; opacity: 1; }
-  100% { offset-distance: 100%; opacity: 0; }
-}
+/* The Dog's run is a sequence of steps (see DogDash): runs along a motion
+   path, a stop at an empty partner seat, and lying down at the end. Each step
+   is a fresh element, so its animation starts when the step does. */
 .dog-dash {
-  animation: dog-dash 2.2s linear forwards;
   offset-rotate: 0deg;
+}
+@keyframes dog-run {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+.dog-run {
+  animation: dog-run 0.8s linear forwards;
+}
+@keyframes dog-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.dog-run-first {
+  animation: dog-run 0.8s linear forwards, dog-appear 0.09s linear;
 }
 /* Head-on / from-behind runs hop in place: three bounces over the run. */
 @keyframes dog-bounce {
@@ -557,23 +566,44 @@ h1, h2, h3 {
 .dog-bounce {
   animation: dog-bounce 0.267s ease-in-out 3;
 }
-/* At the end of the run the running sprite gives way to the lying-down one,
-   which flops down with a little squash. */
-@keyframes dog-stop-running {
-  to { opacity: 0; }
+/* Nobody home: the dog looks one way, then the other, while ? marks pop up. */
+@keyframes dog-look {
+  0%, 45% { transform: scaleX(1) rotate(-4deg); }
+  50%, 95% { transform: scaleX(-1) rotate(-4deg); }
+  100% { transform: scaleX(1) rotate(-4deg); }
 }
-.dog-running {
-  animation: dog-stop-running 0.8s steps(1, end) forwards;
+.dog-look {
+  animation: dog-look 0.6s steps(1, end) infinite;
+}
+@keyframes dog-huh {
+  0% { opacity: 0; scale: 0.3; translate: 0 8px; }
+  30% { opacity: 1; scale: 1.15; translate: 0 0; }
+  45% { scale: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; translate: 0 -6px; }
+}
+.dog-huh {
+  opacity: 0;
+  color: #fff;
+  text-shadow: 0 0 2px #2B2233, 0 1px 0 #2B2233, 0 2px 4px rgba(0, 0, 0, 0.6);
+  animation: dog-huh 1s ease-out forwards;
+}
+/* At the end it flops down with a little squash, rests, then fades. */
+@keyframes dog-rest {
+  0%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.dog-rest {
+  animation: dog-rest 1.4s linear forwards;
 }
 @keyframes dog-lie {
-  0% { opacity: 1; scale: 0.95 1.12; translate: 0 -8px; }
+  0% { scale: 0.95 1.12; translate: 0 -8px; }
   55% { scale: 1.1 0.88; translate: 0 2px; }
-  100% { opacity: 1; scale: 1 1; translate: 0 0; }
+  100% { scale: 1 1; translate: 0 0; }
 }
 .dog-lie {
-  opacity: 0;
   transform-origin: 50% 85%;
-  animation: dog-lie 0.4s ease-out 0.8s forwards;
+  animation: dog-lie 0.4s ease-out;
 }
 @keyframes paw-print {
   0% { opacity: 0; scale: 0.6; }

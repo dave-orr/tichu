@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { applyPasses, callSmallTichu, canPlayWishedRankFromHand, concede, forcedDragonRecipient, giveDragonTrick, offerConcede, respondToConcede, withdrawConcede, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
 import {
-  Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
+  Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat, dogLeadSeat,
 } from './types.js';
 
 function c(rank: number, suit: 'jade' | 'sword' | 'pagoda' | 'star' = 'jade'): NormalCard {
@@ -581,6 +581,26 @@ describe('Dog under an open Mah Jong wish', () => {
   it('may be led when the leader does not hold the wished rank', () => {
     const state = makeState({ players: [makePlayer(0, { hand: [dog, c(9)] }), makePlayer(1), makePlayer(2), makePlayer(3)], mahJongWish: 5 });
     expect(playCards(state, 0, [dog]).state.turnIndex).toBe(2);
+  });
+});
+
+describe('Dog lead when the partner is out', () => {
+  const out = (seat: Seat, outOrder: number) => makePlayer(seat, { hand: [], isOut: true, outOrder });
+  it('goes to the opponent after the partner in play direction', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [dog, c(9)] }), makePlayer(1, { hand: [c(4)] }), out(2, 1), makePlayer(3, { hand: [c(6)] })], outCount: 1 });
+    // Counterclockwise by default: seat 2 -> seat 3.
+    expect(playCards(state, 0, [dog]).state.turnIndex).toBe(3);
+  });
+  it('comes back to the Dog player when that opponent is out too', () => {
+    const state = makeState({ players: [makePlayer(0, { hand: [dog, c(9)] }), makePlayer(1, { hand: [c(4)] }), out(2, 1), out(3, 2)], outCount: 2 });
+    expect(playCards(state, 0, [dog]).state.turnIndex).toBe(0);
+  });
+  it('follows play direction', () => {
+    expect(dogLeadSeat(0, [false, false, true, false], true)).toBe(1);
+    expect(dogLeadSeat(0, [false, true, true, false], true)).toBe(0);
+    expect(dogLeadSeat(0, [false, true, true, false], false)).toBe(3);
+    expect(dogLeadSeat(0, [false, false, true, true], false)).toBe(0);
+    expect(dogLeadSeat(0, [false, false, false, false], false)).toBe(2);
   });
 });
 

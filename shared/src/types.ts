@@ -462,6 +462,19 @@ export function getRightSeat(seat: Seat): Seat {
   return ((seat + 1) % 4) as Seat;
 }
 
+/**
+ * Who leads after `seat` plays the Dog: their partner, or if the partner is out,
+ * the next player still in after the partner in play direction. That can be the
+ * Dog's own player when the opponent after the partner is out too.
+ * `isOut` is read after the Dog is played.
+ */
+export function dogLeadSeat(seat: Seat, isOut: readonly boolean[], clockwise: boolean): Seat {
+  const advance = clockwise ? getLeftSeat : getRightSeat;
+  let next = getPartnerSeat(seat);
+  for (let i = 0; i < 4 && isOut[next]; i++) next = advance(next);
+  return next;
+}
+
 export function getTeamForSeat(seat: Seat): 0 | 1 {
   return (seat % 2) as 0 | 1;
 }
