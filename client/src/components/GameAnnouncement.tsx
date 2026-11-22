@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, type CSSProperties } from 'react';
 import { getPartnerSeat, type ClientGameState, type RoundResult, type Seat } from '@tichu/shared';
 import { cardArt, useTheme } from '../theme.js';
+import { detectDragonGift } from '../utils/dragonGift.js';
 
 export type GameEvent = {
   id: number;
@@ -89,21 +90,18 @@ export function useGameEvents(
         }
       }
 
-      // Dragon trick given to an opponent — the receiver is the player whose
-      // trickCount went up while the giveaway flag dropped.
-      if (prev.dragonGiveaway && !gameState.dragonGiveaway && prev.dragonGiveawayBy !== null) {
-        const giver = prev.dragonGiveawayBy;
-        const receiverIdx = gameState.players.findIndex((p, i) => p.trickCount > prev.players[i].trickCount);
-        if (receiverIdx >= 0) {
-          const receiver = receiverIdx as Seat;
-          detected.push({
-            type: 'dragon-given',
-            seat: receiver,
-            giverSeat: giver,
-            playerName: gameState.players[receiver].name,
-            detail: `from ${nameOf(giver)}`,
-          });
-        }
+      // Dragon trick given to an opponent (chosen, or automatic when an
+      // opponent went out first).
+      const gift = detectDragonGift(prev, gameState);
+      if (gift) {
+        const { giver, receiver } = gift;
+        detected.push({
+          type: 'dragon-given',
+          seat: receiver,
+          giverSeat: giver,
+          playerName: gameState.players[receiver].name,
+          detail: `from ${nameOf(giver)}`,
+        });
       }
     }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ClientGameState, RoundResult, Card, Combo } from '@tichu/shared';
 import { RANK_NAMES, NormalRank, SUIT_SYMBOLS, MAGIC_SUIT_SYMBOLS, SPECIAL_NAMES, cardId, type ThemeSuits } from '@tichu/shared';
+import { detectDragonGift } from '../utils/dragonGift.js';
 
 export type LogEntry = {
   id: number;
@@ -82,10 +83,14 @@ export function useEventLog(
         }
       }
 
+      // Dragon trick given away (chosen, or automatic when an opponent went
+      // out first); logged below instead of as a plain trick win.
+      const dragonGift = detectDragonGift(prev, gameState);
+
       // Trick won (currentTrickPlays went from non-empty to empty)
       if (prev.currentTrickPlays.length > 0 && gameState.currentTrickPlays.length === 0) {
         // But if dragon giveaway just happened, that's logged below instead.
-        if (prev.dragonGiveaway && !gameState.dragonGiveaway) {
+        if (dragonGift || (prev.dragonGiveaway && !gameState.dragonGiveaway)) {
           // Dragon was given away — we'll log that below
         } else {
           // The winner is whoever the countdown named; turnIndex is only the
@@ -101,20 +106,10 @@ export function useEventLog(
         newEntries.push(`${names[passer]} passed`);
       }
 
-      // Dragon giveaway completed — receiver is the player whose trickCount
+      // Dragon giveaway completed — receiver is the opponent whose trickCount
       // increased (turnIndex stays on the giver, who leads the next trick).
-      if (prev.dragonGiveaway && !gameState.dragonGiveaway && prev.dragonGiveawayBy !== null) {
-        const giver = names[prev.dragonGiveawayBy];
-        let receiverIdx = -1;
-        for (let i = 0; i < 4; i++) {
-          if (gameState.players[i].trickCount > prev.players[i].trickCount) {
-            receiverIdx = i;
-            break;
-          }
-        }
-        if (receiverIdx >= 0) {
-          newEntries.push(`${giver} gave the Dragon trick to ${names[receiverIdx]}`);
-        }
+      if (dragonGift) {
+        newEntries.push(`${names[dragonGift.giver]} gave the Dragon trick to ${names[dragonGift.receiver]}`);
       }
 
       // Mah Jong wish set

@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement, forcedDragonRecipient } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   leaveRoom, clearSocketUid, setRoomChangedCallback,
@@ -1092,6 +1092,7 @@ export function processPlayResult(io: Server, room: Room, seat: Seat, result: Pl
     notifySeat(io, room, seat, 'need-mah-jong-wish');
   }
   if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
+    if (autoGiveForcedDragon(io, room)) return;
     notifySeat(io, room, result.state.dragonGiveawayBy, 'need-dragon-choice');
   }
   if (result.trickCountdownStarted) {
@@ -1105,6 +1106,22 @@ export function processPlayResult(io: Server, room: Room, seat: Seat, result: Pl
   if (result.roundResult) handleRoundResult(io, room, result.roundResult);
   if (!result.roundResult) autoSkipHelpless(io, room);
   broadcastState(io, room);
+}
+
+/**
+ * When a Dragon trick is awaiting its giveaway but an opponent went out first,
+ * the recipient is forced (see forcedDragonRecipient): give it straight away
+ * instead of asking, through the same path as a player's choice so it is
+ * logged and can end the round. Returns true when it did (and broadcast).
+ */
+function autoGiveForcedDragon(io: Server, room: Room): boolean {
+  const giver = room.state.dragonGiveawayBy;
+  const to = forcedDragonRecipient(room.state);
+  if (giver == null || to == null) return false;
+  const result = handleDragonGiveaway(room, giver, to);
+  if (result.state === room.state) return false;
+  processPlayResult(io, room, giver, result);
+  return true;
 }
 
 /**
@@ -1170,6 +1187,7 @@ function resolveTrickCountdown(io: Server, room: Room): void {
   applyPlayResult(room, result);
 
   if (result.needDragonChoice && result.state.dragonGiveawayBy != null) {
+    if (autoGiveForcedDragon(io, room)) return;
     notifySeat(io, room, result.state.dragonGiveawayBy, 'need-dragon-choice');
   }
 
