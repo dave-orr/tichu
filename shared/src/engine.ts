@@ -3,7 +3,7 @@ import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, sumPoints } from './scoring.js';
 import {
   Card, ClientGameState, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Player, ReceivedCard, RoundHistoryEntry, RoundResult, Seat,
-  Team, TrickPlay, cardId, cardsEqual, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
+  Team, TrickPlay, cardId, cardsEqual, dogLeadSeat, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
 // ===== State Creation =====
@@ -466,12 +466,8 @@ function playDog(state: GameState, seat: Seat): PlayResult {
     newPlayers[seat].outOrder = newOutCount;
   }
 
-  // Pass lead to partner
-  let partnerSeat = getPartnerSeat(seat);
-  // If partner is out, go to next active player after partner (clockwise from partner)
-  if (newPlayers[partnerSeat].isOut) {
-    partnerSeat = getNextActiveSeat(state, partnerSeat, newPlayers);
-  }
+  // Pass lead to partner, or if they're out, the next active player after them.
+  const partnerSeat = dogLeadSeat(seat, newPlayers.map(p => p.isOut), state.settings.clockwise);
 
   if (shouldRoundEnd(newOutCount, newPlayers)) {
     return endRound({ ...state, players: newPlayers, outCount: newOutCount, playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card] });

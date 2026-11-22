@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 147, mergedAt: '2026-11-22', kind: 'improved', summary: 'When your partner is out, the Dog runs past their seat to whoever leads next, and looks around confused if that turns out to be you' },
   { pr: 146, mergedAt: '2026-11-22', kind: 'new', achievements: 1 },
   { pr: 145, mergedAt: '2026-11-22', kind: 'improved', summary: 'When an opponent went out first, a Dragon trick goes to the other opponent without asking' },
   { pr: 144, mergedAt: '2026-11-21', kind: 'new', themes: 1, achievements: 1 },
