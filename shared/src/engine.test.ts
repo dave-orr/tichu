@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPasses, callSmallTichu, canPlayWishedRankFromHand, concede, giveDragonTrick, offerConcede, respondToConcede, withdrawConcede, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
+import { applyPasses, callSmallTichu, canPlayWishedRankFromHand, concede, forcedDragonRecipient, giveDragonTrick, offerConcede, respondToConcede, withdrawConcede, passCards, passTurn, playBomb, playCards, setMahJongWish, undoPassCards } from './engine.js';
 import {
   Card, Combo, DEFAULT_SETTINGS, GameState, NormalCard, Player, Seat,
 } from './types.js';
@@ -751,5 +751,53 @@ describe('a forged phoenixAs cannot raise the Phoenix rank', () => {
       lastPlayedBy: 1,
     });
     expect(playCards(state, 0, [c(2), phx], 14).state).toBe(state);
+  });
+});
+
+describe('forcedDragonRecipient — skipping the giveaway choice', () => {
+  const pending = (outOrders: [number, number, number, number]) => makeState({
+    players: [0, 1, 2, 3].map(s => makePlayer(s as Seat, {
+      hand: outOrders[s] ? [] : [c(5)],
+      isOut: outOrders[s] > 0,
+      outOrder: outOrders[s],
+    })) as GameState['players'],
+    outCount: outOrders.filter(o => o > 0).length,
+    currentTrick: trickDragon,
+    currentTrickPlays: [{ seat: 3, cards: [c(10)] }, { seat: 0, cards: [dragon] }],
+    lastPlayedBy: 0,
+    turnIndex: 0,
+    dragonGiveaway: true,
+    dragonGiveawayBy: 0,
+  });
+
+  it('gives to the opponent still in when the other opponent went out first', () => {
+    expect(forcedDragonRecipient(pending([0, 1, 0, 0]))).toBe(3);
+    expect(forcedDragonRecipient(pending([0, 0, 0, 1]))).toBe(1);
+  });
+
+  it('asks when nobody is out yet', () => {
+    expect(forcedDragonRecipient(pending([0, 0, 0, 0]))).toBeNull();
+  });
+
+  it('asks when the Dragon player’s partner went out first', () => {
+    expect(forcedDragonRecipient(pending([0, 0, 1, 0]))).toBeNull();
+    expect(forcedDragonRecipient(pending([0, 2, 1, 0]))).toBeNull();
+  });
+
+  it('asks when an opponent is out but did not go out first', () => {
+    // Partner first, opponent second: the last player's tricks would go to
+    // the partner, so the choice still matters.
+    expect(forcedDragonRecipient(pending([0, 0, 1, 2]))).toBeNull();
+  });
+
+  it('does nothing when no giveaway is pending', () => {
+    expect(forcedDragonRecipient({ ...pending([0, 1, 0, 0]), dragonGiveaway: false, dragonGiveawayBy: null })).toBeNull();
+  });
+
+  it('the forced recipient is accepted by giveDragonTrick', () => {
+    const state = pending([0, 1, 0, 0]);
+    const given = giveDragonTrick(state, 0, forcedDragonRecipient(state)!);
+    expect(given.state.dragonGiveaway).toBe(false);
+    expect(given.state.players[3].tricksWon).toHaveLength(1);
   });
 });

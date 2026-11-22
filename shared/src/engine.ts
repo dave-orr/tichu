@@ -609,6 +609,25 @@ function winTrick(state: GameState): PlayResult {
 
 // ===== Dragon Giveaway =====
 
+/**
+ * The opponent the Dragon trick must go to when the choice is moot, or null
+ * when the Dragon player should be asked. The choice only matters because the
+ * last player's tricks pass to whoever went out first; once an opponent has
+ * gone out first, the trick scores for the opposing team whoever takes it. In
+ * that case it goes to the opponent still holding cards (the first-out
+ * opponent only if both are somehow out). The server applies this without
+ * showing the dialog.
+ */
+export function forcedDragonRecipient(state: GameState): Seat | null {
+  if (!state.dragonGiveaway || state.dragonGiveawayBy == null) return null;
+  const giver = state.dragonGiveawayBy;
+  const opponents: Seat[] = [getRightSeat(giver), getLeftSeat(giver)];
+  const firstOut = opponents.find(s => state.players[s].outOrder === 1);
+  if (firstOut == null) return null;
+  const other = opponents.find(s => s !== firstOut)!;
+  return state.players[other].isOut ? firstOut : other;
+}
+
 export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat): PlayResult {
   if (!state.dragonGiveaway) return { state };
   if (state.dragonGiveawayBy !== seat) return { state };
