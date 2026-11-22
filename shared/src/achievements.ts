@@ -23,6 +23,7 @@ export type AchievementId =
   | 'fly-the-coop'
   | 'score-based-grand'
   | 'wish-bomb'
+  | 'evil-genie'
   | 'super-partner'
   | 'gift-horse'
   | 'hot-streak'
@@ -91,7 +92,13 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   {
     id: 'wish-bomb',
     name: 'Careful What You Wish For',
-    description: 'Have your wish fulfilled by a bomb',
+    description: "Have your wish fulfilled by an opponent's bomb",
+    newLogsOnly: true,
+  },
+  {
+    id: 'evil-genie',
+    name: 'Evil Genie',
+    description: "Have your wish fulfilled by your partner's bomb",
     newLogsOnly: true,
   },
   {
@@ -235,12 +242,16 @@ function roundEvents(r: RoundLog): Array<{ id: AchievementId; seat: Seat }> {
   });
 
   // A wish is fulfilled by the first play after the Mah Jong that contains
-  // the wished rank; the wisher earns this when that play is a bomb.
+  // the wished rank. When that play is a bomb, the wisher earns Careful What
+  // You Wish For if an opponent played it, Evil Genie if their partner did
+  // (and nothing for their own bomb).
   for (const wish of r.mahJongWishes) {
     const mj = plays.findIndex(p => p.seat === wish.seat && p.cards.some(c => isSpecial(c, 'mahjong')));
     if (mj < 0) continue;
     const fulfilled = plays.slice(mj + 1).find(p => p.cards.some(c => c.type === 'normal' && c.rank === wish.rank));
-    if (fulfilled && isBombPlay(fulfilled)) out.push({ id: 'wish-bomb', seat: wish.seat });
+    if (!fulfilled || fulfilled.seat === wish.seat || !isBombPlay(fulfilled)) continue;
+    const partner = getTeamForSeat(fulfilled.seat) === getTeamForSeat(wish.seat);
+    out.push({ id: partner ? 'evil-genie' : 'wish-bomb', seat: wish.seat });
   }
 
   return out;
