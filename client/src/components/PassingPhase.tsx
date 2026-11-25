@@ -52,6 +52,7 @@ export default function PassingPhase({
                   partner: passRecord.partner.card,
                   right: passRecord.right.card,
                 } : undefined}
+                mirrored={gameState.settings.mirrorTable}
                 onPass={onPass}
               />
             </div>
@@ -84,7 +85,9 @@ export default function PassingPhase({
           </p>
           {passRecord && (
             <div className="flex justify-center gap-6 mb-4">
-              {[passRecord.left, passRecord.partner, passRecord.right].map((p, i) => (
+              {(gameState.settings.mirrorTable
+                ? [passRecord.right, passRecord.partner, passRecord.left]
+                : [passRecord.left, passRecord.partner, passRecord.right]).map((p, i) => (
                 <div key={i} className="text-center">
                   <div className="text-2xl text-gray-400 mb-1">To {p.playerName}</div>
                   <CardComponent card={p.card} />

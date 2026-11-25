@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card as CardType, cardId, getLeftSeat, getPartnerSeat, getRightSeat, Seat } from '@tichu/shared';
 import CardComponent from './Card.js';
 import Hand from './Hand.js';
 
+/** Who a card goes to: `left` is always seat +3 and `right` seat +1, wherever the table draws them. */
 type PassTarget = 'left' | 'partner' | 'right';
 
 type Props = {
@@ -12,13 +13,20 @@ type Props = {
   /** Pre-fill the slots (e.g. after undoing a pass) so the player can tweak
       rather than start over. Cards no longer in hand are ignored. */
   initialSelections?: Record<PassTarget, CardType | null>;
+  /** The table is drawn mirrored: the +1 opponent sits on screen left. */
+  mirrored?: boolean;
   onPass: (left: CardType, partner: CardType, right: CardType) => void;
 };
 
-/** Order clicked cards fill the slots: both opponents first, then partner. */
-const FILL_ORDER: PassTarget[] = ['left', 'right', 'partner'];
+export default function PassCards({ hand, mySeat, playerNames, initialSelections, mirrored, onPass }: Props) {
+  // Slots are laid out as the table is drawn: screen-left opponent, partner,
+  // screen-right opponent. On a mirrored table that puts the +1 opponent
+  // (`right`) on the left.
+  const screenLeft: PassTarget = mirrored ? 'right' : 'left';
+  const screenRight: PassTarget = mirrored ? 'left' : 'right';
+  /** Order clicked cards fill the slots: both opponents (screen left first), then partner. */
+  const FILL_ORDER: PassTarget[] = [screenLeft, screenRight, 'partner'];
 
-export default function PassCards({ hand, mySeat, playerNames, initialSelections, onPass }: Props) {
   const [selections, setSelections] = useState<Record<PassTarget, CardType | null>>(() => {
     const handIds = new Set(hand.map(cardId));
     const inHand = (card: CardType | null | undefined) =>
@@ -35,9 +43,19 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
       const card = initialSelections?.[t];
       return !!card && handIds.has(cardId(card));
     };
-    return FILL_ORDER.find(t => !filled(t)) ?? 'left';
+    return FILL_ORDER.find(t => !filled(t)) ?? FILL_ORDER[0];
   });
   const [dragOverTarget, setDragOverTarget] = useState<PassTarget | null>(null);
+
+  // The table can be flipped mid-pass: point at the first empty slot in the
+  // new on-screen order, so the next click still fills from the left.
+  const prevMirrored = useRef(mirrored);
+  useEffect(() => {
+    if (prevMirrored.current === mirrored) return;
+    prevMirrored.current = mirrored;
+    const next = FILL_ORDER.find(t => !selections[t]);
+    if (next) setCurrentTarget(next);
+  }, [mirrored]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const leftSeat = getLeftSeat(mySeat);
   const partnerSeat = getPartnerSeat(mySeat);
@@ -154,11 +172,10 @@ export default function PassCards({ hand, mySeat, playerNames, initialSelections
           hand and Confirm all fit the design height without scrolling;
           Confirm sits beside the slots and only enables once all three are set. */}
       <div className="flex justify-center items-center gap-8 mb-2">
-        {([
-          { target: 'left' as PassTarget, label: playerNames[leftSeat], seat: leftSeat },
-          { target: 'partner' as PassTarget, label: playerNames[partnerSeat], seat: partnerSeat },
-          { target: 'right' as PassTarget, label: playerNames[rightSeat], seat: rightSeat },
-        ]).map(({ target, label }) => (
+        {([screenLeft, 'partner', screenRight] as PassTarget[]).map(target => ({
+          target,
+          label: playerNames[{ left: leftSeat, partner: partnerSeat, right: rightSeat }[target]],
+        })).map(({ target, label }) => (
           <div
             key={target}
             className={`text-center cursor-pointer p-2 rounded transition-colors ${

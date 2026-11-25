@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, phoenixStraightChoices, RANK_NAMES } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, phoenixStraightChoices, RANK_NAMES, getPartnerSeat, getScreenLeftSeat, getScreenRightSeat, playsClockwiseOnScreen } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -292,15 +292,30 @@ export default function Game({ socket, auth }: Props) {
     return true;
   }, [phase, selectedCardList, currentTrick, gameState?.mahJongWishPending, gameState?.dragonGiveaway]);
 
-  // Cards passed to us, grouped by who they came from (relative to my seat:
-  // right = +1, partner = +2, left = +3) for the incoming diamond beside the hand.
+  // Cards passed to us, grouped by where the sender sits on screen (normally
+  // right = +1, partner = +2, left = +3; a mirrored table swaps left and
+  // right) for the incoming row beside the hand.
   const myReceivedCards = gameState?.myReceivedCards;
   const mySeatForReceived = gameState?.mySeat;
+  const mirroredTable = !!gameState?.settings.mirrorTable;
   const receivedByRel = useMemo(() => {
     const find = (rel: number) =>
       myReceivedCards?.find(rc => mySeatForReceived !== undefined && (rc.fromSeat - mySeatForReceived + 4) % 4 === rel);
-    return { partner: find(2), left: find(3), right: find(1) };
-  }, [myReceivedCards, mySeatForReceived]);
+    return { partner: find(2), left: find(mirroredTable ? 1 : 3), right: find(mirroredTable ? 3 : 1) };
+  }, [myReceivedCards, mySeatForReceived, mirroredTable]);
+
+  // When the organizer flips the table mid-game, everyone's opponents swap
+  // sides at once; say so, so nobody thinks the seats were shuffled.
+  const prevMirroredRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!gameState) return;
+    const prev = prevMirroredRef.current;
+    prevMirroredRef.current = mirroredTable;
+    if (prev === null || prev === mirroredTable) return;
+    setToast(`Table flipped: play now goes ${playsClockwiseOnScreen(gameState.settings) ? 'clockwise' : 'counterclockwise'}`);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, [mirroredTable, gameState]);
 
   // Trick sweep — when the trick clears after a countdown, briefly keep
   // rendering the cleared plays while they fly toward the winner's seat,
@@ -379,7 +394,12 @@ export default function Game({ socket, auth }: Props) {
   // Screen-space anchor per relative seat position (bottom/right/top/left),
   // used to aim the trick-sweep animation from each play toward the winner.
   const SWEEP_ANCHORS: Record<number, [number, number]> = { 0: [0, 300], 1: [430, 0], 2: [0, -300], 3: [-430, 0] };
-  const relOf = (seat: Seat) => (seat - mySeat + 4) % 4;
+  // Where a seat is drawn: 0 bottom (me), 1 right, 2 top, 3 left. A mirrored
+  // table swaps the two opponents' sides.
+  const relOf = (seat: Seat) => {
+    const rel = (seat - mySeat + 4) % 4;
+    return mirroredTable && rel % 2 === 1 ? 4 - rel : rel;
+  };
   const displayPlayFor = (seat: Seat): CardType[] =>
     lastPlayBySeat[seat].length > 0 ? lastPlayBySeat[seat] : (sweep?.plays[seat] ?? []);
   const displayComboFor = (seat: Seat): Combo | null =>
@@ -406,9 +426,9 @@ export default function Game({ socket, auth }: Props) {
   // Arrange seats relative to current player: me (bottom), right, top (partner), left
   const relativeSeats = [
     mySeat,
-    ((mySeat + 1) % 4) as Seat, // right
-    ((mySeat + 2) % 4) as Seat, // top (partner)
-    ((mySeat + 3) % 4) as Seat, // left
+    getScreenRightSeat(mySeat, mirroredTable), // right
+    getPartnerSeat(mySeat), // top (partner)
+    getScreenLeftSeat(mySeat, mirroredTable), // left
   ];
 
   const toggleCard = (card: CardType) => {
@@ -617,6 +637,17 @@ export default function Game({ socket, auth }: Props) {
                   Invite players
                 </button>
               )}
+              {/* Organizer only: flip which way turns travel on screen. Display
+                  only, so seats, turn order and partners stay as they are. */}
+              {socket.isOrganizer && phase !== 'gameEnd' && (
+                <button
+                  onClick={() => socket.setMirrorTable(!mirroredTable)}
+                  title="Mirror the table for everyone: opponents swap sides, the turn order stays the same"
+                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-semibold transition-colors text-sm"
+                >
+                  Switch to {playsClockwiseOnScreen(gameState.settings) ? 'counterclockwise ↺' : 'clockwise ↻'}
+                </button>
+              )}
               {phase !== 'gameEnd' && (
                 <>
                   <div className="border-t border-gray-700 my-1" />
@@ -748,7 +779,7 @@ export default function Game({ socket, auth }: Props) {
   const receivedTags = phase === 'playing' && !gameState.settings.showPassedCards
     && players.every(p => p.trickCount === 0)
     ? new Map<string, HandTag>(gameState.myReceivedCards.map(rc => [cardId(rc.card), {
-        toward: (['right', 'up', 'left'] as const)[(rc.fromSeat - gameState.mySeat + 3) % 4],
+        toward: (['right', 'up', 'left'] as const)[relOf(rc.fromSeat) - 1],
         title: `Passed to you by ${playerNames[rc.fromSeat]}`,
       }]))
     : undefined;
@@ -798,6 +829,7 @@ export default function Game({ socket, auth }: Props) {
       {gameState.dragonGiveaway && gameState.dragonGiveawayBy === mySeat && (
         <DragonGiveaway
           mySeat={mySeat}
+          mirrored={mirroredTable}
           players={[...players]}
           onGive={socket.giveDragonTrick}
         />
@@ -898,10 +930,10 @@ export default function Game({ socket, auth }: Props) {
             )}
             <div
               className="text-3xl text-cream/30 select-none"
-              title={gameState.settings.clockwise ? 'Play passes clockwise' : 'Play passes counterclockwise'}
+              title={playsClockwiseOnScreen(gameState.settings) ? 'Play passes clockwise' : 'Play passes counterclockwise'}
               aria-hidden="true"
             >
-              {gameState.settings.clockwise ? '↻' : '↺'}
+              {playsClockwiseOnScreen(gameState.settings) ? '↻' : '↺'}
             </div>
           </div>
 
@@ -1019,9 +1051,13 @@ export default function Game({ socket, auth }: Props) {
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <div className="text-lg text-cream/50 font-bold uppercase tracking-[0.15em]">Passed</div>
               <div className="grid grid-cols-3 gap-1 items-start">
-                <div>{renderMiniCard(passRecord.left.card, `Passed to ${passRecord.left.playerName}`)}</div>
-                <div className="-translate-y-2">{renderMiniCard(passRecord.partner.card, `Passed to ${passRecord.partner.playerName}`)}</div>
-                <div>{renderMiniCard(passRecord.right.card, `Passed to ${passRecord.right.playerName}`)}</div>
+                {(mirroredTable
+                  ? [passRecord.right, passRecord.partner, passRecord.left]
+                  : [passRecord.left, passRecord.partner, passRecord.right]).map((p, i) => (
+                  <div key={i} className={i === 1 ? '-translate-y-2' : undefined}>
+                    {renderMiniCard(p.card, `Passed to ${p.playerName}`)}
+                  </div>
+                ))}
               </div>
             </div>
           )}

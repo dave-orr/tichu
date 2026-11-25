@@ -1,16 +1,18 @@
-import { Seat, getTeamForSeat, getLeftSeat, getRightSeat, ClientPlayer } from '@tichu/shared';
+import { Seat, getTeamForSeat, getScreenLeftSeat, getScreenRightSeat, ClientPlayer } from '@tichu/shared';
 
 type Props = {
   mySeat: Seat;
+  /** The table is drawn mirrored, so the opponents sit on the other sides. */
+  mirrored?: boolean;
   players: ClientPlayer[];
   onGive: (to: Seat) => void;
 };
 
-export default function DragonGiveaway({ mySeat, players, onGive }: Props) {
+export default function DragonGiveaway({ mySeat, mirrored, players, onGive }: Props) {
   const myTeam = getTeamForSeat(mySeat);
-  const leftSeat = getLeftSeat(mySeat);
-  const rightSeat = getRightSeat(mySeat);
-  // Order: left opponent first, right opponent second
+  const leftSeat = getScreenLeftSeat(mySeat, mirrored);
+  const rightSeat = getScreenRightSeat(mySeat, mirrored);
+  // Order: the opponent on screen left first, then the one on the right
   const opponents = [leftSeat, rightSeat]
     .filter(s => getTeamForSeat(s) !== myTeam)
     .map(s => players[s]);

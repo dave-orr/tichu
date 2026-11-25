@@ -100,7 +100,7 @@ these files.
 - **State flow**: Server holds full GameState → `broadcastState()` calls `toClientState(state, seat)` per player (hides other hands) → client receives via `game-state` socket event
 - **New socket event**: Add handler in `handler.ts` → add emit wrapper in `useSocket.ts`
 - **New game setting**: Add to `GameSettings` + `DEFAULT_SETTINGS` in `types.ts` → check `gameState.settings.X` in components → add checkbox in Lobby waiting room setup options
-- **Teams**: Seats 0&2 (Team 0) vs 1&3 (Team 1). Relative seating from mySeat: +1=right, +2=partner, +3=left
+- **Teams**: Seats 0&2 (Team 0) vs 1&3 (Team 1). Relative seating from mySeat: +1=right, +2=partner, +3=left. The organizer can mirror the table mid-game (gear menu → `set-mirror-table` → `GameSettings.mirrorTable`): display only, it swaps the screen sides of +1 and +3 so turns visually run the other way. Place anything side-dependent with `getScreenLeftSeat` / `getScreenRightSeat` and show direction with `playsClockwiseOnScreen`; pass targets (`left`/`right`) stay +3/+1
 
 ### Toolchain
 

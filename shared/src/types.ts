@@ -119,6 +119,13 @@ export type GameSettings = {
   cardsSeen: boolean;     // show remaining card counts (cards not yet played)
   showPassedCards: boolean; // show cards you passed during play
   clockwise: boolean;     // play direction: true = clockwise, false = counterclockwise
+  /**
+   * Display only: draw the table mirrored (each player's right and left
+   * opponents swap sides on screen), so turns visually travel the other way
+   * while who plays after whom is unchanged. The organizer toggles it
+   * mid-game (`set-mirror-table`); absent means false.
+   */
+  mirrorTable?: boolean;
   targetScore: number;    // score needed to win (default 1000)
   /** Optional: absent in rooms and saved settings from before themes existed. */
   theme?: Theme;
@@ -460,6 +467,24 @@ export function getLeftSeat(seat: Seat): Seat {
 
 export function getRightSeat(seat: Seat): Seat {
   return ((seat + 1) % 4) as Seat;
+}
+
+/**
+ * The seat drawn on my screen's left / right. Normally the left opponent is
+ * +3 and the right one +1; a mirrored table (`GameSettings.mirrorTable`)
+ * swaps the two sides without changing any game logic.
+ */
+export function getScreenLeftSeat(seat: Seat, mirrored?: boolean): Seat {
+  return mirrored ? getRightSeat(seat) : getLeftSeat(seat);
+}
+
+export function getScreenRightSeat(seat: Seat, mirrored?: boolean): Seat {
+  return mirrored ? getLeftSeat(seat) : getRightSeat(seat);
+}
+
+/** Whether turns travel clockwise on screen: the play direction, flipped by a mirrored table. */
+export function playsClockwiseOnScreen(settings: Pick<GameSettings, 'clockwise' | 'mirrorTable'>): boolean {
+  return settings.clockwise !== !!settings.mirrorTable;
 }
 
 /**

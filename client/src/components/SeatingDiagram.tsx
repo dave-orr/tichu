@@ -1,4 +1,4 @@
-import { ClientGameState, getLeftSeat, getRightSeat, getPartnerSeat } from '@tichu/shared';
+import { ClientGameState, getScreenLeftSeat, getScreenRightSeat, getPartnerSeat, playsClockwiseOnScreen } from '@tichu/shared';
 
 type Props = {
   gameState: ClientGameState;
@@ -54,8 +54,8 @@ function SeatLabel({
 
 export default function SeatingDiagram({ gameState }: Props) {
   const { players, mySeat, settings } = gameState;
-  const leftSeat = getLeftSeat(mySeat);
-  const rightSeat = getRightSeat(mySeat);
+  const leftSeat = getScreenLeftSeat(mySeat, settings.mirrorTable);
+  const rightSeat = getScreenRightSeat(mySeat, settings.mirrorTable);
   const partnerSeat = getPartnerSeat(mySeat);
 
   return (
@@ -67,7 +67,7 @@ export default function SeatingDiagram({ gameState }: Props) {
         <SeatLabel name={players[rightSeat].name} position="right" />
         <SeatLabel name={players[mySeat].name} isMe gold position="bottom" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <DirectionArrow clockwise={settings.clockwise} />
+          <DirectionArrow clockwise={playsClockwiseOnScreen(settings)} />
         </div>
       </div>
     </div>
