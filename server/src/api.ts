@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import { Server } from 'socket.io';
 import { toClientState, Seat, PlayResult } from '@tichu/shared';
 import {
@@ -28,6 +29,45 @@ function sendSseEvent(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
+/** A comment line every 20 s keeps the stream open through proxy read timeouts. */
+const SSE_KEEPALIVE_MS = 20_000;
+
+/**
+ * What an API seat receives: its `ClientGameState`, plus this round's
+ * play-phase action log (`RoundAction[]`, the same one round logs carry), so
+ * a bot can rebuild the round's history exactly instead of diffing states.
+ */
+function apiState(room: Room, seat: Seat) {
+  return { ...toClientState(room.state, seat), roundActions: room.accumulator.actions };
+}
+
+export const MIN_BOT_TOKEN_LENGTH = 16;
+
+function digest(s: string): Buffer {
+  return crypto.createHash('sha256').update(s).digest();
+}
+
+/**
+ * Every /api route needs `Authorization: Bearer $BOT_TOKEN`. Seats are
+ * identified by room code + seat number alone, so without this anyone could
+ * read an AI seat's hand or play for it. Unset (or too short), the API is off.
+ */
+function requireBotToken(req: Request, res: Response, next: NextFunction): void {
+  const expected = process.env.BOT_TOKEN ?? '';
+  if (expected.length < MIN_BOT_TOKEN_LENGTH) {
+    res.status(404).json({ error: `AI API disabled: set BOT_TOKEN (>= ${MIN_BOT_TOKEN_LENGTH} chars) in server/.env` });
+    return;
+  }
+  const header = req.headers.authorization ?? '';
+  const given = header.startsWith('Bearer ') ? header.slice(7) : '';
+  // Compare digests so the check is constant-time regardless of length.
+  if (!given || !crypto.timingSafeEqual(digest(given), digest(expected))) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
 // Push game-state to all SSE-connected API players in a room
 function broadcastToApiPlayers(room: Room): void {
   for (const [socketId, seat] of room.playerSockets) {
@@ -35,8 +75,7 @@ function broadcastToApiPlayers(room: Room): void {
     const key = sseKey(room.code, seat);
     const res = sseConnections.get(key);
     if (!res) continue;
-    const clientState = toClientState(room.state, seat);
-    sendSseEvent(res, 'game-state', clientState);
+    sendSseEvent(res, 'game-state', apiState(room, seat));
   }
 }
 
@@ -63,6 +102,7 @@ export function createApiRouter(io: Server): Router {
   setSseNotifyCallback(notifyApiSeat);
 
   const router = Router();
+  router.use(requireBotToken);
   router.use((req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
     next();
@@ -146,6 +186,8 @@ export function createApiRouter(io: Server): Router {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    // nginx buffers proxied responses by default, which would hold events back.
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
     const key = sseKey(room.code, seat as Seat);
@@ -157,12 +199,14 @@ export function createApiRouter(io: Server): Router {
     sseConnections.set(key, res);
 
     // Send initial state immediately
-    const clientState = toClientState(room.state, seat as Seat);
-    sendSseEvent(res, 'game-state', clientState);
+    sendSseEvent(res, 'game-state', apiState(room, seat as Seat));
+
+    const keepalive = setInterval(() => res.write(': keepalive\n\n'), SSE_KEEPALIVE_MS);
 
     // Clean up on disconnect — but only if this is still the registered
     // stream; a replacement may already have taken the key.
     req.on('close', () => {
+      clearInterval(keepalive);
       if (sseConnections.get(key) === res) sseConnections.delete(key);
     });
   });

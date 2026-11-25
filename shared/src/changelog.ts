@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 148, mergedAt: '2026-11-25', kind: 'internal', summary: 'Groundwork for computer players: the AI seat API now needs a bot token and tells bots the full play history of the round' },
   { pr: 147, mergedAt: '2026-11-22', kind: 'improved', summary: 'When your partner is out, the Dog runs past their seat to whoever leads next, and looks around confused if that turns out to be you' },
   { pr: 146, mergedAt: '2026-11-22', kind: 'new', achievements: 1 },
   { pr: 145, mergedAt: '2026-11-22', kind: 'improved', summary: 'When an opponent went out first, a Dragon trick goes to the other opponent without asking' },
