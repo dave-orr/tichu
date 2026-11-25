@@ -17,6 +17,7 @@ import {
   broadcastState, processPlayResult,
   setSseBroadcastCallback, setSseNotifyCallback,
 } from './handler.js';
+import { noteBotPoll } from './botPresence.js';
 
 // SSE connections: "roomCode:seat" → Response
 const sseConnections = new Map<string, Response>();
@@ -128,6 +129,8 @@ export function createApiRouter(io: Server): Router {
 
   // POST /api/join — Matchmaking: find any room with an open AI seat
   router.post('/join', (req: Request, res: Response) => {
+    // The bot's matchmaking poll: it is up and has room for another seat.
+    noteBotPoll();
     const { name } = req.body ?? {};
     if (!name || typeof name !== 'string' || name.length > 20) {
       res.status(400).json({ error: 'Invalid name' });

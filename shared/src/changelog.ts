@@ -34,7 +34,9 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 152, mergedAt: '2026-11-25', kind: 'new', summary: 'Short a player? The waiting room\'s Add bot button now seats a computer player, whenever one is online' },
   { pr: 151, mergedAt: '2026-11-25', kind: 'new', summary: "Learning mode: play with every hand face up, and after any hand the host can review it face up so the table steps through the plays together" },
+  { pr: 150, mergedAt: '2026-11-25', kind: 'internal', summary: 'Deploys now update and restart the computer player too' },
   { pr: 149, mergedAt: '2026-11-25', kind: 'internal', summary: 'Computer players now hear when the game refuses a move' },
   { pr: 148, mergedAt: '2026-11-25', kind: 'internal', summary: 'Groundwork for computer players: the AI seat API now needs a bot token and tells bots the full play history of the round' },
   { pr: 147, mergedAt: '2026-11-22', kind: 'improved', summary: 'When your partner is out, the Dog runs past their seat to whoever leads next, and looks around confused if that turns out to be you' },

@@ -22,6 +22,8 @@ type Props = {
   randomPartners: boolean;
   hasProfile: boolean;
   aiOpenSeats: number[];
+  /** A bot is polling for AI seats, so "Add bot" will be answered. */
+  botAvailable: boolean;
   disconnectedSeats: number[];
   onSwapSeats: (from: Seat, to: Seat) => void;
   onShuffleSeats: () => void;
@@ -51,8 +53,8 @@ function Icon({ children, className = 'w-5 h-5' }: { children: React.ReactNode; 
 
 export default function WaitingRoom({
   roomCode, gameState, isOrganizer, randomPartners, hasProfile,
-  aiOpenSeats, disconnectedSeats, onSwapSeats, onShuffleSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
-  onCancelRoom, onLeaveRoom, onUnmarkSeatAi,
+  aiOpenSeats, botAvailable, disconnectedSeats, onSwapSeats, onShuffleSeats, onUpdateSettings, onUpdateRandomPartners, onStartGame,
+  onCancelRoom, onLeaveRoom, onMarkSeatAi, onUnmarkSeatAi,
   fetchPlayers, fetchRoomElos, sendInvite, expiredInviteUids,
   whatsNewCount, onShowWhatsNew,
 }: Props) {
@@ -216,8 +218,13 @@ export default function WaitingRoom({
                 Cancel bot
               </button>
             ) : (
-              // Bots don't play yet, so this is shown but not offered.
-              <button disabled title="Bots aren't available yet" className="btn btn-quiet mt-1 px-2.5 py-0.5 text-xs">
+              // Offered only while a bot is polling for seats (server/src/botPresence.ts).
+              <button
+                onClick={e => { e.stopPropagation(); onMarkSeatAi(seat); }}
+                disabled={!botAvailable}
+                title={botAvailable ? 'Seat a computer player here' : "Bots aren't available right now"}
+                className="btn btn-quiet mt-1 px-2.5 py-0.5 text-xs"
+              >
                 Add bot
               </button>
             ))}

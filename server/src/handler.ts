@@ -13,8 +13,9 @@ import {
   setTrickCountdownTimer, clearTrickCountdownTimer, handleAwardTrick,
   setBombWindowTimer, clearBombWindowTimer,
   markSeatForAi, unmarkSeatForAi, isApiPlayer,
-  setRoomGoneCallback, registerRestoredRoom,
+  setRoomGoneCallback, registerRestoredRoom, waitingRooms,
 } from './rooms.js';
+import { isBotAvailable } from './botPresence.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, fetchHistoryAchievements, updateEloForGameEnd } from './stats.js';
@@ -140,6 +141,15 @@ export function setupHandlers(io: Server): Promise<void> {
   // Re-broadcast when a room changes on a timer rather than a socket event
   // (a waiting-room seat freed after its grace period).
   setRoomChangedCallback(room => broadcastState(io, room));
+  // Waiting rooms offer "Add bot" only while a bot is polling for seats, so
+  // tell them when that changes.
+  let botWasAvailable = isBotAvailable();
+  setInterval(() => {
+    const now = isBotAvailable();
+    if (now === botWasAvailable) return;
+    botWasAvailable = now;
+    for (const room of waitingRooms()) broadcastState(io, room);
+  }, 2000).unref();
 
   // Restore any games that were live when the server last stopped, so players
   // can reconnect after a restart/redeploy. Best-effort, non-blocking.
@@ -758,6 +768,10 @@ export function setupHandlers(io: Server): Promise<void> {
         socket.emit('error', { message: 'Only the room creator can manage AI seats' });
         return;
       }
+      if (!isBotAvailable()) {
+        socket.emit('error', { message: "Bots aren't available right now" });
+        return;
+      }
       const result = markSeatForAi(room, seat);
       if (result.error) {
         socket.emit('error', { message: result.error });
@@ -1114,6 +1128,7 @@ export function setSseNotifyCallback(cb: (roomCode: string, seat: Seat, event: s
 
 export function broadcastState(io: Server, room: Room): void {
   const aiOpenSeats = Array.from(room.aiOpenSeats);
+  const botAvailable = isBotAvailable();
   const disconnectedSeats = getDisconnectedSeats(room);
   // The organizer can change without a socket event (the creator's waiting-
   // room seat expired and the role passed on), so every broadcast says who
@@ -1127,7 +1142,7 @@ export function broadcastState(io: Server, room: Room): void {
     const uid = getSocketUid(socketId);
     if (uid) room.seatUids.set(seat, uid);
     const clientState = { ...toClientState(room.state, seat), review: room.review, reviewAvailable: !!room.lastReplay };
-    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats, organizerSeat });
+    io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats, organizerSeat, botAvailable });
   }
   sseBroadcastCallback?.(room);
   room.lastActivityAt = Date.now();

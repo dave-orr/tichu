@@ -427,6 +427,11 @@ export function reconnectToRoom(
   return { room, seat };
 }
 
+/** Rooms still in their waiting room, before the first deal. */
+export function waitingRooms(): Room[] {
+  return [...rooms.values()].filter(r => r.state.phase === 'waiting');
+}
+
 export function getRoom(code: string): Room | undefined {
   return rooms.get(code.toUpperCase());
 }

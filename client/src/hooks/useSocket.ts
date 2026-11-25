@@ -38,6 +38,8 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
   const concedeDeclinedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [roomLost, setRoomLost] = useState(false);
   const [aiOpenSeats, setAiOpenSeats] = useState<number[]>([]);
+  // Whether a bot is polling for AI seats, so "Add bot" can be offered.
+  const [botAvailable, setBotAvailable] = useState(false);
   const [eloUpdate, setEloUpdate] = useState<EloUpdate | null>(null);
   const [headToHead, setHeadToHead] = useState<HeadToHead | null>(null);
   const [disconnectedSeats, setDisconnectedSeats] = useState<number[]>([]);
@@ -140,11 +142,12 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       });
     });
 
-    socket.on('game-state', ({ state, aiOpenSeats, disconnectedSeats, organizerSeat }: { state: ClientGameState; aiOpenSeats?: number[]; disconnectedSeats?: number[]; organizerSeat?: number | null }) => {
+    socket.on('game-state', ({ state, aiOpenSeats, disconnectedSeats, organizerSeat, botAvailable }: { state: ClientGameState; aiOpenSeats?: number[]; disconnectedSeats?: number[]; organizerSeat?: number | null; botAvailable?: boolean }) => {
       setGameState(state);
       gameStateRef.current = state;
       setError(null);
       if (aiOpenSeats) setAiOpenSeats(aiOpenSeats);
+      setBotAvailable(!!botAvailable);
       setDisconnectedSeats(disconnectedSeats ?? []);
       // The organizer can change server-side (the creator left the waiting
       // room), so take it from every broadcast rather than the join reply.
@@ -553,6 +556,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     resetRoom,
     playAgain,
     aiOpenSeats,
+    botAvailable,
     disconnectedSeats,
     markSeatAi,
     unmarkSeatAi,
