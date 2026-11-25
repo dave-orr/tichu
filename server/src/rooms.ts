@@ -3,7 +3,7 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
-  Card, NormalRank, PlayResult, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, RoundAction, cardId, identifyCombo, isBomb,
+  Card, NormalRank, PlayResult, HandReplay, ReviewSession, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, RoundAction, cardId, identifyCombo, isBomb,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
@@ -57,6 +57,10 @@ export type Room = {
   /** Last time the room's state was broadcast — any game action, join, leave or
    *  reconnect (ms). Shown on the admin dashboard to judge whether a table is idle. */
   lastActivityAt: number;
+  /** The hand that just ended, ready to review face up (cleared when the next hand starts). */
+  lastReplay: HandReplay | null;
+  /** The review the table is in, if any (see start-review). */
+  review: ReviewSession | null;
 };
 
 /** Live human sockets in a room (API/AI players are excluded). */
@@ -323,6 +327,8 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     gameAchievements: [],
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
+    lastReplay: null,
+    review: null,
   };
 
   rooms.set(code, room);
@@ -524,6 +530,8 @@ export function registerRestoredRoom(room: Room): boolean {
   if (!room.accumulator.plays) room.accumulator.plays = [];
   if (room.accumulator.trick === undefined) room.accumulator.trick = -1;
   if (!room.accumulator.actions) room.accumulator.actions = [];
+  if (room.lastReplay === undefined) room.lastReplay = null;
+  if (room.review === undefined) room.review = null;
   // gameId is `${code}_${startMs}`, the best stand-in for snapshots that
   // predate these timestamps.
   if (!room.createdAt) room.createdAt = Number(room.gameId.split('_')[1]) || Date.now();
@@ -983,6 +991,8 @@ export function resetRoomForNewGame(room: Room): boolean {
   room.state = fresh;
   room.passes.clear();
   room.lastRoundResult = null;
+  room.lastReplay = null;
+  room.review = null;
   room.gameId = `${room.code}_${Date.now()}`;
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
   room.gameRoundLogs = [];
@@ -997,6 +1007,8 @@ export function startNextRound(room: Room): void {
   const prevWasDown300 = room.accumulator.wasDown300;
   room.state = startNewRound(room.state);
   room.accumulator = createAccumulator(room.gameId, scores, prevWasDown300);
+  room.lastReplay = null;
+  room.review = null;
   room.passes.clear();
   room.lastRoundResult = null;
 }

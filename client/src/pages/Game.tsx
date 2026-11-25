@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
-import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, phoenixStraightChoices, RANK_NAMES, getPartnerSeat, getScreenLeftSeat, getScreenRightSeat, playsClockwiseOnScreen } from '@tichu/shared';
+import { Card as CardType, cardId, identifyCombo, canBeat, isBomb, Seat, getTeamForSeat, canPlayWishedRankFromHand, partnerOutBeforeThisTrick, phoenixStraightChoices, RANK_NAMES, getPartnerSeat, getScreenLeftSeat, getScreenRightSeat, playsClockwiseOnScreen, comboLabel } from '@tichu/shared';
 import type { NormalCard } from '@tichu/shared';
 import type { useSocket } from '../hooks/useSocket.js';
 import type { useAuth } from '../hooks/useAuth.js';
@@ -18,26 +18,9 @@ import InvitePanel from '../components/InvitePanel.js';
 import type { TichuStatus } from '../components/TichuBadge.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import type { Combo, NormalRank } from '@tichu/shared';
+import HandReview from '../components/HandReview.js';
+import OpenHand from '../components/OpenHand.js';
 
-function comboLabel(combo: Combo): string {
-  const r = combo.rank in RANK_NAMES
-    ? RANK_NAMES[combo.rank as NormalRank]
-    : combo.rank === 1
-      ? '1'
-      : combo.rank === 15
-        ? 'Dragon'
-        : String(combo.rank);
-  switch (combo.type) {
-    case 'single': return combo.rank === 0 ? 'Dog' : `Single, ${r}`;
-    case 'pair': return `Pair, ${r}s`;
-    case 'triple': return `Triple, ${r}s`;
-    case 'fullHouse': return `Full House, ${r}s`;
-    case 'straight': return `${combo.length}-Straight, high ${r}`;
-    case 'consecutivePairs': return `${combo.length / 2} Pairs, high ${r}`;
-    case 'fourOfAKindBomb': return `4-Bomb, ${r}s`;
-    case 'straightFlushBomb': return `${combo.length}-SF Bomb, high ${r}`;
-  }
-}
 import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
 import EventLog, { useEventLog } from '../components/EventLog.js';
@@ -62,6 +45,10 @@ export default function Game({ socket, auth }: Props) {
   const [showTichuConfirm, setShowTichuConfirm] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [passNextPlay, setPassNextPlay] = useState(false);
+  // A player can step out of the table's hand review back to the results.
+  const [reviewHidden, setReviewHidden] = useState(false);
+  const reviewActive = !!gameState?.review;
+  useEffect(() => { if (!reviewActive) setReviewHidden(false); }, [reviewActive]);
   const [toast, setToast] = useState<string | null>(null);
   const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
   const prevTurnRef = useRef<boolean>(false);
@@ -712,11 +699,44 @@ export default function Game({ socket, auth }: Props) {
     </>
   );
 
-  // Grand Tichu phase
-  if (phase === 'grandTichuWindow') {
+  // End-of-hand review, every hand face up
+  if (gameState.review && !reviewHidden) {
     return (
       <div className="h-full relative">
         {roomMenu}
+        <HandReview
+          review={gameState.review}
+          mySeat={mySeat}
+          mirrored={mirroredTable}
+          isOrganizer={socket.isOrganizer}
+          onStep={socket.reviewStep}
+          onEnd={socket.endReview}
+          onShowResults={() => setReviewHidden(true)}
+        />
+      </div>
+    );
+  }
+
+  // Learning mode: the other three hands, face up, above the deal / pass
+  // screens (the play screen shows them by each seat instead).
+  const openHandsStrip = gameState.openHands && (
+    <div className="shrink-0 flex justify-center gap-6 px-2 pt-3 pb-1">
+      {[relativeSeats[3], relativeSeats[2], relativeSeats[1]].map(seat => (
+        <div key={seat} className="flex flex-col items-center gap-1">
+          <div className="text-xl font-display font-semibold text-cream/80">{playerNames[seat]}</div>
+          <OpenHand cards={gameState.openHands![seat]} maxWidth={380} />
+        </div>
+      ))}
+    </div>
+  );
+
+  // Grand Tichu phase
+  if (phase === 'grandTichuWindow') {
+    return (
+      <div className="h-full relative flex flex-col">
+        {roomMenu}
+        {openHandsStrip}
+        <div className="flex-1 min-h-0 relative">
         <GrandTichuPhase
           gameState={gameState}
           cards={myHand}
@@ -724,6 +744,7 @@ export default function Game({ socket, auth }: Props) {
           onDecide={socket.callGrandTichu}
           gameEvents={gameEvents}
         />
+        </div>
       </div>
     );
   }
@@ -743,8 +764,10 @@ export default function Game({ socket, auth }: Props) {
     };
 
     return (
-      <div className="h-full relative">
+      <div className="h-full relative flex flex-col">
         {roomMenu}
+        {openHandsStrip}
+        <div className="flex-1 min-h-0 relative">
         <PassingPhase
           gameState={gameState}
           myHand={myHand}
@@ -757,6 +780,7 @@ export default function Game({ socket, auth }: Props) {
           onUndoPass={socket.undoPass}
           gameEvents={gameEvents}
         />
+        </div>
       </div>
     );
   }
@@ -856,6 +880,10 @@ export default function Game({ socket, auth }: Props) {
           eloUpdate={socket.eloUpdate}
           headToHead={socket.headToHead}
           onShowStats={auth.profile ? () => setShowStatsModal(true) : undefined}
+          onReview={gameState.review
+            ? () => setReviewHidden(false)
+            : socket.isOrganizer && gameState.reviewAvailable ? socket.startReview : undefined}
+          reviewLabel={gameState.review ? 'Back to the review' : 'Review this hand'}
         />
       )}
       {/* Full lifetime stats, reachable from the game-over analytics panel.
@@ -881,6 +909,8 @@ export default function Game({ socket, auth }: Props) {
        <div className="m-auto w-full flex flex-col gap-2 py-2">
         {/* Top: partner */}
         <div className="flex justify-center">
+          <div className="w-full grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+            <div />
           <PlayerPanel
             player={players[relativeSeats[2]]}
             isCurrentTurn={turnIndex === relativeSeats[2]}
@@ -897,10 +927,13 @@ export default function Game({ socket, auth }: Props) {
             announcements={seatEvents(gameEvents, relativeSeats[2])}
             bubbleSide="right"
           />
+            {gameState.openHands && <OpenHand cards={gameState.openHands[relativeSeats[2]]} />}
+          </div>
         </div>
 
         {/* Middle: left opponent, center status, right opponent */}
         <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col items-start gap-2">
           <PlayerPanel
             player={players[relativeSeats[3]]}
             isCurrentTurn={turnIndex === relativeSeats[3]}
@@ -916,6 +949,8 @@ export default function Game({ socket, auth }: Props) {
             announcements={seatEvents(gameEvents, relativeSeats[3])}
             bubbleSide="above"
           />
+            {gameState.openHands && <OpenHand cards={gameState.openHands[relativeSeats[3]]} />}
+          </div>
 
           {/* Center: wish + what's on the table */}
           <div className="flex flex-col items-center justify-center gap-1 px-2 min-w-[180px] max-w-[260px]">
@@ -937,6 +972,7 @@ export default function Game({ socket, auth }: Props) {
             </div>
           </div>
 
+          <div className="flex flex-col items-end gap-2">
           <PlayerPanel
             player={players[relativeSeats[1]]}
             isCurrentTurn={turnIndex === relativeSeats[1]}
@@ -953,6 +989,8 @@ export default function Game({ socket, auth }: Props) {
             bubbleSide="below"
             mirror
           />
+            {gameState.openHands && <OpenHand cards={gameState.openHands[relativeSeats[1]]} />}
+          </div>
         </div>
 
         {/* Bottom: me */}

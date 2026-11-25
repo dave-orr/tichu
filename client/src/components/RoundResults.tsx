@@ -17,6 +17,9 @@ type Props = {
   headToHead?: HeadToHead | null;
   /** When provided, the game-over view shows a "View full stats" link. */
   onShowStats?: () => void;
+  /** Open (or go back to) the face-up review of the hand that just ended. */
+  onReview?: () => void;
+  reviewLabel?: string;
 };
 
 function tichuLabel(call: 'small' | 'grand', made: boolean) {
@@ -74,7 +77,7 @@ function deltaColor(delta: number): string {
   return delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400';
 }
 
-export default function RoundResults({ result, players, onNextRound, onPlayAgain, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate, headToHead, onShowStats }: Props) {
+export default function RoundResults({ result, players, onNextRound, onPlayAgain, onLeave, isGameOver, mySeat, roundEndReady, roundHistory, eloUpdate, headToHead, onShowStats, onReview, reviewLabel = 'Review this hand' }: Props) {
   const hasTichuBonus = result.tichuBonuses[0] !== 0 || result.tichuBonuses[1] !== 0;
   const iAmReady = roundEndReady.includes(mySeat);
 
@@ -369,6 +372,20 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
     </div>
   );
 
+  const reviewButton = onReview && (
+    <button
+      onClick={onReview}
+      className="w-full mb-3 py-2.5 btn btn-quiet text-lg inline-flex items-center justify-center gap-2"
+      title="Turn every hand face up and step through the plays together"
+    >
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+      {reviewLabel}
+    </button>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className={`bg-gray-800 ring-1 ring-cream/10 p-8 rounded-2xl shadow-2xl w-full max-h-[90%] overflow-y-auto ${isGameOver ? 'max-w-6xl' : 'max-w-2xl'}`}>
@@ -400,6 +417,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
               </div>
             </div>
 
+            {onReview && <div className="mt-4 max-w-md mx-auto">{reviewButton}</div>}
             <div className="mt-4 flex justify-center gap-3">
               <button
                 onClick={onPlayAgain}
@@ -423,6 +441,7 @@ export default function RoundResults({ result, players, onNextRound, onPlayAgain
             {pointCardsBlock}
             {outOrderBlock}
             {historyBlock}
+            {reviewButton}
             {iAmReady ? (
               <div className="text-center text-gray-400 py-3">
                 Waiting for {players

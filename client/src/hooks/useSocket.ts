@@ -130,6 +130,16 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
       setRoomLost(false);
     });
 
+    // A review moved: only the step travels (the hand came with the state).
+    socket.on('review-step', ({ step, by }: { step: number; by: Seat | null }) => {
+      setGameState(prev => {
+        if (!prev?.review) return prev;
+        const next = { ...prev, review: { ...prev.review, step, by } };
+        gameStateRef.current = next;
+        return next;
+      });
+    });
+
     socket.on('game-state', ({ state, aiOpenSeats, disconnectedSeats, organizerSeat }: { state: ClientGameState; aiOpenSeats?: number[]; disconnectedSeats?: number[]; organizerSeat?: number | null }) => {
       setGameState(state);
       gameStateRef.current = state;
@@ -350,6 +360,18 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('set-mirror-table', { mirrored });
   }, []);
 
+  const startReview = useCallback(() => {
+    socketRef.current?.emit('start-review');
+  }, []);
+
+  const reviewStep = useCallback((step: number) => {
+    socketRef.current?.emit('review-step', { step });
+  }, []);
+
+  const endReview = useCallback(() => {
+    socketRef.current?.emit('end-review');
+  }, []);
+
   // Acknowledged requests never hang forever: a rate-limited or dropped event
   // produces no ack at all, which used to leave "Loading…" panels stuck.
   const ACK_TIMEOUT_MS = 10000;
@@ -500,6 +522,9 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     mahJongWish,
     endGame,
     setMirrorTable,
+    startReview,
+    reviewStep,
+    endReview,
     concede: concedeAction,
     respondConcede,
     withdrawConcede,

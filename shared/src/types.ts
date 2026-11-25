@@ -127,6 +127,12 @@ export type GameSettings = {
    */
   mirrorTable?: boolean;
   targetScore: number;    // score needed to win (default 1000)
+  /**
+   * Learning mode: every hand is face up to the whole table for the whole
+   * game. Chosen at room setup; such games are practice, so they leave Elo,
+   * achievements, stats and game history alone. Absent in older rooms.
+   */
+  learningMode?: boolean;
   /** Optional: absent in rooms and saved settings from before themes existed. */
   theme?: Theme;
 };
@@ -137,6 +143,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showPassedCards: false,
   clockwise: false,
   targetScore: 1000,
+  learningMode: false,
   theme: 'magic',
 };
 
@@ -277,6 +284,22 @@ export type ClientGameState = Omit<GameState, 'players' | 'deck' | 'receivedCard
   myHand: Card[];
   mySeat: Seat;
   myReceivedCards: ReceivedCard[];
+  /** Learning mode: every seat's hand (index = seat), face up for all. Null otherwise. */
+  openHands?: Card[][] | null;
+  /** The finished hand being reviewed face up, and the moment the table is looking at. */
+  review?: ReviewSession | null;
+  /** True when the hand that just ended can be reviewed (roundEnd / gameEnd). */
+  reviewAvailable?: boolean;
+};
+
+/**
+ * An end-of-hand review: the hand's replay and the shared position in it.
+ * Anyone at the table can move the shared position; `by` is who moved it last.
+ */
+export type ReviewSession = {
+  replay: import('./replay.js').HandReplay;
+  step: number;
+  by: Seat | null;
 };
 
 export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
