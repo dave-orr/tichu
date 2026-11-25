@@ -13,8 +13,17 @@ tests PRs. Deploys are a manual pull-and-build on the host.
 
 That runs the whole sequence and only reports success once `/health` answers on
 the port the app bound. It refuses to restart while a game is in progress
-(`--force` overrides, `--no-pull` deploys the working tree as-is). The
-equivalent by hand:
+(`--force` overrides, `--no-pull` deploys the working tree as-is).
+
+It then deploys the AI player too, when dave-orr/Tichu-ai is checked out next
+to this repo (`~/Tichu-ai`, or `TICHU_AI=path`) and `server/.env` has a
+`BOT_TOKEN`: `git pull`, `cargo build --release`, a check that the default
+bot's model files are there, and `pm2 startOrRestart scripts/live.config.js`
+(process `tichu-bot`). `--no-bot` skips it; `BOT_SPEC=...` picks another bot.
+A bot failure is reported after the server is already up. Setup:
+Tichu-ai's `docs/LIVE.md`.
+
+The server part by hand:
 
 ```sh
 cd <repo>
