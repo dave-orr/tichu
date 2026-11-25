@@ -1066,5 +1066,9 @@ export function toClientState(state: GameState, forSeat: Seat): ClientGameState 
     mySeat: forSeat,
     myReceivedCards: state.receivedCards[forSeat],
     themeSuits: state.themeSuits ?? null,
+    // Learning mode deliberately shows every hand to everyone.
+    openHands: state.settings.learningMode && state.phase !== 'waiting'
+      ? state.players.map(p => [...p.hand])
+      : null,
   };
 }

@@ -7,3 +7,4 @@ export * from './stats.js';
 export * from './historyRepair.js';
 export * from './achievements.js';
 export * from './changelog.js';
+export * from './replay.js';

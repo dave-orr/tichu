@@ -54,7 +54,7 @@ export function isValidPassCards(pass: unknown): pass is { left: Card; partner: 
 
 const TARGET_SCORE_MIN = 100;
 const TARGET_SCORE_MAX = 9999;
-const BOOLEAN_SETTINGS = ['countPoints', 'cardsSeen', 'showPassedCards', 'clockwise'] as const;
+const BOOLEAN_SETTINGS = ['countPoints', 'cardsSeen', 'showPassedCards', 'clockwise', 'learningMode'] as const;
 
 /**
  * Reduce an untrusted settings object to the known keys with well-typed

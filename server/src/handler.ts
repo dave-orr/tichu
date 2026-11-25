@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement, forcedDragonRecipient } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement, forcedDragonRecipient, handReplayFromLog } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   leaveRoom, clearSocketUid, setRoomChangedCallback,
@@ -590,6 +590,51 @@ export function setupHandlers(io: Server): Promise<void> {
       }
     });
 
+    // End-of-hand review: the organizer opens the hand that just ended face
+    // up for the whole table. Anyone seated can then move the shared
+    // position; only the step number travels, the hand was sent once.
+    guarded(socket, 'start-review', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can start a review' });
+        return;
+      }
+      if ((room.state.phase !== 'roundEnd' && room.state.phase !== 'gameEnd') || !room.lastReplay) return;
+      if (!room.review) room.review = { replay: room.lastReplay, step: 0, by: null };
+      broadcastState(io, room);
+    });
+
+    guarded(socket, 'review-step', ({ step }: { step: unknown }) => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room, seat } = found;
+      const review = room.review;
+      if (!review || typeof step !== 'number' || !Number.isInteger(step)) return;
+      // Frames: the deal, after passing, one per action, and the end.
+      const last = review.replay.actions.length + 2;
+      const next = Math.max(0, Math.min(last, step));
+      if (next === review.step) return;
+      review.step = next;
+      review.by = seat;
+      io.to(room.code).emit('review-step', { step: next, by: seat });
+      persistRoom(room);
+    });
+
+    guarded(socket, 'end-review', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      if (room.organizer !== socket.id) {
+        socket.emit('error', { message: 'Only the room creator can end the review' });
+        return;
+      }
+      if (!room.review) return;
+      room.review = null;
+      broadcastState(io, room);
+    });
+
     guarded(socket, 'update-settings', ({ settings }: { settings: unknown }) => {
       const found = getRoomBySocket(socket.id);
       if (!found) return;
@@ -1096,7 +1141,7 @@ export function broadcastState(io: Server, room: Room): void {
     // a not-yet-authenticated socket must not wipe a previously-known uid.
     const uid = getSocketUid(socketId);
     if (uid) room.seatUids.set(seat, uid);
-    const clientState = toClientState(room.state, seat);
+    const clientState = { ...toClientState(room.state, seat), review: room.review, reviewAvailable: !!room.lastReplay };
     io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats, organizerSeat, botAvailable });
   }
   sseBroadcastCallback?.(room);
@@ -1239,12 +1284,18 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
   const state = room.state;
   const roundEnded = state.phase === 'roundEnd' || state.phase === 'gameEnd';
   const log = roundEnded ? buildRoundLog(room, engineResult) : null;
-  const roundResult: RoundResult = log ? { ...engineResult, achievements: roundAchievements(room, log) } : engineResult;
+  // Learning-mode games are practice (every hand is face up): no
+  // achievements, round logs, game summary or Elo.
+  const practice = !!state.settings.learningMode;
+  const roundResult: RoundResult = log && !practice ? { ...engineResult, achievements: roundAchievements(room, log) } : engineResult;
 
   room.lastRoundResult = roundResult;
+  // Keep the hand so the table can review it face up.
+  room.lastReplay = log ? handReplayFromLog(log) : null;
+  room.review = null;
   io.to(room.code).emit('round-result', { result: roundResult });
   sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: roundResult });
-  if (!log) return;
+  if (!log || practice) return;
 
   // Save round log (fire-and-forget)
   saveRoundLog(log).catch(err =>

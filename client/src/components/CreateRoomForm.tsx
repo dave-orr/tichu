@@ -18,6 +18,7 @@ export default function CreateRoomForm({ playerName, initialSettings, initialRan
     cardsSeen: initialSettings?.cardsSeen ?? DEFAULT_SETTINGS.cardsSeen,
     showPassedCards: initialSettings?.showPassedCards ?? DEFAULT_SETTINGS.showPassedCards,
     clockwise: initialSettings?.clockwise ?? DEFAULT_SETTINGS.clockwise,
+    learningMode: initialSettings?.learningMode ?? false,
   });
   const [targetScore, setTargetScore] = useState(initialSettings?.targetScore ?? DEFAULT_SETTINGS.targetScore);
   const [theme, setTheme] = useState<Theme>(
@@ -26,7 +27,7 @@ export default function CreateRoomForm({ playerName, initialSettings, initialRan
   );
 
   const isDefault = !randomPartners
-    && RULES.every(r => toggles[r.key] === DEFAULT_SETTINGS[r.key])
+    && RULES.every(r => toggles[r.key] === !!DEFAULT_SETTINGS[r.key])
     && targetScore === DEFAULT_SETTINGS.targetScore
     && theme === (DEFAULT_SETTINGS.theme ?? 'papercraft');
 
@@ -37,6 +38,7 @@ export default function CreateRoomForm({ playerName, initialSettings, initialRan
       cardsSeen: DEFAULT_SETTINGS.cardsSeen,
       showPassedCards: DEFAULT_SETTINGS.showPassedCards,
       clockwise: DEFAULT_SETTINGS.clockwise,
+      learningMode: false,
     });
     setTargetScore(DEFAULT_SETTINGS.targetScore);
     setTheme(DEFAULT_SETTINGS.theme ?? 'papercraft');
