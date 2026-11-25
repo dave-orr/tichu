@@ -42,7 +42,7 @@ import PassingPhase from '../components/PassingPhase.js';
 import type { PassRecord } from '../components/PassingPhase.js';
 import EventLog, { useEventLog } from '../components/EventLog.js';
 import WishDisplay from '../components/WishDisplay.js';
-import { playTurnChime, playGongSound } from '../utils/sounds.js';
+import { playTurnChime, playGongSound, playOutFanfare } from '../utils/sounds.js';
 
 type Props = {
   socket: ReturnType<typeof useSocket>;
@@ -77,12 +77,16 @@ export default function Game({ socket, auth }: Props) {
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
   }, []);
 
-  // Play gong when someone calls tichu/grand
+  // Play gong when someone calls tichu/grand, and a fanfare when someone
+  // goes out
   useEffect(() => {
     if (gameEvents.length > prevEventCountRef.current) {
       const newEvents = gameEvents.slice(prevEventCountRef.current);
       if (newEvents.some(e => e.type === 'tichu' || e.type === 'grand-tichu')) {
         playGongSound();
+      }
+      if (newEvents.some(e => e.type === 'out')) {
+        playOutFanfare();
       }
     }
     prevEventCountRef.current = gameEvents.length;

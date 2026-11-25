@@ -34,7 +34,14 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
-  { pr: 143, mergedAt: '2026-11-15', kind: 'new', summary: 'The room creator can switch the play direction mid-game from the gear menu; the turn order stays the same' },
+  { pr: 149, mergedAt: '2026-11-25', kind: 'internal', summary: 'Computer players now hear when the game refuses a move' },
+  { pr: 148, mergedAt: '2026-11-25', kind: 'internal', summary: 'Groundwork for computer players: the AI seat API now needs a bot token and tells bots the full play history of the round' },
+  { pr: 147, mergedAt: '2026-11-22', kind: 'improved', summary: 'When your partner is out, the Dog runs past their seat to whoever leads next, and looks around confused if that turns out to be you' },
+  { pr: 146, mergedAt: '2026-11-22', kind: 'new', achievements: 1 },
+  { pr: 145, mergedAt: '2026-11-22', kind: 'improved', summary: 'When an opponent went out first, a Dragon trick goes to the other opponent without asking' },
+  { pr: 144, mergedAt: '2026-11-21', kind: 'new', themes: 1, achievements: 1 },
+  { pr: 143, mergedAt: '2026-11-25', kind: 'new', summary: 'The room creator can switch the play direction mid-game from the gear menu; the turn order stays the same' },
+  { pr: 142, mergedAt: '2026-11-15', kind: 'improved', summary: 'Players who have gone out are marked on their seat, with a sound when it happens' },
   { pr: 141, mergedAt: '2026-11-15', kind: 'new', achievements: 1 },
   { pr: 140, mergedAt: '2026-11-14', kind: 'new', summary: 'This What’s new panel, highlighting changes since your last game' },
   { pr: 139, mergedAt: '2026-11-14T16:50:42Z', kind: 'new', achievements: 1 },

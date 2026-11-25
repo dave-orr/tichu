@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, type CSSProperties } from 'react';
-import { getPartnerSeat, type ClientGameState, type RoundResult, type Seat } from '@tichu/shared';
+import { dogLeadSeat, getPartnerSeat, type ClientGameState, type RoundResult, type Seat } from '@tichu/shared';
 import { cardArt, useTheme } from '../theme.js';
+import { detectDragonGift } from '../utils/dragonGift.js';
 
 export type GameEvent = {
   id: number;
@@ -13,6 +14,8 @@ export type GameEvent = {
   detail?: string;
   /** 'dragon-given' only: who gave the trick away. */
   giverSeat?: Seat;
+  /** 'dog' only: who leads next (the partner, or past them if they're out). */
+  leadSeat?: Seat;
 };
 
 const DURATIONS: Record<GameEvent['type'], number> = {
@@ -24,6 +27,15 @@ const DURATIONS: Record<GameEvent['type'], number> = {
   'grand-made': 4000,
   'dragon-given': 3000,
 };
+
+/** How long an event stays up; the Dog's runs past an empty partner seat take longer. */
+function durationOf(e: Omit<GameEvent, 'id'>): number {
+  if (e.type === 'dog' && e.leadSeat !== undefined) {
+    const route = dogRoute(e.seat, e.leadSeat);
+    if (route !== 'partner') return DOG_STEP_MS.run * 2 + (route === 'back' ? DOG_STEP_MS.confused : DOG_STEP_MS.stop) + DOG_STEP_MS.rest + 300;
+  }
+  return DURATIONS[e.type];
+}
 
 /** Round-level events get the center banner, one at a time; the rest are
  *  about a single player and attach to that player's panel. */
@@ -62,17 +74,19 @@ export function useGameEvents(
         }
       }
 
-      // Dog played (appears in playedCards); the lead passes to their partner.
+      // Dog played (appears in playedCards); the lead passes to their partner,
+      // or past them if they're out, possibly all the way back.
       if (gameState.playedCards.length > prev.playedCards.length) {
         const newCards = gameState.playedCards.slice(prev.playedCards.length);
         if (newCards.some(c => c.type === 'special' && c.name === 'dog')) {
           const seat = prev.turnIndex;
-          const partner = nameOf(getPartnerSeat(seat));
+          const leadSeat = dogLeadSeat(seat, gameState.players.map(p => p.isOut), gameState.settings.clockwise);
           detected.push({
             type: 'dog',
             seat,
+            leadSeat,
             playerName: gameState.players[seat].name,
-            detail: `Lead passes to ${partner}`,
+            detail: leadSeat === seat ? `Lead comes back to ${nameOf(seat)}` : `Lead passes to ${nameOf(leadSeat)}`,
           });
         }
       }
@@ -89,21 +103,18 @@ export function useGameEvents(
         }
       }
 
-      // Dragon trick given to an opponent — the receiver is the player whose
-      // trickCount went up while the giveaway flag dropped.
-      if (prev.dragonGiveaway && !gameState.dragonGiveaway && prev.dragonGiveawayBy !== null) {
-        const giver = prev.dragonGiveawayBy;
-        const receiverIdx = gameState.players.findIndex((p, i) => p.trickCount > prev.players[i].trickCount);
-        if (receiverIdx >= 0) {
-          const receiver = receiverIdx as Seat;
-          detected.push({
-            type: 'dragon-given',
-            seat: receiver,
-            giverSeat: giver,
-            playerName: gameState.players[receiver].name,
-            detail: `from ${nameOf(giver)}`,
-          });
-        }
+      // Dragon trick given to an opponent (chosen, or automatic when an
+      // opponent went out first).
+      const gift = detectDragonGift(prev, gameState);
+      if (gift) {
+        const { giver, receiver } = gift;
+        detected.push({
+          type: 'dragon-given',
+          seat: receiver,
+          giverSeat: giver,
+          playerName: gameState.players[receiver].name,
+          detail: `from ${nameOf(giver)}`,
+        });
       }
     }
 
@@ -131,7 +142,7 @@ export function useGameEvents(
       const now = Date.now();
       for (const e of withIds) {
         // Banners queue behind one another; bubbles live for their duration.
-        let endsAt = now + DURATIONS[e.type];
+        let endsAt = now + durationOf(e);
         if (isBannerEvent(e)) {
           endsAt = Math.max(now, bannerQueueEnd.current) + DURATIONS[e.type];
           bannerQueueEnd.current = endsAt;
@@ -167,7 +178,7 @@ export function seatGlow(events: GameEvent[]): string | null {
   return null;
 }
 
-const durStyle = (e: GameEvent) => ({ '--dur': `${DURATIONS[e.type]}ms` } as CSSProperties);
+const durStyle = (e: GameEvent) => ({ '--dur': `${durationOf(e)}ms` } as CSSProperties);
 
 function MiniCard({ label, className }: { label: string; className: string }) {
   return (
@@ -431,64 +442,133 @@ function DragonArrow({ event }: { event: GameEvent }) {
   );
 }
 
+/** Where the Dog runs: to the partner; past their empty seat to the opponent
+ *  after them; or to the empty seat and, finding the next one empty too, back. */
+type DogRoute = 'partner' | 'onward' | 'back';
+function dogRoute(seat: Seat, leadSeat: Seat): DogRoute {
+  return leadSeat === getPartnerSeat(seat) ? 'partner' : leadSeat === seat ? 'back' : 'onward';
+}
+
+/** Step lengths (ms), matching the CSS animations in index.css: one run between panels, a quick stop at an empty seat on
+ *  the way past it, the confused look-around before heading home, and lying
+ *  down at the end (flop, rest, fade). */
+const DOG_STEP_MS = { run: 800, stop: 300, confused: 1300, rest: 1400 };
+const PAW_GAP_MS = 270;
+
+type DogLeg = { d: string; sprite: string; flip: boolean; bounce: boolean; prints: Point[] };
+type DogStep =
+  | { kind: 'run'; leg: DogLeg; first: boolean; ms: number }
+  | { kind: 'stop'; at: Point; sprite: string; flip: boolean; confused: boolean; ms: number }
+  | { kind: 'rest'; at: Point; ms: number };
+
+/**
+ * One run between two points in three hops, leaving paw prints.
+ * Running toward or away from the viewer is a straight run seen from the
+ * front or behind, with the hops done as a bounce on the sprite; sideways
+ * runs are in profile, hopping in arcs up the screen.
+ */
+function dogLeg(s: Point, e: Point): DogLeg {
+  const dx = e.x - s.x;
+  const dy = e.y - s.y;
+  const at = (t: number): Point => ({ x: s.x + dx * t, y: s.y + dy * t });
+  const landings = [1 / 3, 2 / 3, 1].map(at);
+  const prints = [s, ...landings.slice(0, 2)];
+  if (Math.abs(dy) > Math.abs(dx)) {
+    return { d: `M ${s.x} ${s.y} L ${e.x} ${e.y}`, sprite: dy < 0 ? 'doodle-back' : 'doodle-front', flip: false, bounce: true, prints };
+  }
+  const len = Math.hypot(dx, dy) || 1;
+  let nx = dy / len;
+  let ny = -dx / len;
+  if (ny > 0) { nx = -nx; ny = -ny; }
+  const hop = Math.min(60, len * 0.14);
+  let d = `M ${s.x} ${s.y}`;
+  [0, 1, 2].forEach(i => {
+    const m = at((i + 0.5) / 3);
+    d += ` Q ${m.x + nx * hop * 2} ${m.y + ny * hop * 2} ${landings[i].x} ${landings[i].y}`;
+  });
+  return { d, sprite: 'doodle-run', flip: dx < 0, bounce: false, prints };
+}
+
+/** A motion path that just sits at `p`, so still steps line up with runs. */
+const pinAt = (p: Point) => `path('M ${p.x} ${p.y} L ${p.x + 0.01} ${p.y}')`;
+
 /**
  * The Dog was led: the blue doodle bounds from the player's panel to their
  * partner's in three hops, leaving paw prints, and lies down when it arrives,
  * head up and ready.
- * Partners sit opposite each other, so the run is straight up the screen
- * (seen from behind), straight down it (seen from the front), or sideways
- * (in profile); the sprite is picked to match.
+ * If the partner is out, it stops at their empty seat on the way: then it
+ * runs on to the opponent who leads instead, or, when that opponent is out
+ * too and the lead comes back, it looks around confused (???) and runs home.
  */
 function DogDash({ event }: { event: GameEvent }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
-  const [dash, setDash] = useState<{ d: string; sprite: string; flip: boolean; bounce: boolean; prints: Point[] } | null>(null);
+  const [plan, setPlan] = useState<{ steps: DogStep[]; prints: { p: Point; delay: number }[] } | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
 
   useLayoutEffect(() => {
     const overlay = overlayRef.current;
     const partner = getPartnerSeat(event.seat);
-    const from = document.querySelector(`[data-seat-panel="${event.seat}"]`);
-    const to = document.querySelector(`[data-seat-panel="${partner}"]`);
-    if (!overlay || !from || !to) return;
+    const lead = event.leadSeat ?? partner;
+    const route = dogRoute(event.seat, lead);
+    const panel = (seat: Seat) => document.querySelector(`[data-seat-panel="${seat}"]`);
+    const from = panel(event.seat);
+    const mid = panel(partner);
+    const to = panel(lead);
+    if (!overlay || !from || !mid || !to) return;
     const local = overlayMapper(overlay);
     const fromRect = from.getBoundingClientRect();
-    const toRect = to.getBoundingClientRect();
-    const s = local(edgePoint(fromRect, rectCenter(toRect), 18));
-    const e = local(edgePoint(toRect, rectCenter(fromRect), 18));
-    const dx = e.x - s.x;
-    const dy = e.y - s.y;
-    const at = (t: number): Point => ({ x: s.x + dx * t, y: s.y + dy * t });
-    const landings = [1 / 3, 2 / 3, 1].map(at);
-    const prints = [s, ...landings.slice(0, 2)];
-    if (Math.abs(dy) > Math.abs(dx)) {
-      // Running toward or away from the viewer: a straight run, with the hops
-      // done as a bounce on the sprite itself.
-      setDash({ d: `M ${s.x} ${s.y} L ${e.x} ${e.y}`, sprite: dy < 0 ? 'doodle-back' : 'doodle-front', flip: false, bounce: true, prints });
-      return;
+    const midRect = mid.getBoundingClientRect();
+    const s = local(edgePoint(fromRect, rectCenter(midRect), 18));
+    const m = local(edgePoint(midRect, rectCenter(fromRect), 18));
+    const first = dogLeg(s, m);
+    const steps: DogStep[] = [{ kind: 'run', leg: first, first: true, ms: DOG_STEP_MS.run }];
+    let end = m;
+    if (route !== 'partner') {
+      // From the empty seat, on to whoever leads (back home if that's us).
+      const mClient = rectCenter(midRect);
+      const e = local(edgePoint(to.getBoundingClientRect(), mClient, 18));
+      const confused = route === 'back';
+      steps.push(
+        confused
+          ? { kind: 'stop', at: m, sprite: 'doodle-front', flip: false, confused, ms: DOG_STEP_MS.confused }
+          : { kind: 'stop', at: m, sprite: first.sprite, flip: first.flip, confused, ms: DOG_STEP_MS.stop },
+        { kind: 'run', leg: dogLeg(m, e), first: false, ms: DOG_STEP_MS.run },
+      );
+      end = e;
     }
-    // Sideways, in profile: three hops arcing up the screen.
-    const len = Math.hypot(dx, dy) || 1;
-    let nx = dy / len;
-    let ny = -dx / len;
-    if (ny > 0) { nx = -nx; ny = -ny; }
-    const hop = Math.min(60, len * 0.14);
-    let d = `M ${s.x} ${s.y}`;
-    [0, 1, 2].forEach(i => {
-      const m = at((i + 0.5) / 3);
-      d += ` Q ${m.x + nx * hop * 2} ${m.y + ny * hop * 2} ${landings[i].x} ${landings[i].y}`;
-    });
-    setDash({ d, sprite: 'doodle-run', flip: dx < 0, bounce: false, prints });
-  }, [event.seat]);
+    steps.push({ kind: 'rest', at: end, ms: DOG_STEP_MS.rest });
+    const prints: { p: Point; delay: number }[] = [];
+    let t = 0;
+    for (const step of steps) {
+      if (step.kind === 'run') step.leg.prints.forEach((p, i) => prints.push({ p, delay: t + i * PAW_GAP_MS }));
+      t += step.ms;
+    }
+    setPlan({ steps, prints });
+  }, [event.seat, event.leadSeat]);
 
+  useEffect(() => {
+    if (!plan) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let t = 0;
+    plan.steps.slice(0, -1).forEach((step, i) => {
+      t += step.ms;
+      timers.push(setTimeout(() => setStepIndex(i + 1), t));
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [plan]);
+
+  const step = plan?.steps[stepIndex];
+  const box = 'dog-dash absolute left-0 top-0 -mt-8 w-24 h-24';
   return (
     <div ref={overlayRef} className="fixed inset-0 pointer-events-none z-40 sprite-motion">
-      {dash && (
+      {plan && (
         <>
-          {dash.prints.map((p, i) => (
+          {plan.prints.map(({ p, delay }, i) => (
             <svg
               key={i}
               className="paw-print absolute -ml-3 -mt-3 w-6 h-6"
-              style={{ left: p.x, top: p.y, animationDelay: `${i * 0.27}s` }}
+              style={{ left: p.x, top: p.y, animationDelay: `${delay}ms` }}
               viewBox="0 0 24 24"
               aria-hidden="true"
             >
@@ -499,19 +579,43 @@ function DogDash({ event }: { event: GameEvent }) {
               </g>
             </svg>
           ))}
-          <div
-            className="dog-dash absolute left-0 top-0 -mt-8 w-24 h-24"
-            style={{ offsetPath: `path('${dash.d}')` } as CSSProperties}
-          >
-            <div className={`relative w-24 h-24 ${dash.bounce ? 'dog-bounce' : ''}`}>
-              <Sprite name={dash.sprite} flip={dash.flip} className="dog-running w-24 h-24" />
-              <img
-                src={cardArt(theme, 'anim-doodle-lie.svg')}
-                alt=""
-                className="dog-lie absolute inset-0 w-24 h-24"
-              />
+          {step?.kind === 'run' && (
+            <div
+              key={stepIndex}
+              className={`${box} dog-run${step.first ? ' dog-run-first' : ''}`}
+              style={{ offsetPath: `path('${step.leg.d}')` } as CSSProperties}
+            >
+              <div className={`relative w-24 h-24 ${step.leg.bounce ? 'dog-bounce' : ''}`}>
+                <Sprite name={step.leg.sprite} flip={step.leg.flip} className="w-24 h-24" />
+              </div>
             </div>
-          </div>
+          )}
+          {step?.kind === 'stop' && (
+            <div key={stepIndex} className={box} style={{ offsetPath: pinAt(step.at) } as CSSProperties}>
+              <img
+                src={cardArt(theme, `anim-${step.sprite}-1.svg`)}
+                alt=""
+                className={`w-24 h-24 ${step.confused ? 'dog-look' : ''}`}
+                style={step.flip ? { transform: 'scaleX(-1)' } : undefined}
+              />
+              {step.confused && ['-left-4 -top-1', 'left-9 -top-7', '-right-3 -top-1'].map((pos, i) => (
+                <span
+                  key={i}
+                  className={`dog-huh font-display absolute ${pos} text-4xl font-black`}
+                  style={{ animationDelay: `${120 + i * 260}ms` }}
+                >?</span>
+              ))}
+            </div>
+          )}
+          {step?.kind === 'rest' && (
+            <div
+              key={stepIndex}
+              className={`${box} dog-rest`}
+              style={{ offsetPath: pinAt(step.at) } as CSSProperties}
+            >
+              <img src={cardArt(theme, 'anim-doodle-lie.svg')} alt="" className="dog-lie w-24 h-24" />
+            </div>
+          )}
         </>
       )}
     </div>

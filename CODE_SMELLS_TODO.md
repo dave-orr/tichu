@@ -31,7 +31,7 @@ activity" but the query has no `orderBy`, so the results are arbitrary, not rece
 ## Cross-cutting design smells — MED/LOW
 - **Duplicated event-detection logic:** `useGameEvents` (`GameAnnouncement.tsx`) and
   `useEventLog` (`EventLog.tsx`) independently re-derive the same transitions (tichu calls,
-  dog, going-out, dragon-receiver) from prev-vs-current state with near-identical loops —
+  dog, going-out) from prev-vs-current state with near-identical loops —
   two sources of truth that can drift.
 - **Duplicated constants:** `RANKS [2..14]` / `SPECIALS` redefined in `CardsSeen.tsx`,
   `MahJongWish.tsx`, and the rank list in `Game.tsx` `comboLabel` — should come from

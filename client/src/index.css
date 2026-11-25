@@ -348,6 +348,42 @@ h1, h2, h3 {
 [data-theme="magic"] .dragon-arc-head { fill: rgb(var(--c-ochre)); }
 [data-theme="magic"] .paw-print-ink { fill: rgb(var(--c-ochre-light)); opacity: 0.6; }
 
+/* ===== Kids' Table theme (Thanksgiving) =====
+   A dark theme: a brown-paper tablecloth with a few faint crayon scribbles,
+   bright white card stock, and Gochi Hand for display text. The card art
+   (cards/kids-table/, scripts/gen-kids-table-art.py) is all crayon; ranks
+   and scores stay in Nunito so they read at a glance. */
+[data-theme="kids-table"] .table-felt {
+  background-color: rgb(var(--c-felt-dark));
+  background-image:
+    var(--felt-grain),
+    repeating-linear-gradient(38deg, rgb(255 230 180 / 0.025) 0 2px, transparent 2px 7px),
+    radial-gradient(circle at 10% 14%, rgb(224 64 47 / 0.14) 0%, transparent 16%),
+    radial-gradient(circle at 90% 86%, rgb(61 127 216 / 0.13) 0%, transparent 16%),
+    radial-gradient(circle at 88% 12%, rgb(69 168 69 / 0.12) 0%, transparent 14%),
+    radial-gradient(ellipse 80% 70% at 50% 42%, rgb(var(--c-felt)) 0%, rgb(var(--c-felt-dark)) 100%);
+  background-size: auto, 100% 100%, auto, auto, auto, auto;
+}
+[data-theme="kids-table"] .font-display, [data-theme="kids-table"] h1, [data-theme="kids-table"] h2, [data-theme="kids-table"] h3 {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+[data-theme="kids-table"] .score-num { font-family: 'Nunito Variable', sans-serif; font-weight: 800; }
+[data-theme="kids-table"] .card {
+  background-color: #FFFDF7;
+  background-image: var(--grain), linear-gradient(160deg, #FFFFFF 0%, #FFF7E8 100%);
+}
+[data-theme="kids-table"] .card.suit-jade { color: #2E9A3A; }
+[data-theme="kids-table"] .card.suit-sword { color: #2E2A2A; }
+[data-theme="kids-table"] .card.suit-pagoda { color: #C28400; }
+[data-theme="kids-table"] .card.suit-star { color: #E0402F; }
+[data-theme="kids-table"] .court-frame { border-color: rgb(245 160 15 / 0.8); }
+[data-theme="kids-table"] .card-back { background-image: url('/cards/kids-table/back.svg'); }
+/* The Dragon's flight path and the Dog's paw prints in crayon orange. */
+[data-theme="kids-table"] .dragon-arc { stroke: rgb(var(--c-ochre)); }
+[data-theme="kids-table"] .dragon-arc-head { fill: rgb(var(--c-ochre)); }
+[data-theme="kids-table"] .paw-print-ink { fill: rgb(var(--c-ochre-light)); opacity: 0.5; }
+
 /* Animations */
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }
@@ -502,16 +538,25 @@ h1, h2, h3 {
 }
 
 /* Dog dash: a quick run along its path (0.8s), then it lies down for a moment. */
-@keyframes dog-dash {
-  0% { offset-distance: 0%; opacity: 0; }
-  4% { opacity: 1; }
-  36% { offset-distance: 100%; }
-  88% { offset-distance: 100%; opacity: 1; }
-  100% { offset-distance: 100%; opacity: 0; }
-}
+/* The Dog's run is a sequence of steps (see DogDash): runs along a motion
+   path, a stop at an empty partner seat, and lying down at the end. Each step
+   is a fresh element, so its animation starts when the step does. */
 .dog-dash {
-  animation: dog-dash 2.2s linear forwards;
   offset-rotate: 0deg;
+}
+@keyframes dog-run {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+.dog-run {
+  animation: dog-run 0.8s linear forwards;
+}
+@keyframes dog-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.dog-run-first {
+  animation: dog-run 0.8s linear forwards, dog-appear 0.09s linear;
 }
 /* Head-on / from-behind runs hop in place: three bounces over the run. */
 @keyframes dog-bounce {
@@ -521,23 +566,44 @@ h1, h2, h3 {
 .dog-bounce {
   animation: dog-bounce 0.267s ease-in-out 3;
 }
-/* At the end of the run the running sprite gives way to the lying-down one,
-   which flops down with a little squash. */
-@keyframes dog-stop-running {
-  to { opacity: 0; }
+/* Nobody home: the dog looks one way, then the other, while ? marks pop up. */
+@keyframes dog-look {
+  0%, 45% { transform: scaleX(1) rotate(-4deg); }
+  50%, 95% { transform: scaleX(-1) rotate(-4deg); }
+  100% { transform: scaleX(1) rotate(-4deg); }
 }
-.dog-running {
-  animation: dog-stop-running 0.8s steps(1, end) forwards;
+.dog-look {
+  animation: dog-look 0.6s steps(1, end) infinite;
+}
+@keyframes dog-huh {
+  0% { opacity: 0; scale: 0.3; translate: 0 8px; }
+  30% { opacity: 1; scale: 1.15; translate: 0 0; }
+  45% { scale: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; translate: 0 -6px; }
+}
+.dog-huh {
+  opacity: 0;
+  color: #fff;
+  text-shadow: 0 0 2px #2B2233, 0 1px 0 #2B2233, 0 2px 4px rgba(0, 0, 0, 0.6);
+  animation: dog-huh 1s ease-out forwards;
+}
+/* At the end it flops down with a little squash, rests, then fades. */
+@keyframes dog-rest {
+  0%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.dog-rest {
+  animation: dog-rest 1.4s linear forwards;
 }
 @keyframes dog-lie {
-  0% { opacity: 1; scale: 0.95 1.12; translate: 0 -8px; }
+  0% { scale: 0.95 1.12; translate: 0 -8px; }
   55% { scale: 1.1 0.88; translate: 0 2px; }
-  100% { opacity: 1; scale: 1 1; translate: 0 0; }
+  100% { scale: 1 1; translate: 0 0; }
 }
 .dog-lie {
-  opacity: 0;
   transform-origin: 50% 85%;
-  animation: dog-lie 0.4s ease-out 0.8s forwards;
+  animation: dog-lie 0.4s ease-out;
 }
 @keyframes paw-print {
   0% { opacity: 0; scale: 0.6; }
@@ -575,6 +641,7 @@ h1, h2, h3 {
 [data-theme="halloween"] { --phoenix-glow: 255 128 24; }
 [data-theme="baroque"] { --phoenix-glow: 255 176 64; }
 [data-theme="magic"] { --phoenix-glow: 255 150 40; }
+[data-theme="kids-table"] { --phoenix-glow: 255 170 30; }
 @keyframes phoenix-glow {
   0%, 100% {
     box-shadow:
@@ -643,4 +710,25 @@ h1, h2, h3 {
 @media (prefers-reduced-motion: reduce) {
   .hand-leave { display: none; }
   .hand-slot { transition: none; }
+}
+
+/* ===== Player out ===== */
+
+/* A player who has gone out: the "Out" stamp lands on their seat (tilted,
+   like a rubber stamp) and the tab drops in; both then stay put. */
+@keyframes seat-out-stamp {
+  0% { transform: rotate(-8deg) scale(1.9); opacity: 0; }
+  60% { transform: rotate(-8deg) scale(0.94); opacity: 1; }
+  100% { transform: rotate(-8deg) scale(1); opacity: 1; }
+}
+.seat-out-stamp {
+  transform: rotate(-8deg);
+  animation: seat-out-stamp 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes seat-out-tab {
+  0% { transform: translateY(-10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.seat-out-tab {
+  animation: seat-out-tab 0.35s ease-out both;
 }

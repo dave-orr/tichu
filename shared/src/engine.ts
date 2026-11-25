@@ -3,7 +3,7 @@ import { createDeck, shuffle, sortHand } from './deck.js';
 import { scoreRound, isGameOver, sumPoints } from './scoring.js';
 import {
   Card, ClientGameState, Combo, GameState, GameSettings, DEFAULT_SETTINGS, NormalRank, Player, ReceivedCard, RoundHistoryEntry, RoundResult, Seat,
-  Team, TrickPlay, cardId, cardsEqual, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
+  Team, TrickPlay, cardId, cardsEqual, dogLeadSeat, getPartnerSeat, getLeftSeat, getRightSeat, getTeamForSeat, toPlayers,
 } from './types.js';
 
 // ===== State Creation =====
@@ -466,12 +466,8 @@ function playDog(state: GameState, seat: Seat): PlayResult {
     newPlayers[seat].outOrder = newOutCount;
   }
 
-  // Pass lead to partner
-  let partnerSeat = getPartnerSeat(seat);
-  // If partner is out, go to next active player after partner (clockwise from partner)
-  if (newPlayers[partnerSeat].isOut) {
-    partnerSeat = getNextActiveSeat(state, partnerSeat, newPlayers);
-  }
+  // Pass lead to partner, or if they're out, the next active player after them.
+  const partnerSeat = dogLeadSeat(seat, newPlayers.map(p => p.isOut), state.settings.clockwise);
 
   if (shouldRoundEnd(newOutCount, newPlayers)) {
     return endRound({ ...state, players: newPlayers, outCount: newOutCount, playedCards: [...state.playedCards, { type: 'special', name: 'dog' } as Card] });
@@ -608,6 +604,25 @@ function winTrick(state: GameState): PlayResult {
 }
 
 // ===== Dragon Giveaway =====
+
+/**
+ * The opponent the Dragon trick must go to when the choice is moot, or null
+ * when the Dragon player should be asked. The choice only matters because the
+ * last player's tricks pass to whoever went out first; once an opponent has
+ * gone out first, the trick scores for the opposing team whoever takes it. In
+ * that case it goes to the opponent still holding cards (the first-out
+ * opponent only if both are somehow out). The server applies this without
+ * showing the dialog.
+ */
+export function forcedDragonRecipient(state: GameState): Seat | null {
+  if (!state.dragonGiveaway || state.dragonGiveawayBy == null) return null;
+  const giver = state.dragonGiveawayBy;
+  const opponents: Seat[] = [getRightSeat(giver), getLeftSeat(giver)];
+  const firstOut = opponents.find(s => state.players[s].outOrder === 1);
+  if (firstOut == null) return null;
+  const other = opponents.find(s => s !== firstOut)!;
+  return state.players[other].isOut ? firstOut : other;
+}
 
 export function giveDragonTrick(state: GameState, seat: Seat, toOpponent: Seat): PlayResult {
   if (!state.dragonGiveaway) return { state };

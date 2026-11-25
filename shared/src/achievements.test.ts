@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAchievements, achievementEvents, currentWinStreak, isFirstGameOnTheme, AchievementId } from './achievements.js';
+import { computeAchievements, achievementEvents, currentWinStreak, isFirstGameOnTheme, AchievementId, THEME_ACHIEVEMENTS } from './achievements.js';
 import { GameRecord } from './stats.js';
 import {
   Card, GameSummary, NormalRank, RoundLog, RoundPlay, Seat, Suit, TichuCall,
@@ -264,15 +264,27 @@ describe('Careful What You Wish For', () => {
     ...round(gid, 1, { plays }), mahJongWishes: [{ seat: 0, rank: 9 as NormalRank }],
   });
 
-  it('credits the wisher when a bomb fulfils the wish', () => {
+  it("credits the wisher when an opponent's bomb fulfils the wish", () => {
     const records: GameRecord[] = [
-      // Fulfilled by a bomb of 9s.
+      // Fulfilled by an opponent's bomb of 9s.
       { summary: summary('g1'), rounds: [wishRound('g1', [mahjongLead(0), { seat: 1, cards: [n(4)], trick: 0 }, { seat: 3, cards: fourOf(9), trick: 0 }])] },
       // Fulfilled by a plain 9 first; a later bomb of 9s doesn't count.
       { summary: summary('g2'), rounds: [wishRound('g2', [mahjongLead(0), { seat: 1, cards: [n(9)], trick: 0 }, { seat: 3, cards: fourOf(9), trick: 0 }])] },
     ];
     expect(counts(records, 'A')['wish-bomb']).toBe(1);
+    expect(counts(records, 'A')['evil-genie']).toBe(0);
     expect(counts(records, 'D')['wish-bomb']).toBe(0);
+  });
+
+  it("gives Evil Genie instead when the partner's bomb fulfils the wish", () => {
+    const records: GameRecord[] = [
+      { summary: summary('g1'), rounds: [wishRound('g1', [mahjongLead(0), { seat: 1, cards: [n(4)], trick: 0 }, { seat: 2, cards: fourOf(9), trick: 0 }])] },
+      // The wisher's own bomb earns neither.
+      { summary: summary('g2'), rounds: [wishRound('g2', [mahjongLead(0), { seat: 1, cards: [n(4)], trick: 0 }, { seat: 0, cards: fourOf(9), trick: 1 }])] },
+    ];
+    expect(counts(records, 'A')['evil-genie']).toBe(1);
+    expect(counts(records, 'A')['wish-bomb']).toBe(0);
+    expect(counts(records, 'C')['evil-genie']).toBe(0);
   });
 });
 
@@ -373,6 +385,12 @@ describe('theme achievements', () => {
   it('everyone at the table earns the theme badge for finishing, win or lose', () => {
     const events = achievementEvents([round('g', 1)], { winningTeam: 1, finalScores: [500, 1000], theme: 'baroque' });
     expect(events.filter(e => e.id === 'old-master')).toEqual([{ id: 'old-master', seats: [0, 1, 2, 3], roundNumber: null }]);
+  });
+
+  it("gives every theme its own badge, including the Kids' Table", () => {
+    const events = achievementEvents([round('g', 1)], { winningTeam: 0, finalScores: [1000, 300], theme: 'kids-table' });
+    expect(events.filter(e => e.id === 'gobble-gobble')).toEqual([{ id: 'gobble-gobble', seats: [0, 1, 2, 3], roundNumber: null }]);
+    expect(new Set(Object.values(THEME_ACHIEVEMENTS)).size).toBe(Object.keys(THEME_ACHIEVEMENTS).length);
   });
 
   it('counts each theme once per player on the stats page, and not for summaries without one', () => {

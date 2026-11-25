@@ -473,6 +473,41 @@ icons['wish-bomb'] = badge(VIOLET, layer(
         f'<path d="M48 92 Q66 98 84 92" fill="none" stroke="{CLAY_DK}" stroke-width="1.6"/>')
 )
 
+# ---- Evil Genie: your wish forces your own partner's bomb out. The genie
+# grins out of the lamp, horns, goatee and all, tossing your partner's lit
+# bomb from hand to hand.
+icons['evil-genie'] = badge(NIGHT, layer(
+    sparkle(24, 44, 2.5, CREAM) + sparkle(102, 30, 2, CREAM) + sparkle(106, 70, 2.5, CREAM)
+    + f'<circle cx="64" cy="54" r="34" fill="{CRIMSON_DK}" stroke="none" opacity="0.55"/>'),
+    layer(  # smoke tail curling up out of the spout
+        f'<path d="M36 88 C28 78 46 76 50 70 C54 64 56 62 60 64" fill="none" stroke="{INK}" stroke-width="13"/>'
+        f'<path d="M36 88 C28 78 46 76 50 70 C54 64 56 62 60 64" fill="none" stroke="{SAP}" stroke-width="9"/>')
+    + layer(  # torso
+        f'<path d="M50 72 Q46 50 64 46 Q82 50 78 72 Q70 78 64 70 Q58 78 50 72 Z" fill="{SAP}"/>'
+        f'<path d="M56 60 Q64 64 72 60" fill="none" stroke="{SAP_DK}" stroke-width="1.6"/>')
+    + layer(  # arms: one reaching up to hold the bomb aloft
+        f'<path d="M76 56 Q88 52 90 40" fill="none" stroke="{INK}" stroke-width="7"/>'
+        f'<path d="M76 56 Q88 52 90 40" fill="none" stroke="{SAP}" stroke-width="4.4"/>'
+        f'<path d="M52 56 Q42 58 40 64" fill="none" stroke="{INK}" stroke-width="7"/>'
+        f'<path d="M52 56 Q42 58 40 64" fill="none" stroke="{SAP}" stroke-width="4.4"/>'
+        f'<circle cx="40" cy="65" r="3.2" fill="{SAP}"/>')
+    + layer(  # head with horns, slanted brows, goatee and a wicked grin
+        f'<path d="M54 30 L50 16 L60 26 Z M74 30 L78 16 L68 26 Z" fill="{CRIMSON}"/>'
+        f'<circle cx="64" cy="36" r="13" fill="{SAP}"/>'
+        f'<path d="M55 31 L62 34 M73 31 L66 34" stroke-width="2.2"/>'
+        f'<circle cx="59.5" cy="36" r="1.8" fill="{OCHRE}" stroke="none"/><circle cx="68.5" cy="36" r="1.8" fill="{OCHRE}" stroke="none"/>'
+        f'<path d="M56 41 Q64 48 72 41 Q64 44 56 41 Z" fill="{WHITE}" stroke-width="1.4"/>'
+        f'<path d="M61 48 L64 56 L67 48 Z" fill="{INK}"/>')
+    + bomb(92, 32, 9, fuse_dir=-1)
+    + layer(  # the lamp
+        f'<path d="M20 88 Q30 84 38 90 L44 94 Z" fill="{OCHRE}"/>'
+        f'<path d="M40 98 Q42 84 66 84 Q90 84 92 98 Q86 106 66 106 Q46 106 40 98 Z" fill="{OCHRE}"/>'
+        f'<path d="M90 90 Q104 86 102 98 Q100 104 90 102" fill="none" stroke="{INK}" stroke-width="6"/>'
+        f'<path d="M90 90 Q104 86 102 98 Q100 104 90 102" fill="none" stroke="{OCHRE}" stroke-width="3"/>'
+        f'<path d="M58 110 L74 110 L70 106 L62 106 Z" fill="{OCHRE_DK}"/>'
+        f'<path d="M48 94 Q66 100 84 94" fill="none" stroke="{CLAY_DK}" stroke-width="1.6"/>')
+)
+
 # ---- Super Partner: bomb the trick, then lead the Dog — a caped Dog rockets
 # out of the blast to its partner.
 burst2 = []

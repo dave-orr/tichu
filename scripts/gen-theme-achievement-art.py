@@ -16,9 +16,14 @@ scripts/gen-achievement-art.py):
 - `spellbound`: fine sepia ink like the watercolour Magic cards: a gold rim
   studded with the five realms' orbs around a parchment pool, and the Mah
   Jong card's black lotus on a lily pad (palette from scripts/gen-magic-art.py).
+- `gobble-gobble`: crayon like the Kids' Table cards: an orange
+  construction-paper rosette cut with pinking shears, a hand turkey on the
+  manila centre, two ribbons and a gold-star sticker (crayons, hatch fills
+  and hand turkey from scripts/gen-kids-table-art.py, which needs fontTools).
 
     python3 scripts/gen-theme-achievement-art.py client/public/achievements
 """
+import importlib.util
 import math
 import os
 import sys
@@ -264,6 +269,32 @@ icons['spellbound'] = svg(
     f'<stop offset=".5" stop-color="{M_GOLD}"/><stop offset="1" stop-color="{M_GOLD_DK}"/></linearGradient>'
     f'<radialGradient id="mpool" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#FFFDF6"/>'
     f'<stop offset=".55" stop-color="#F6EFDC"/><stop offset="1" stop-color="#BFD6DA"/></radialGradient>',
+)
+
+# ===== Gobble Gobble =====
+_spec = importlib.util.spec_from_file_location('kids_table_art', os.path.join(os.path.dirname(__file__), 'gen-kids-table-art.py'))
+kids = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(kids)
+
+
+def pinked(r, n, bump):
+    """A circle cut with pinking shears: `n` sharp zigzag teeth."""
+    pts = [(r if i % 2 == 0 else r - bump, 2 * math.pi * i / (n * 2)) for i in range(n * 2)]
+    return 'M' + ' L'.join(f'{f(64 + rr * math.cos(a))} {f(64 + rr * math.sin(a))}' for rr, a in pts) + ' Z'
+
+
+icons['gobble-gobble'] = svg(
+    f'<g stroke="{kids.INK}" filter="url(#cr)">'
+    f'<path d="M46 100 L34 127 L44 121 L50 128 L60 104 Z" fill="{kids.F("red")}" stroke-width="2.4"/>'
+    f'<path d="M82 100 L94 127 L84 121 L78 128 L68 104 Z" fill="{kids.F("blue")}" stroke-width="2.4"/>'
+    f'<path d="{pinked(58, 34, 5)}" fill="{kids.F("orange")}" stroke-width="2.4"/>'
+    f'<circle cx="64" cy="64" r="44" fill="#F7E7C1" stroke-width="2.4"/>'
+    f'<circle cx="64" cy="64" r="39" fill="none" stroke="{kids.C["green"]}" stroke-width="2" stroke-dasharray="5 4"/>'
+    f'<g transform="translate(25 26) scale(.78)">{kids.hand_turkey(sw=3)}</g></g>'
+    # the gold-star sticker sits flat on top, unwobbled
+    f'<path d="{star_path(100, 26, 17, 7.5, -80)}" fill="{kids.C["gold"]}" stroke="#B98200" stroke-width="2"/>'
+    f'<path d="{star_path(100, 26, 11, 5, -80)}" fill="#FFE57A" stroke="none"/>',
+    kids.crayon_defs(21),
 )
 
 out = sys.argv[1]
