@@ -133,6 +133,7 @@ Response: {"ok": true}
 **Errors**:
 - `403` `{"error": "Seat is not an API player"}` — you don't own this seat
 - `400` `{"error": "..."}` — invalid action or bad data
+- `409` `{"error": "Move not accepted in the current state"}` — well-formed, but the game refused it (not your turn, doesn't beat the table, the wish forbids it…). Nothing changed.
 
 ---
 
@@ -363,6 +364,7 @@ This is the main game loop. Check `state.turnIndex === mySeat` to know if it's y
 {"type": "play-cards", "cards": [{"type": "normal", "suit": "jade", "rank": 7}]}
 ```
 
+- Optional `"phoenixAs": 2..14`: the rank the Phoenix stands for in a straight it could extend at either end (`3 4 5 6 Ph` as 2–6 or 3–7). Leave it out for the default reading.
 - Cards must form a valid combination (see [Valid Combinations](#valid-combinations)).
 - If following (currentTrick is not null), must beat it.
 - If leading (currentTrick is null), can play anything.
@@ -506,7 +508,7 @@ Is phase "roundEnd" or "gameEnd"?
 
 ## Error Handling
 
-- Invalid actions return `{"error": "..."}` with a 400 status. The game state is unchanged.
+- Malformed actions return `{"error": "..."}` with a 400 status, and moves the game refuses a 409. The game state is unchanged either way.
 - If the server doesn't recognize the room, you get a 404.
 - If you try to act on a seat you don't own, you get a 403.
 - The SSE stream may close unexpectedly (server restart, network issue). Reconnect by opening a new stream. If the room is gone, the endpoint will return 404.

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
-import { toClientState, Seat, PlayResult } from '@tichu/shared';
+import { toClientState, Seat, PlayResult, NormalRank } from '@tichu/shared';
 import {
   getRoom, addApiPlayer, removeApiPlayer, findRoomWithOpenAiSeat,
   isApiPlayer, handleGrandTichu, handleSmallTichu, handlePassCards,
@@ -231,6 +231,8 @@ export function createApiRouter(io: Server): Router {
     }
 
     const s = seat as Seat;
+    // The engine returns the same state object for a move it refuses.
+    const before = room.state;
 
     try {
       switch (action.type) {
@@ -265,7 +267,11 @@ export function createApiRouter(io: Server): Router {
             res.status(400).json({ error: 'Invalid cards' });
             return;
           }
-          const result = handlePlayCards(room, s, action.cards);
+          // Optional, as on the socket: the Phoenix's rank in a straight it
+          // could extend at either end. Anything else: the default reading.
+          const pa = action.phoenixAs;
+          const phoenixAs = Number.isInteger(pa) && pa >= 2 && pa <= 14 ? pa as NormalRank : undefined;
+          const result = handlePlayCards(room, s, action.cards, phoenixAs);
           processPlayResult(io, room, s, result);
           break;
         }
@@ -349,6 +355,11 @@ export function createApiRouter(io: Server): Router {
           return;
       }
 
+      // `next-round` only marks the seat ready, in place.
+      if (action.type !== 'next-round' && room.state === before) {
+        res.status(409).json({ error: 'Move not accepted in the current state' });
+        return;
+      }
       res.json({ ok: true });
     } catch (err) {
       console.error('API action error:', err);
