@@ -15,7 +15,8 @@ import CardsSeen from '../components/CardsSeen.js';
 import GameAnnouncements, { useGameEvents, seatEvents } from '../components/GameAnnouncement.js';
 import PlayerPanel from '../components/PlayerPanel.js';
 import InvitePanel from '../components/InvitePanel.js';
-import type { TichuStatus } from '../components/TichuBadge.js';
+import TichuBadge, { type TichuStatus } from '../components/TichuBadge.js';
+import PlayerName from '../components/PlayerName.js';
 import GrandTichuPhase from '../components/GrandTichuPhase.js';
 import type { Combo, NormalRank } from '@tichu/shared';
 import HandReview from '../components/HandReview.js';
@@ -721,12 +722,23 @@ export default function Game({ socket, auth }: Props) {
   // screens (the play screen shows them by each seat instead).
   const openHandsStrip = gameState.openHands && (
     <div className="shrink-0 flex justify-center gap-6 px-2 pt-3 pb-1">
-      {[relativeSeats[3], relativeSeats[2], relativeSeats[1]].map(seat => (
-        <div key={seat} className="flex flex-col items-center gap-1">
-          <div className="text-xl font-display font-semibold text-cream/80">{playerNames[seat]}</div>
-          <OpenHand cards={gameState.openHands![seat]} maxWidth={380} />
-        </div>
-      ))}
+      {[relativeSeats[3], relativeSeats[2], relativeSeats[1]].map(seat => {
+        // A Grand Tichu (or an early Tichu) is marked by the name, and a
+        // Grand caller's hand gets the badge's blue ring, so it's plain whose
+        // face-up hand made the call.
+        const call = players[seat].tichuCall;
+        return (
+          <div key={seat} className="flex flex-col items-center gap-1">
+            <div className="flex items-center max-w-[380px] text-xl font-display font-semibold text-cream/80">
+              <PlayerName name={playerNames[seat]} />
+              <TichuBadge call={call} />
+            </div>
+            <div className={call === 'grand' ? 'rounded-xl p-1 ring-[3px] ring-[#3B6FD6]' : 'p-1'}>
+              <OpenHand cards={gameState.openHands![seat]} maxWidth={380} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 
