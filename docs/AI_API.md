@@ -23,7 +23,8 @@ Authorization: Bearer <BOT_TOKEN>
 The operator sets `BOT_TOKEN` (16+ characters; `openssl rand -hex 24`) in
 `server/.env`. With it unset the whole API is off and every route returns
 `404`; a missing or wrong token gets `401` `{"error": "Unauthorized"}`. Within
-that, a seat is identified by room code + seat number. For local development,
+that, a bot is identified by room code + the `player` id that joining returns
+(or, for older bots, by seat number). For local development,
 put any 16+ character value in your own `server/.env`.
 
 ## Quick Start
@@ -36,21 +37,28 @@ AUTH = {"Authorization": "Bearer " + BOT_TOKEN}
 
 # 1. Join any room that wants a bot
 resp = requests.post(f"{BASE}/join", json={"name": "MyBot"}, headers=AUTH)
-info = resp.json()  # {"seat": 2, "roomCode": "WXYZ"}
-room, seat = info["roomCode"], info["seat"]
+info = resp.json()  # {"seat": 2, "player": "api:WXYZ:2:1f3a9c0e", "roomCode": "WXYZ"}
+room, player = info["roomCode"], info["player"]
 
 # 2. Open SSE stream
-stream = sseclient.SSEClient(f"{BASE}/rooms/{room}/stream?seat={seat}", headers=AUTH)
+stream = sseclient.SSEClient(f"{BASE}/rooms/{room}/stream?player={player}", headers=AUTH)
 
 # 3. React to game state
 for event in stream.events():
     if event.event == "game-state":
         state = json.loads(event.data)
-        action = decide(state, seat)
+        action = decide(state, state["mySeat"])
         if action:
             requests.post(f"{BASE}/rooms/{room}/action",
-                          json={"seat": seat, "action": action}, headers=AUTH)
+                          json={"player": player, "action": action}, headers=AUTH)
 ```
+
+**Your seat can change before the first deal.** The organizer can swap seats
+in the waiting room, and with random partners on the server reshuffles every
+seat as the game starts. Always take your seat from the state's `mySeat`, and
+address the stream and actions by `player`, which follows you. (Every route
+still accepts `seat` in place of `player`, but a seat number goes stale once
+you are moved.)
 
 ---
 
@@ -62,7 +70,7 @@ for event in stream.events():
 
 ```
 Request:  {"name": "MyBot"}
-Response: {"seat": 2, "roomCode": "WXYZ"}
+Response: {"seat": 2, "player": "api:WXYZ:2:1f3a9c0e", "roomCode": "WXYZ"}
 ```
 
 Every call, found or not (404), marks the bot as available, which is what lets organizers add bots. Poll every few seconds while you can take another seat.
@@ -78,7 +86,7 @@ Join a specific room by room code. Optionally request a specific seat.
 ```
 Request:  {"name": "MyBot"}              — picks first available AI-open seat
 Request:  {"name": "MyBot", "seat": 1}   — requests seat 1 specifically
-Response: {"seat": 1, "roomCode": "ABCD"}
+Response: {"seat": 1, "player": "api:ABCD:1:1f3a9c0e", "roomCode": "ABCD"}
 ```
 
 **Errors**:
@@ -91,11 +99,11 @@ Response: {"seat": 1, "roomCode": "ABCD"}
 Leave the room. Only works during the waiting phase.
 
 ```
-Request:  {"seat": 1}
+Request:  {"player": "api:ABCD:1:1f3a9c0e"}   (or {"seat": 1})
 Response: {"ok": true}
 ```
 
-### GET /api/rooms/:code/stream?seat=N
+### GET /api/rooms/:code/stream?player=ID (or ?seat=N)
 
 Server-Sent Events stream. You **must** join first before opening the stream.
 
@@ -119,7 +127,7 @@ data: {}
 - First event is always a `game-state` with the current state
 - Stream stays open until you close it or the game ends
 - If the stream disconnects, reconnect by opening a new one
-- The server replaces any previous stream for the same seat
+- The server replaces any previous stream for the same player
 - A `: keepalive` comment line arrives every 20 s while nothing else happens,
   so proxies don't time the stream out (SSE clients ignore it)
 
@@ -128,12 +136,12 @@ data: {}
 Submit a game action. See [Actions Reference](#actions-reference) below.
 
 ```
-Request:  {"seat": 1, "action": {"type": "play-cards", "cards": [...]}}
+Request:  {"player": "api:ABCD:1:1f3a9c0e", "action": {"type": "play-cards", "cards": [...]}}
 Response: {"ok": true}
 ```
 
 **Errors**:
-- `403` `{"error": "Seat is not an API player"}` — you don't own this seat
+- `403` `{"error": "Not an API player in this room"}` / `{"error": "Seat is not an API player"}` — no such bot here
 - `400` `{"error": "..."}` — invalid action or bad data
 - `409` `{"error": "Move not accepted in the current state"}` — well-formed, but the game refused it (not your turn, doesn't beat the table, the wish forbids it…). Nothing changed.
 
@@ -324,7 +332,7 @@ When the Mah Jong wish is active (`state.mahJongWish` is not null), the current 
 
 All actions are submitted via `POST /api/rooms/:code/action` with body:
 ```json
-{"seat": <your_seat>, "action": <action_object>}
+{"player": <your_player_id>, "action": <action_object>}
 ```
 
 ### Phase: grandTichuWindow
