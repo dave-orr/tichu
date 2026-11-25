@@ -62,8 +62,10 @@ for event in stream.events():
 
 ```
 Request:  {"name": "MyBot"}
-Response: {"seat": 2, "roomCode": "WXYZ"}
+Response: {"seat": 2, "roomCode": "WXYZ", "name": "HAL (AI)"}
 ```
+
+The server names every bot after a science-fiction AI, with " (AI)" appended (`shared/src/botNames.ts`), unique within the room; `name` in the response is what players see. The requested `name` is still required and validated, but not shown.
 
 Every call, found or not (404), marks the bot as available, which is what lets organizers add bots. Poll every few seconds while you can take another seat.
 
@@ -78,7 +80,7 @@ Join a specific room by room code. Optionally request a specific seat.
 ```
 Request:  {"name": "MyBot"}              — picks first available AI-open seat
 Request:  {"name": "MyBot", "seat": 1}   — requests seat 1 specifically
-Response: {"seat": 1, "roomCode": "ABCD"}
+Response: {"seat": 1, "roomCode": "ABCD", "name": "GLaDOS (AI)"}
 ```
 
 **Errors**:

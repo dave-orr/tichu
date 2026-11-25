@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 153, mergedAt: '2026-11-25', kind: 'new', summary: 'Computer players now take the name of a famous science-fiction AI' },
   { pr: 152, mergedAt: '2026-11-25', kind: 'new', summary: 'Short a player? The waiting room\'s Add bot button now seats a computer player, whenever one is online' },
   { pr: 150, mergedAt: '2026-11-25', kind: 'internal', summary: 'Deploys now update and restart the computer player too' },
   { pr: 149, mergedAt: '2026-11-25', kind: 'internal', summary: 'Computer players now hear when the game refuses a move' },

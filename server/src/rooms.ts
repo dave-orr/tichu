@@ -4,6 +4,7 @@ import {
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
   Card, NormalRank, PlayResult, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, RoundAction, cardId, identifyCombo, isBomb,
+  pickBotName,
 } from '@tichu/shared';
 
 export type RoundAccumulator = {
@@ -1024,8 +1025,8 @@ export function unmarkSeatForAi(room: Room, seat: Seat): void {
 }
 
 export function addApiPlayer(
-  room: Room, name: string, preferredSeat?: Seat
-): { seat: Seat } | { error: string } {
+  room: Room, preferredSeat?: Seat
+): { seat: Seat; name: string } | { error: string } {
   if (room.state.phase !== 'waiting') return { error: 'Game already in progress' };
 
   // Find an AI-open seat that nobody is sitting in.
@@ -1042,13 +1043,16 @@ export function addApiPlayer(
 
   const syntheticId = `api:${room.code}:${seat}`;
   room.state.players[seat].id = syntheticId;
+  // Bots get a science-fiction AI name ("HAL (AI)"), unique at the
+  // table, whatever name the bot asked for.
+  const name = pickBotName(room.state.players.map(p => p.name));
   room.state.players[seat].name = name;
   room.state.players[seat].isAi = true;
   room.playerSockets.set(syntheticId, seat);
   room.seatPlayers.set(seat, syntheticId);
   room.aiOpenSeats.delete(seat);
 
-  return { seat };
+  return { seat, name };
 }
 
 export function removeApiPlayer(room: Room, seat: Seat): { error?: string } {

@@ -1,4 +1,5 @@
 import { ClientGameState, ClientPlayer } from '@tichu/shared';
+import PlayerName from './PlayerName.js';
 
 type Props = {
   gameState: ClientGameState;
@@ -26,7 +27,7 @@ function TeamDisplay({ p1, p2, score }: { p1: ClientPlayer; p2: ClientPlayer; sc
           </>
         ) : (
           <span className="text-2xl font-semibold text-cream/80">
-            {p1.name} + {p2.name}
+            <PlayerName name={p1.name} /> + <PlayerName name={p2.name} />
           </span>
         )}
       </div>
