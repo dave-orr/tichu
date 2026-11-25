@@ -1,4 +1,5 @@
 import { ClientGameState, getScreenLeftSeat, getScreenRightSeat, getPartnerSeat, playsClockwiseOnScreen } from '@tichu/shared';
+import PlayerName from './PlayerName.js';
 
 type Props = {
   gameState: ClientGameState;
@@ -38,15 +39,15 @@ function SeatLabel({
   return (
     <div className={`absolute ${posClass} max-w-[110px]`}>
       <div
-        className={`truncate rounded px-1.5 py-0.5 text-xl font-semibold text-center ${
+        className={`flex justify-center rounded px-1.5 py-0.5 text-xl font-semibold text-center ${
           gold
             ? 'bg-yellow-600/80 text-white ring-1 ring-yellow-300'
             : 'bg-gray-700/80 text-gray-200'
         }`}
         title={name}
       >
-        {name}
-        {isMe && <span className="text-yellow-200"> (you)</span>}
+        <PlayerName name={name} />
+        {isMe && <span className="shrink-0 whitespace-pre text-yellow-200"> (you)</span>}
       </div>
     </div>
   );

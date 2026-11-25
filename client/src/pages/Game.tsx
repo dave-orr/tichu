@@ -822,8 +822,9 @@ export default function Game({ socket, auth }: Props) {
   // Main playing phase
   return (
     <div className="h-full overflow-hidden flex flex-col relative">
-      {/* Score box — top left */}
-      <div className="absolute top-2 left-2 z-10">
+      {/* Score box — top left. Capped short of the partner panel (centred,
+          440px wide) so long team names (bots' "… (AI)") wrap instead. */}
+      <div className="absolute top-2 left-2 z-10 max-w-[max(16rem,calc(50vw-236px))]">
         <ScoreBoard gameState={gameState} />
       </div>
 

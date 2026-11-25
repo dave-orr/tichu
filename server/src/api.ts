@@ -131,7 +131,9 @@ export function createApiRouter(io: Server): Router {
     next();
   });
 
-  // POST /api/rooms/:code/join — AI claims an AI-open seat
+  // POST /api/rooms/:code/join — AI claims an AI-open seat. The server names
+  // the bot (a sci-fi AI, see shared/src/botNames.ts); the requested `name`
+  // is still validated for compatibility but not shown.
   router.post('/rooms/:code/join', (req: Request, res: Response) => {
     const room = getRoom(req.params.code);
     if (!room) { res.status(404).json({ error: 'Room not found' }); return; }
@@ -142,11 +144,11 @@ export function createApiRouter(io: Server): Router {
       return;
     }
 
-    const result = addApiPlayer(room, name, isValidSeat(seat) ? seat : undefined);
+    const result = addApiPlayer(room, isValidSeat(seat) ? seat : undefined);
     if ('error' in result) { res.status(400).json(result); return; }
 
     broadcastState(io, room);
-    res.json({ seat: result.seat, player: result.player, roomCode: room.code });
+    res.json({ seat: result.seat, player: result.player, roomCode: room.code, name: result.name });
   });
 
   // POST /api/join — Matchmaking: find any room with an open AI seat
@@ -162,11 +164,11 @@ export function createApiRouter(io: Server): Router {
     const found = findRoomWithOpenAiSeat();
     if (!found) { res.status(404).json({ error: 'No rooms with open AI seats' }); return; }
 
-    const result = addApiPlayer(found.room, name, found.seat);
+    const result = addApiPlayer(found.room, found.seat);
     if ('error' in result) { res.status(400).json(result); return; }
 
     broadcastState(io, found.room);
-    res.json({ seat: result.seat, player: result.player, roomCode: found.room.code });
+    res.json({ seat: result.seat, player: result.player, roomCode: found.room.code, name: result.name });
   });
 
   // POST /api/rooms/:code/leave — AI leaves the room

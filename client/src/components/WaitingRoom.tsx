@@ -4,6 +4,7 @@ import InvitePanel from './InvitePanel.js';
 import HouseRules, { SectionLabel } from './HouseRules.js';
 import ThemeGallery from './ThemeGallery.js';
 import { WhatsNewButton } from './WhatsNew.js';
+import PlayerName from './PlayerName.js';
 
 const SEAT_NAMES = ['North', 'East', 'South', 'West'];
 // Each seat's cell in the 3x3 table diagram (the table top is the centre).
@@ -197,10 +198,7 @@ export default function WaitingRoom({
         )}
         {p.name ? (
           <>
-            <span className="mt-2 max-w-full truncate font-display text-xl leading-tight text-cream">
-              {p.name}
-              {p.isAi && <span className="ml-1 text-sm font-sans text-cream/60">(Bot)</span>}
-            </span>
+            <PlayerName name={p.name} className="mt-2 font-display text-xl leading-tight text-cream" />
             {isDisconnected ? (
               <span className="text-sm text-amber-300 italic">reconnecting…</span>
             ) : roomElos?.seatElos[i] != null ? (

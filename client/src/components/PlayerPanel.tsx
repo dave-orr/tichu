@@ -3,6 +3,7 @@ import type { Card as CardType, Combo, TichuCall } from '@tichu/shared';
 import { cardId } from '@tichu/shared';
 import SeatPlay from './SeatPlay.js';
 import { cardArt, useTheme } from '../theme.js';
+import PlayerName from './PlayerName.js';
 import TichuBadge, { type TichuStatus } from './TichuBadge.js';
 import { SeatBubbles, seatGlow, type GameEvent } from './GameAnnouncement.js';
 
@@ -87,9 +88,10 @@ export default function PlayerPanel({
       <div className={`shrink-0 w-52 ${mirror ? 'text-right' : 'text-left'}`}>
         {label && <div className="text-xl uppercase tracking-[0.2em] text-cream/55 font-bold">{label}</div>}
         <div className={`flex items-center gap-1 min-w-0 ${mirror ? 'justify-end' : ''}`}>
-          <span className={`font-display font-semibold text-4xl leading-tight truncate ${isCurrentTurn ? 'text-ochre-light' : 'text-cream'}`}>
-            {player.name}
-          </span>
+          <PlayerName
+            name={player.name}
+            className={`font-display font-semibold text-4xl leading-tight ${isCurrentTurn ? 'text-ochre-light' : 'text-cream'}`}
+          />
           <TichuBadge call={player.tichuCall} status={tichuStatus} />
         </div>
         {disconnected && (

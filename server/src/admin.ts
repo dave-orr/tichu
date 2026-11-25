@@ -91,7 +91,7 @@ function textReport(): string {
       ago(now - r.lastActivityAt),
       `${humans.filter(p => p.connected).length}/${humans.length}`,
       snapshotLabel(r, now),
-      r.players.map(p => (p.name ? `${p.name}${p.isAi ? '(ai)' : p.connected ? '' : '(dc)'}` : '-')).join(', '),
+      r.players.map(p => (p.name ? `${p.name}${p.isAi ? '' : p.connected ? '' : '(dc)'}` : '-')).join(', '),
     ];
   });
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map(row => row[i].length)));

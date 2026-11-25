@@ -35,6 +35,7 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   { pr: 154, mergedAt: '2026-11-25', kind: 'fixed', summary: 'Computer players no longer freeze when random partners moves them to another seat' },
+  { pr: 153, mergedAt: '2026-11-25', kind: 'new', summary: 'Computer players now take the name of a famous science-fiction AI' },
   { pr: 152, mergedAt: '2026-11-25', kind: 'new', summary: 'Short a player? The waiting room\'s Add bot button now seats a computer player, whenever one is online' },
   { pr: 151, mergedAt: '2026-11-25', kind: 'new', summary: "Learning mode: play with every hand face up, and after any hand the host can review it face up so the table steps through the plays together" },
   { pr: 150, mergedAt: '2026-11-25', kind: 'internal', summary: 'Deploys now update and restart the computer player too' },
