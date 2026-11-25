@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import {
   GameState, GameSettings, DEFAULT_SETTINGS, Seat, createInitialState, startNewRound, pickThemeSuits,
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
@@ -1037,7 +1038,7 @@ export function unmarkSeatForAi(room: Room, seat: Seat): void {
 
 export function addApiPlayer(
   room: Room, name: string, preferredSeat?: Seat
-): { seat: Seat } | { error: string } {
+): { seat: Seat; player: string } | { error: string } {
   if (room.state.phase !== 'waiting') return { error: 'Game already in progress' };
 
   // Find an AI-open seat that nobody is sitting in.
@@ -1052,7 +1053,9 @@ export function addApiPlayer(
   }
   if (seat === null) return { error: 'No open AI seats' };
 
-  const syntheticId = `api:${room.code}:${seat}`;
+  // Unique per join, not per seat: the player can be moved to another seat
+  // (swaps, random partners) and a second bot may then take this one.
+  const syntheticId = `api:${room.code}:${seat}:${crypto.randomUUID().slice(0, 8)}`;
   room.state.players[seat].id = syntheticId;
   room.state.players[seat].name = name;
   room.state.players[seat].isAi = true;
@@ -1060,7 +1063,7 @@ export function addApiPlayer(
   room.seatPlayers.set(seat, syntheticId);
   room.aiOpenSeats.delete(seat);
 
-  return { seat };
+  return { seat, player: syntheticId };
 }
 
 export function removeApiPlayer(room: Room, seat: Seat): { error?: string } {
