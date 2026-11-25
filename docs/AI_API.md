@@ -6,7 +6,7 @@ HTTP + Server-Sent Events API for external AI players to join and play Tichu gam
 
 ## Overview
 
-A human organizer creates a room via the web UI and marks one or more empty seats as "Open for AI." Your AI then:
+A human organizer creates a room via the web UI and presses "Add bot" on one or more empty seats. The button is offered only while a bot has polled `POST /api/join` in the last 15 seconds (`server/src/botPresence.ts`), so a bot that wants seats should keep polling it. Your AI then:
 
 1. **Joins** a room (direct or matchmaking)
 2. **Opens an SSE stream** to receive real-time game state
@@ -64,6 +64,8 @@ for event in stream.events():
 Request:  {"name": "MyBot"}
 Response: {"seat": 2, "roomCode": "WXYZ"}
 ```
+
+Every call, found or not (404), marks the bot as available, which is what lets organizers add bots. Poll every few seconds while you can take another seat.
 
 **Errors**:
 - `404` `{"error": "No rooms with open AI seats"}` — no organizer has opened a seat
