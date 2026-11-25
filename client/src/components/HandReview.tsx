@@ -6,6 +6,7 @@ import {
 import OpenHand, { type OpenHandMark } from './OpenHand.js';
 import SeatPlay from './SeatPlay.js';
 import TichuBadge from './TichuBadge.js';
+import PlayerName from './PlayerName.js';
 
 type Props = {
   review: ReviewSession;
@@ -232,7 +233,7 @@ function ReviewSeat({ seat, frame, names, active, mirror, wide }: {
   }
   const identity = (
     <div className={`flex items-center gap-3 ${mirror ? 'flex-row-reverse' : ''}`}>
-      <span className={`font-display font-semibold text-3xl leading-tight truncate ${active ? 'text-ochre-light' : 'text-cream'}`}>{names[seat]}</span>
+      <PlayerName name={names[seat]} className={`font-display font-semibold text-3xl leading-tight ${active ? 'text-ochre-light' : 'text-cream'}`} />
       <TichuBadge call={frame.calls[seat]} />
       {place > 0 && <span className="text-lg font-extrabold uppercase tracking-[0.15em] text-good">Out · {ORDINALS[place]}</span>}
       {passed && <span className="text-base font-bold uppercase tracking-[0.15em] text-cream/60 bg-black/25 rounded-full px-2.5">Passed</span>}

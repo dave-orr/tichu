@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 155, mergedAt: '2026-11-25', kind: 'improved', summary: 'Learning mode: a Grand Tichu caller is marked by their name and face-up hand while cards are passed' },
   { pr: 154, mergedAt: '2026-11-25', kind: 'fixed', summary: 'Computer players no longer freeze when random partners moves them to another seat' },
   { pr: 153, mergedAt: '2026-11-25', kind: 'new', summary: 'Computer players now take the name of a famous science-fiction AI' },
   { pr: 152, mergedAt: '2026-11-25', kind: 'new', summary: 'Short a player? The waiting room\'s Add bot button now seats a computer player, whenever one is online' },
