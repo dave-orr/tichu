@@ -1,12 +1,13 @@
 import TargetScoreInput, { TARGET_SCORE_MAX, TARGET_SCORE_MIN } from './TargetScoreInput.js';
 
-export type RuleToggle = 'countPoints' | 'cardsSeen' | 'showPassedCards' | 'clockwise';
+export type RuleToggle = 'countPoints' | 'cardsSeen' | 'showPassedCards' | 'clockwise' | 'learningMode';
 
 export const RULES: { key: RuleToggle; name: string; description: string }[] = [
   { key: 'countPoints', name: 'Count Points', description: "Show captured point totals by each player's name" },
   { key: 'cardsSeen', name: 'Cards Seen', description: 'Show how many of each card remain unplayed' },
   { key: 'showPassedCards', name: 'Show Passed Cards', description: 'Show the cards you passed and received, beside your hand' },
   { key: 'clockwise', name: 'Clockwise Play', description: 'Play passes clockwise instead of counterclockwise' },
+  { key: 'learningMode', name: 'Learning Mode', description: "Everyone's hand is face up all game. Practice only: no Elo, stats or achievements" },
 ];
 
 const TARGET_STEP = 100;
@@ -64,7 +65,7 @@ export default function HouseRules({
 }: {
   randomPartners: boolean;
   onRandomPartnersChange: (value: boolean) => void;
-  toggles: Record<RuleToggle, boolean>;
+  toggles: Partial<Record<RuleToggle, boolean>>;
   onToggle: (key: RuleToggle, value: boolean) => void;
   targetScore: number;
   onTargetScoreChange: (value: number) => void;
@@ -87,7 +88,7 @@ export default function HouseRules({
           key={r.key}
           name={r.name}
           description={r.description}
-          checked={toggles[r.key]}
+          checked={!!toggles[r.key]}
           disabled={disabled}
           dense={dense}
           onChange={checked => onToggle(r.key, checked)}

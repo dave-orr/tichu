@@ -19,11 +19,32 @@ import {
 } from './handler.js';
 import { noteBotPoll } from './botPresence.js';
 
-// SSE connections: "roomCode:seat" → Response
+// SSE connections, by the API player's synthetic socket id → Response. Keyed
+// by player, not seat: seats can move in the waiting room (swaps, and the
+// random-partners shuffle at the start), and the stream must follow its bot.
 const sseConnections = new Map<string, Response>();
 
-function sseKey(roomCode: string, seat: Seat): string {
-  return `${roomCode}:${seat}`;
+/** The API player sitting in `seat`, if any. */
+function apiPlayerAt(room: Room, seat: Seat): string | undefined {
+  const socketId = room.seatPlayers.get(seat);
+  return socketId && isApiPlayer(socketId) ? socketId : undefined;
+}
+
+/**
+ * Which API player a request is for: by `player` (the id /join returned,
+ * which follows the bot when it is moved to another seat), or by `seat`
+ * (older bots; wrong once seats have moved).
+ */
+function resolveApiPlayer(room: Room, player: unknown, seat: unknown): { socketId: string; seat: Seat } | { status: number; error: string } {
+  if (typeof player === 'string' && player) {
+    const at = room.playerSockets.get(player);
+    if (at === undefined || !isApiPlayer(player)) return { status: 403, error: 'Not an API player in this room' };
+    return { socketId: player, seat: at };
+  }
+  if (!isValidSeat(seat)) return { status: 400, error: 'Invalid seat' };
+  const socketId = apiPlayerAt(room, seat);
+  if (!socketId) return { status: 403, error: 'Seat is not an API player' };
+  return { socketId, seat };
 }
 
 function sendSseEvent(res: Response, event: string, data: unknown): void {
@@ -73,8 +94,7 @@ function requireBotToken(req: Request, res: Response, next: NextFunction): void 
 function broadcastToApiPlayers(room: Room): void {
   for (const [socketId, seat] of room.playerSockets) {
     if (!isApiPlayer(socketId)) continue;
-    const key = sseKey(room.code, seat);
-    const res = sseConnections.get(key);
+    const res = sseConnections.get(socketId);
     if (!res) continue;
     sendSseEvent(res, 'game-state', apiState(room, seat));
   }
@@ -88,11 +108,13 @@ function notifyApiSeat(roomCode: string, seat: Seat, event: string, data?: unkno
     if (!room) return;
     for (const [socketId, s] of room.playerSockets) {
       if (!isApiPlayer(socketId)) continue;
-      const res = sseConnections.get(sseKey(roomCode, s));
+      const res = sseConnections.get(socketId);
       if (res) sendSseEvent(res, event, data ?? {});
     }
   } else {
-    const res = sseConnections.get(sseKey(roomCode, seat));
+    const room = getRoom(roomCode);
+    const socketId = room && apiPlayerAt(room, seat);
+    const res = socketId && sseConnections.get(socketId);
     if (res) sendSseEvent(res, event, data ?? {});
   }
 }
@@ -126,7 +148,7 @@ export function createApiRouter(io: Server): Router {
     if ('error' in result) { res.status(400).json(result); return; }
 
     broadcastState(io, room);
-    res.json({ seat: result.seat, roomCode: room.code, name: result.name });
+    res.json({ seat: result.seat, player: result.player, roomCode: room.code, name: result.name });
   });
 
   // POST /api/join — Matchmaking: find any room with an open AI seat
@@ -146,7 +168,7 @@ export function createApiRouter(io: Server): Router {
     if ('error' in result) { res.status(400).json(result); return; }
 
     broadcastState(io, found.room);
-    res.json({ seat: result.seat, roomCode: found.room.code, name: result.name });
+    res.json({ seat: result.seat, player: result.player, roomCode: found.room.code, name: result.name });
   });
 
   // POST /api/rooms/:code/leave — AI leaves the room
@@ -154,38 +176,32 @@ export function createApiRouter(io: Server): Router {
     const room = getRoom(req.params.code);
     if (!room) { res.status(404).json({ error: 'Room not found' }); return; }
 
-    const { seat } = req.body ?? {};
-    if (!isValidSeat(seat)) { res.status(400).json({ error: 'Invalid seat' }); return; }
-
+    const who = resolveApiPlayer(room, req.body?.player, req.body?.seat);
+    if ('error' in who) { res.status(who.status).json({ error: who.error }); return; }
+    const { socketId, seat } = who;
     const result = removeApiPlayer(room, seat);
     if (result.error) { res.status(400).json(result); return; }
 
     // Close SSE connection if open
-    const key = sseKey(room.code, seat);
-    const sseRes = sseConnections.get(key);
+    const sseRes = sseConnections.get(socketId);
     if (sseRes) {
       sseRes.end();
-      sseConnections.delete(key);
+      sseConnections.delete(socketId);
     }
 
     broadcastState(io, room);
     res.json({ ok: true });
   });
 
-  // GET /api/rooms/:code/stream?seat=N — SSE stream of game events
+  // GET /api/rooms/:code/stream?player=ID (or ?seat=N) — SSE stream of game events
   router.get('/rooms/:code/stream', (req: Request, res: Response) => {
     const room = getRoom(req.params.code);
     if (!room) { res.status(404).json({ error: 'Room not found' }); return; }
 
-    const seat = Number(req.query.seat);
-    if (!isValidSeat(seat)) { res.status(400).json({ error: 'Invalid seat' }); return; }
-
-    // Verify this seat is an API player
-    const socketId = room.seatPlayers.get(seat as Seat);
-    if (!socketId || !isApiPlayer(socketId)) {
-      res.status(403).json({ error: 'Seat is not an API player' });
-      return;
-    }
+    const seatParam = req.query.seat === undefined ? undefined : Number(req.query.seat);
+    const who = resolveApiPlayer(room, req.query.player, seatParam);
+    if ('error' in who) { res.status(who.status).json({ error: who.error }); return; }
+    const { socketId } = who;
 
     // Set up SSE
     res.setHeader('Content-Type', 'text/event-stream');
@@ -195,16 +211,16 @@ export function createApiRouter(io: Server): Router {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
-    const key = sseKey(room.code, seat as Seat);
+    const key = socketId;
 
-    // Close any existing SSE connection for this seat
+    // Close any existing SSE connection for this player
     const existing = sseConnections.get(key);
     if (existing) existing.end();
 
     sseConnections.set(key, res);
 
     // Send initial state immediately
-    sendSseEvent(res, 'game-state', apiState(room, seat as Seat));
+    sendSseEvent(res, 'game-state', apiState(room, who.seat));
 
     const keepalive = setInterval(() => res.write(': keepalive\n\n'), SSE_KEEPALIVE_MS);
 
@@ -221,21 +237,15 @@ export function createApiRouter(io: Server): Router {
     const room = getRoom(req.params.code);
     if (!room) { res.status(404).json({ error: 'Room not found' }); return; }
 
-    const { seat, action } = req.body ?? {};
-    if (!isValidSeat(seat)) { res.status(400).json({ error: 'Invalid seat' }); return; }
+    const { action } = req.body ?? {};
+    const who = resolveApiPlayer(room, req.body?.player, req.body?.seat);
+    if ('error' in who) { res.status(who.status).json({ error: who.error }); return; }
     if (!action || typeof action !== 'object' || !action.type) {
       res.status(400).json({ error: 'Invalid action' });
       return;
     }
 
-    // Verify this seat is an API player
-    const socketId = room.seatPlayers.get(seat as Seat);
-    if (!socketId || !isApiPlayer(socketId)) {
-      res.status(403).json({ error: 'Seat is not an API player' });
-      return;
-    }
-
-    const s = seat as Seat;
+    const s = who.seat;
     // The engine returns the same state object for a move it refuses.
     const before = room.state;
 

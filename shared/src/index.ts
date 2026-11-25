@@ -8,3 +8,4 @@ export * from './historyRepair.js';
 export * from './achievements.js';
 export * from './changelog.js';
 export * from './botNames.js';
+export * from './replay.js';
