@@ -12,7 +12,19 @@ A human organizer creates a room via the web UI and marks one or more empty seat
 2. **Opens an SSE stream** to receive real-time game state
 3. **Posts actions** in response to state changes
 
-Authentication is room code + seat number only. No API keys or tokens needed.
+## Authentication
+
+Every `/api` request needs the server's bot token:
+
+```
+Authorization: Bearer <BOT_TOKEN>
+```
+
+The operator sets `BOT_TOKEN` (16+ characters; `openssl rand -hex 24`) in
+`server/.env`. With it unset the whole API is off and every route returns
+`404`; a missing or wrong token gets `401` `{"error": "Unauthorized"}`. Within
+that, a seat is identified by room code + seat number. For local development,
+put any 16+ character value in your own `server/.env`.
 
 ## Quick Start
 
@@ -20,14 +32,15 @@ Authentication is room code + seat number only. No API keys or tokens needed.
 import requests, json, sseclient
 
 BASE = "http://localhost:3000/api"
+AUTH = {"Authorization": "Bearer " + BOT_TOKEN}
 
 # 1. Join any room that wants a bot
-resp = requests.post(f"{BASE}/join", json={"name": "MyBot"})
+resp = requests.post(f"{BASE}/join", json={"name": "MyBot"}, headers=AUTH)
 info = resp.json()  # {"seat": 2, "roomCode": "WXYZ"}
 room, seat = info["roomCode"], info["seat"]
 
 # 2. Open SSE stream
-stream = sseclient.SSEClient(f"{BASE}/rooms/{room}/stream?seat={seat}")
+stream = sseclient.SSEClient(f"{BASE}/rooms/{room}/stream?seat={seat}", headers=AUTH)
 
 # 3. React to game state
 for event in stream.events():
@@ -36,7 +49,7 @@ for event in stream.events():
         action = decide(state, seat)
         if action:
             requests.post(f"{BASE}/rooms/{room}/action",
-                          json={"seat": seat, "action": action})
+                          json={"seat": seat, "action": action}, headers=AUTH)
 ```
 
 ---
@@ -105,6 +118,8 @@ data: {}
 - Stream stays open until you close it or the game ends
 - If the stream disconnects, reconnect by opening a new one
 - The server replaces any previous stream for the same seat
+- A `: keepalive` comment line arrives every 20 s while nothing else happens,
+  so proxies don't time the stream out (SSE clients ignore it)
 
 ### POST /api/rooms/:code/action
 
@@ -181,8 +196,32 @@ Every `game-state` SSE event contains a `ClientGameState` object. This is the sa
   roundHistory: [...],        // past round scores
   trickCountdown: {winner: Seat, expiresAt: number} | null,
   roundEndReady: Seat[],      // seats that acknowledged round end
+
+  roundActions: RoundAction[], // this round's play-phase history (API seats only, below)
 }
 ```
+
+### Round history (`roundActions`)
+
+API seats also get `roundActions`: every accepted action of this round's play
+phase so far, in order — the same log the server writes to `rounds` docs
+(`RoundAction` in `shared/src/types.ts`). It is public information, so a bot
+can rebuild who played what instead of diffing successive states. It is empty
+before the first play, and still holds the finished round during `roundEnd`.
+
+```typescript
+{type: "play", at, seat, cards, trick, phoenixAs?} // on the seat's turn (Dog and own-turn bombs too)
+{type: "bomb", at, seat, cards, trick}             // out of turn / during the trick countdown
+{type: "pass", at, seat, auto?}                    // auto: the server skipped a seat that couldn't play
+{type: "smallTichu", at, seat}
+{type: "wish", at, seat, rank}                     // rank null = no wish
+{type: "dragon", at, seat, to}
+{type: "concede", at, seat}
+```
+
+`at` is epoch ms; `trick` numbers the round's tricks from 0. Grand Tichu calls
+and pass submissions aren't in it (see `players[].tichuCall` and
+`myReceivedCards`).
 
 ### Teams and Seating
 
@@ -480,17 +519,18 @@ Is phase "roundEnd" or "gameEnd"?
 import requests, json, sseclient
 
 BASE = "http://localhost:3000/api"
+AUTH = {"Authorization": "Bearer " + BOT_TOKEN}
 
 def join():
     """Join any available room."""
-    r = requests.post(f"{BASE}/join", json={"name": "SimpleBot"})
+    r = requests.post(f"{BASE}/join", json={"name": "SimpleBot"}, headers=AUTH)
     r.raise_for_status()
     return r.json()  # {"seat": N, "roomCode": "XXXX"}
 
 def act(room, seat, action):
     """Submit an action."""
     r = requests.post(f"{BASE}/rooms/{room}/action",
-                      json={"seat": seat, "action": action})
+                      json={"seat": seat, "action": action}, headers=AUTH)
     if not r.ok:
         print(f"Action failed: {r.json()}")
 
@@ -521,7 +561,7 @@ def run():
     room, seat = info["roomCode"], info["seat"]
     print(f"Joined room {room} at seat {seat}")
 
-    stream = sseclient.SSEClient(f"{BASE}/rooms/{room}/stream?seat={seat}")
+    stream = sseclient.SSEClient(f"{BASE}/rooms/{room}/stream?seat={seat}", headers=AUTH)
 
     for event in stream.events():
         if event.event == "game-state":

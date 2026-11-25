@@ -49,12 +49,6 @@ Everything `npm audit fix` could reach is fixed (2026-10-24). What's left:
 New findings not already listed above. **None fixed** — recorded for triage.
 Tagged [confirmed] (traced) or [suspected] (needs repro).
 
-### High
-
-#### AI HTTP API endpoints are entirely unauthenticated — hand leak + game interference [confirmed]
-- **Location:** `server/src/api.ts:60-299`
-- Anyone who can reach `/api/...` can join AI-open seats, open the SSE stream for any API seat (which sends that seat's hand via `toClientState`, `api.ts:160`), and submit actions for any API seat in any room (`/rooms/:code/action`). The only gate is "seat must be an API player." No auth, no rate limiting (the socket rate limiter does not cover HTTP). Combined with room-code brute force and `findRoomWithOpenAiSeat` matchmaking, an external actor can read hands and disrupt live games.
-
 ### Medium
 
 #### Stat farming via human + AI games [confirmed]
@@ -69,6 +63,6 @@ Tagged [confirmed] (traced) or [suspected] (needs repro).
 
 ### Verified OK (recorded so they aren't re-investigated)
 - Stats/UIDs are keyed only on **verified-token** UIDs (`rooms.ts:61-68`, `handler.ts:90-92`); no client-supplied-UID path, no Firestore path injection from user input.
-- `broadcastState`/`toClientState` send only the recipient's own hand over sockets — no hand leakage on the normal socket path (the leak vectors are the unauthenticated SSE/reconnect paths above).
+- `broadcastState`/`toClientState` send only the recipient's own hand over sockets — no hand leakage on the normal socket path. The AI API (`api.ts`, SSE stream and actions) requires `Authorization: Bearer $BOT_TOKEN` and is off when it's unset.
 - Firebase token verification uses Admin SDK `verifyIdToken` and fails closed; credentials come from env and are never logged. `maxHttpBufferSize`, per-socket rate limiting, CORS allow-list, and card/seat/rank validators are present.
 - No leftover `*.backup` / `*.disabled` source files exist in the tree (both reviewers checked) — no stale-secret hygiene issue currently.
