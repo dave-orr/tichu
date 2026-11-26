@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  buildReplayFrames, cardId, identifyCombo, comboLabel, RANK_NAMES,
-  type ReplayFrame, type ReviewSession, type Seat,
+  buildReplayFrames, cardId, identifyCombo, comboLabel, RANK_NAMES, aiAgrees, aiPassAgrees, aiSuggestionLabel,
+  type AiDecision, type AiPass, type AiSuggestion, type Card, type HandReplay, type ReplayFrame, type ReviewSession, type Seat,
 } from '@tichu/shared';
 import OpenHand, { type OpenHandMark } from './OpenHand.js';
 import SeatPlay from './SeatPlay.js';
@@ -15,6 +15,10 @@ type Props = {
   isOrganizer: boolean;
   /** Move the table's shared position. */
   onStep: (step: number) => void;
+  /** The server can ask the AI engine about this hand. */
+  aiAvailable: boolean;
+  /** Ask the server for the AI's suggestions (once per hand; the answer comes with the review). */
+  onRequestAi: () => void;
   /** Organizer: close the review for everyone. */
   onEnd: () => void;
   /** Go back to the results screen (just for me). */
@@ -24,6 +28,89 @@ type Props = {
 /** Fewest ms between shared-position updates while scrubbing (server allows 20/s). */
 const SEND_EVERY_MS = 80;
 const ORDINALS = ['', '1st', '2nd', '3rd', '4th'];
+const AI_PREF_KEY = 'tichu.reviewAi';
+
+/** One line about a seat from the AI, shown under its name. */
+type AiNote = { text: string; tone: 'next' | 'agree' | 'differ' };
+
+function cardName(card: Card): string {
+  if (card.type === 'normal') return RANK_NAMES[card.rank];
+  return { mahjong: 'Mah Jong', dog: 'Dog', phoenix: 'Phoenix', dragon: 'Dragon' }[card.name] ?? card.name;
+}
+
+/** "would play Pair, 9s" / "would have passed" etc. */
+function aiWould(s: AiSuggestion, names: string[], past: boolean): string {
+  const have = past ? 'would have' : 'would';
+  switch (s.type) {
+    case 'play': return `AI ${have} ${past ? 'played' : 'play'} ${aiSuggestionLabel(s, names)}`;
+    case 'pass': return `AI ${have} ${past ? 'passed' : 'pass'}`;
+    case 'wish': return s.rank != null ? `AI ${have} ${past ? 'wished' : 'wish'} for ${RANK_NAMES[s.rank]}` : `AI ${have} ${past ? 'made' : 'make'} no wish`;
+    case 'dragon': return `AI ${have} ${past ? 'given' : 'give'} the Dragon to ${names[s.to]}`;
+  }
+}
+
+function passText(p: AiPass, names: string[]): string {
+  const to = (seat: number) => names[seat % 4];
+  // left = seat+3, partner = seat+2, right = seat+1 (shared/src/types.ts seat helpers)
+  return `${cardName(p.left)} → ${to(p.seat + 3)} · ${cardName(p.partner)} → ${to(p.seat + 2)} · ${cardName(p.right)} → ${to(p.seat + 1)}`;
+}
+
+/**
+ * The AI's notes and card marks for one frame: on the deal, what each seat
+ * would have passed; before a decision, what the AI would do (its cards
+ * ringed in the decider's hand); on the decision, whether the player did the
+ * same; at the end, how often each player matched it.
+ */
+function aiFrameNotes(frame: ReplayFrame, replay: HandReplay, passes: AiPass[], decisions: Map<number, AiDecision>) {
+  // Short names in the notes: a bot's " (AI)" tag reads badly next to "the AI".
+  const names = replay.names.map(n => n.replace(/ \(AI\)$/, ''));
+  const notes: AiNote[][] = [[], [], [], []];
+  const marks: Map<string, OpenHandMark>[] = [0, 1, 2, 3].map(() => new Map());
+  if (frame.kind === 'deal') {
+    for (const p of passes) {
+      notes[p.seat].push({ text: `AI would pass ${passText(p, names)}`, tone: aiPassAgrees(replay.passes[p.seat], p) ? 'agree' : 'next' });
+    }
+  }
+  if (frame.action != null) {
+    const d = decisions.get(frame.action);
+    const a = replay.actions[frame.action];
+    if (d && a) {
+      notes[d.seat].push(aiAgrees(a, d.suggestion)
+        ? { text: 'Same as the AI', tone: 'agree' }
+        : { text: aiWould(d.suggestion, names, true), tone: 'differ' });
+    }
+  }
+  const next = frame.kind === 'passed' ? 0 : frame.action != null ? frame.action + 1 : frame.kind === 'deal' && replay.passes.every(p => !p) ? 0 : null;
+  const upcoming = next != null ? decisions.get(next) : undefined;
+  if (upcoming) {
+    notes[upcoming.seat].push({ text: `Next: ${aiWould(upcoming.suggestion, names, false)}`, tone: 'next' });
+    if (upcoming.suggestion.type === 'play') {
+      for (const c of upcoming.suggestion.cards) marks[upcoming.seat].set(cardId(c), { label: 'AI', title: 'The AI would play this', tone: 'ai' });
+    }
+  }
+  if (frame.kind === 'end') {
+    for (const seat of [0, 1, 2, 3] as Seat[]) {
+      let asked = 0;
+      let same = 0;
+      const p = passes.find(x => x.seat === seat);
+      if (p) { asked++; if (aiPassAgrees(replay.passes[seat], p)) same++; }
+      for (const d of decisions.values()) {
+        if (d.seat !== seat || !replay.actions[d.action]) continue;
+        asked++;
+        if (aiAgrees(replay.actions[d.action], d.suggestion)) same++;
+      }
+      if (asked) notes[seat].push({ text: `Matched the AI on ${same} of ${asked} decisions`, tone: 'next' });
+    }
+  }
+  return { notes, marks };
+}
+
+function readAiPref(): boolean {
+  try { return localStorage.getItem(AI_PREF_KEY) === '1'; } catch { return false; }
+}
+function writeAiPref(on: boolean) {
+  try { localStorage.setItem(AI_PREF_KEY, on ? '1' : '0'); } catch { /* private mode */ }
+}
 
 /**
  * "Review in learning mode": the hand that just ended, every hand face up,
@@ -31,7 +118,7 @@ const ORDINALS = ['', '1st', '2nd', '3rd', '4th'];
  * whoever moves it moves everyone; "Look on my own" detaches you to browse,
  * and "Show everyone" brings the table to the moment you're looking at.
  */
-export default function HandReview({ review, mySeat, mirrored, isOrganizer, onStep, onEnd, onShowResults }: Props) {
+export default function HandReview({ review, mySeat, mirrored, isOrganizer, onStep, aiAvailable, onRequestAi, onEnd, onShowResults }: Props) {
   const frames = useMemo(() => buildReplayFrames(review.replay), [review.replay]);
   const last = frames.length - 1;
   const clamp = useCallback((n: number) => Math.max(0, Math.min(last, n)), [last]);
@@ -103,7 +190,33 @@ export default function HandReview({ review, mySeat, mirrored, isOrganizer, onSt
   const topCombo = top ? identifyCombo(top.cards) : null;
   const movedBy = !solo && review.by != null && review.by !== mySeat && review.step === step ? names[review.by] : null;
 
-  const seatProps = (seat: Seat) => ({ seat, frame, names, active: frame.seat === seat });
+  // AI suggestions: each player chooses whether to see them; the first to
+  // turn them on has the server ask the engine, for the whole table.
+  const [showAi, setShowAi] = useState(() => aiAvailable && readAiPref());
+  const ai = review.ai ?? null;
+  const askedFor = useRef<HandReplay | null>(null);
+  useEffect(() => {
+    if (!showAi || !aiAvailable || (ai && ai.status !== 'error') || askedFor.current === review.replay) return;
+    askedFor.current = review.replay;
+    onRequestAi();
+  }, [showAi, aiAvailable, ai, review.replay, onRequestAi]);
+  const toggleAi = () => {
+    // On, after a failure: the button retries.
+    if (showAi && ai?.status === 'error') { askedFor.current = review.replay; onRequestAi(); return; }
+    const on = !showAi;
+    setShowAi(on);
+    writeAiPref(on);
+    if (on && ai?.status === 'error') { askedFor.current = review.replay; onRequestAi(); }
+  };
+  const ready = showAi && ai?.status === 'ready' ? ai : null;
+  const decisions = useMemo(() => new Map((ready?.decisions ?? []).map(d => [d.action, d])), [ready]);
+  const aiView = ready ? aiFrameNotes(frame, review.replay, ready.passes, decisions) : null;
+
+  const seatProps = (seat: Seat) => ({
+    seat, frame, names, active: frame.seat === seat,
+    aiNotes: showAi ? aiView?.notes[seat] ?? [] : undefined,
+    aiMarks: aiView?.marks[seat],
+  });
 
   return (
     <div className="h-full flex flex-col review-mode">
@@ -187,6 +300,7 @@ export default function HandReview({ review, mySeat, mirrored, isOrganizer, onSt
                   Look on my own
                 </button>
               )}
+              <AiToggle available={aiAvailable} on={showAi} ai={ai} onToggle={toggleAi} />
               <button className="btn btn-quiet px-4 py-2 text-lg" onClick={onShowResults}>Results</button>
               {isOrganizer && (
                 <button className="btn btn-quiet px-4 py-2 text-lg" onClick={onEnd} title="Close the review for everyone">End review</button>
@@ -215,8 +329,43 @@ function ScrubButton({ label, onClick, disabled, children }: { label: string; on
   );
 }
 
-function ReviewSeat({ seat, frame, names, active, mirror, wide }: {
+function AiToggle({ available, on, ai, onToggle }: { available: boolean; on: boolean; ai: ReviewSession['ai']; onToggle: () => void }) {
+  const working = on && ai?.status === 'working';
+  const error = on && ai?.status === 'error' ? ai.message : null;
+  const title = !available
+    ? "The AI engine isn't installed on this server"
+    : error ? `${error}. Click to try again.`
+      : on ? 'Hide what the AI would have done' : 'Show what the AI would have done at each decision';
+  return (
+    <button
+      type="button"
+      className={`btn px-4 py-2 text-lg inline-flex items-center gap-2 ${on && available ? 'btn-primary' : 'btn-quiet'}`}
+      onClick={onToggle}
+      disabled={!available}
+      aria-pressed={on && available}
+      title={title}
+    >
+      <svg className={`w-5 h-5 ${working ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {working
+          ? <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+          : <><rect x="4" y="7" width="16" height="12" rx="3" /><path d="M12 3v4M9 12h.01M15 12h.01M9.5 15.5h5" /></>}
+      </svg>
+      {working ? 'AI is thinking…' : error ? 'AI failed, retry' : 'AI suggestions'}
+    </button>
+  );
+}
+
+const NOTE_TONE = {
+  next: 'bg-sky-400/20 text-sky-300',
+  agree: 'bg-good/15 text-good',
+  differ: 'bg-sky-400/20 text-sky-300',
+};
+
+function ReviewSeat({ seat, frame, names, active, mirror, wide, aiNotes, aiMarks }: {
   seat: Seat; frame: ReplayFrame; names: string[]; active: boolean; mirror?: boolean;
+  /** AI suggestions are on: this seat's notes (a reserved line, so the table doesn't jump). */
+  aiNotes?: AiNote[];
+  aiMarks?: ReadonlyMap<string, OpenHandMark>;
   /** Top and bottom seats: the play sits beside the hand rather than above it. */
   wide?: boolean;
 }) {
@@ -231,12 +380,23 @@ function ReviewSeat({ seat, frame, names, active, mirror, wide }: {
       marks.set(cardId(p.card), { label: `${names[p.from].slice(0, 1)}→`, title: `Passed by ${names[p.from]}`, tone: 'in' });
     }
   }
+  // The AI's suggested cards win over the pass marks: they're what to look at next.
+  for (const [id, m] of aiMarks ?? []) marks.set(id, m);
   const identity = (
     <div className={`flex items-center gap-3 ${mirror ? 'flex-row-reverse' : ''}`}>
       <PlayerName name={names[seat]} className={`font-display font-semibold text-3xl leading-tight ${active ? 'text-ochre-light' : 'text-cream'}`} />
       <TichuBadge call={frame.calls[seat]} />
       {place > 0 && <span className="text-lg font-extrabold uppercase tracking-[0.15em] text-good">Out · {ORDINALS[place]}</span>}
       {passed && <span className="text-base font-bold uppercase tracking-[0.15em] text-cream/60 bg-black/25 rounded-full px-2.5">Passed</span>}
+    </div>
+  );
+  const notes = aiNotes && (
+    <div className={`flex flex-col gap-1 min-h-[28px] ${mirror ? 'items-end' : 'items-start'}`}>
+      {aiNotes.map((n, i) => (
+        <span key={i} className={`rounded-full px-3 py-0.5 text-lg font-semibold leading-snug ${NOTE_TONE[n.tone]}`}>
+          {n.tone === 'agree' && <span aria-hidden="true">✓ </span>}{n.text}
+        </span>
+      ))}
     </div>
   );
   const playBox = (
@@ -260,13 +420,13 @@ function ReviewSeat({ seat, frame, names, active, mirror, wide }: {
     >
       {wide ? (
         <>
-          <div className="flex flex-col gap-1.5 min-w-[430px]">{identity}{hand}</div>
+          <div className="flex flex-col gap-1.5 min-w-[430px]">{identity}{notes}{hand}</div>
           {playBox}
         </>
       ) : (
         <>
           <div className={`flex items-center gap-3 w-full ${mirror ? 'flex-row-reverse' : ''}`}>
-            <div className="flex-1 min-w-0">{identity}</div>
+            <div className="flex-1 min-w-0 flex flex-col gap-1.5">{identity}{notes}</div>
             {playBox}
           </div>
           {hand}

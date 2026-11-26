@@ -1,8 +1,11 @@
 import { Card as CardType, cardId, sortHand } from '@tichu/shared';
 import CardComponent from './Card.js';
 
-/** A card that changes hands in the pass, marked in a face-up hand. */
-export type OpenHandMark = { label: string; title: string; tone: 'out' | 'in' };
+/** A card marked in a face-up hand: changing hands in the pass, or the AI's suggested play. */
+export type OpenHandMark = { label: string; title: string; tone: 'out' | 'in' | 'ai' };
+
+const RING = { out: 'ring-ochre', in: 'ring-good', ai: 'ring-sky-300' };
+const BADGE = { out: 'bg-ochre text-ink', in: 'bg-good text-ink', ai: 'bg-sky-300 text-ink' };
 
 type Props = {
   cards: CardType[];
@@ -39,14 +42,12 @@ export default function OpenHand({ cards, maxWidth = 430, marks, emptyLabel }: P
             style={{ marginLeft: i > 0 ? `${step - CARD_W}px` : 0 }}
             title={mark?.title}
           >
-            <div className={mark ? `rounded-lg ring-[3px] ${mark.tone === 'out' ? 'ring-ochre' : 'ring-good'}` : undefined}>
+            <div className={mark ? `rounded-lg ring-[3px] ${RING[mark.tone]}` : undefined}>
               <CardComponent card={card} small />
             </div>
             {mark && (
               <span
-                className={`absolute -top-3 left-0.5 z-10 whitespace-nowrap rounded-full px-1.5 text-xs font-extrabold leading-5 shadow ${
-                  mark.tone === 'out' ? 'bg-ochre text-ink' : 'bg-good text-ink'
-                }`}
+                className={`absolute -top-3 left-0.5 z-10 whitespace-nowrap rounded-full px-1.5 text-xs font-extrabold leading-5 shadow ${BADGE[mark.tone]}`}
               >
                 {mark.label}
               </span>

@@ -1,4 +1,4 @@
-import type { Card, Combo, NormalRank, RoundAction, RoundLog, Seat, TichuCall, TrickPlay } from './types.js';
+import type { AiPass, AiSuggestion, Card, Combo, NormalRank, RoundAction, RoundLog, Seat, TichuCall, TrickPlay } from './types.js';
 import { RANK_NAMES, cardId, cardsEqual, getLeftSeat, getPartnerSeat, getRightSeat } from './types.js';
 import { identifyCombo } from './combinations.js';
 import { sortHand } from './deck.js';
@@ -23,6 +23,10 @@ export type HandReplay = {
   actions: RoundAction[];
   /** Final out order (last = the seat left holding cards). */
   outOrder: Seat[];
+  /** Game score as the hand began (for the AI engine; absent in older reviews). */
+  scoresBefore?: [number, number];
+  /** Table direction the hand was played in (for the AI engine). */
+  clockwise?: boolean;
 };
 
 /** A card moving in the pass: who gave it to whom. */
@@ -49,6 +53,8 @@ export type ReplayFrame = {
   out: number[];
   /** The deal and pass frames mark the cards that change hands. */
   passing: ReplayPass[];
+  /** Index into `HandReplay.actions` of the action this frame shows (absent for the deal, the pass and the end). */
+  action?: number;
 };
 
 /** Turn a finished round's log into the data a review needs. */
@@ -64,7 +70,64 @@ export function handReplayFromLog(log: RoundLog): HandReplay {
     grand: bySeat.map(p => p?.tichuCall === 'grand'),
     actions: [...(log.actions ?? [])],
     outOrder: [...log.outOrder],
+    scoresBefore: log.scoresBeforeRound ? [...log.scoresBeforeRound] : undefined,
+    clockwise: log.clockwise,
   };
+}
+
+/**
+ * The hand as the AI engine reads it (`tichu analyze` in dave-orr/tichu-ai
+ * takes the server's `RoundLog` format): enough of a round log to replay the
+ * hand exactly. Null when the replay is missing a pass, which the engine
+ * can't rebuild without.
+ */
+export function engineRoundLog(replay: HandReplay): object | null {
+  if (replay.passes.some(p => !p) || replay.dealt.some(h => h.length !== 14)) return null;
+  const small = new Set(replay.actions.flatMap(a => (a.type === 'smallTichu' ? [a.seat] : [])));
+  return {
+    roundNumber: replay.roundNumber,
+    scoresBeforeRound: replay.scoresBefore ?? [0, 0],
+    outOrder: replay.outOrder,
+    clockwise: replay.clockwise ?? false,
+    players: ([0, 1, 2, 3] as Seat[]).map(seat => ({
+      seat,
+      tichuCall: replay.grand[seat] ? 'grand' : small.has(seat) ? 'small' : 'none',
+      outOrder: replay.outOrder.indexOf(seat) + 1,
+      initialHand: replay.dealt[seat],
+      passedLeft: replay.passes[seat]!.left,
+      passedPartner: replay.passes[seat]!.partner,
+      passedRight: replay.passes[seat]!.right,
+    })),
+    actions: replay.actions,
+  };
+}
+
+const sameCards = (a: Card[], b: Card[]) =>
+  a.length === b.length && a.every(x => b.some(y => cardsEqual(x, y)));
+
+/** "Pair, 9s", "Pass", "Wish for 8", "No wish", "Dragon to Ben". */
+export function aiSuggestionLabel(s: AiSuggestion, names: string[]): string {
+  switch (s.type) {
+    case 'play': return describeCards(s.cards, s.phoenixAs);
+    case 'pass': return 'Pass';
+    case 'wish': return s.rank != null ? `Wish for ${RANK_NAMES[s.rank]}` : 'No wish';
+    case 'dragon': return `Dragon to ${names[s.to] ?? `Seat ${s.to + 1}`}`;
+  }
+}
+
+/** Did the player do what the engine suggested? (Same cards, whatever the Phoenix's reading.) */
+export function aiAgrees(action: RoundAction, s: AiSuggestion): boolean {
+  switch (s.type) {
+    case 'play': return action.type === 'play' && sameCards(action.cards, s.cards);
+    case 'pass': return action.type === 'pass';
+    case 'wish': return action.type === 'wish' && action.rank === s.rank;
+    case 'dragon': return action.type === 'dragon' && action.to === s.to;
+  }
+}
+
+/** Did the seat pass the same card to each player as the engine would have? */
+export function aiPassAgrees(actual: HandReplay['passes'][number], ai: AiPass): boolean {
+  return !!actual && cardsEqual(actual.left, ai.left) && cardsEqual(actual.partner, ai.partner) && cardsEqual(actual.right, ai.right);
 }
 
 /** A short, player-facing name for a combination ("Pair, 7s"). */
@@ -134,8 +197,10 @@ export function buildReplayFrames(replay: HandReplay): ReplayFrame[] {
   const out = [0, 0, 0, 0];
   let outCount = 0;
 
+  let actionIndex: number | undefined;
   const push = (kind: ReplayFrame['kind'], seat: Seat | null, text: string, framePassing: ReplayPass[] = []) => {
     frames.push({
+      ...(actionIndex != null ? { action: actionIndex } : {}),
       kind, seat, text,
       hands: hands.map(h => [...h]),
       trick: trick.map(t => ({ seat: t.seat, cards: [...t.cards] })),
@@ -162,7 +227,8 @@ export function buildReplayFrames(replay: HandReplay): ReplayFrame[] {
     push('passed', null, 'After passing', passing);
   }
 
-  for (const a of replay.actions) {
+  for (const [i, a] of replay.actions.entries()) {
+    actionIndex = i;
     switch (a.type) {
       case 'play':
       case 'bomb': {
@@ -207,6 +273,7 @@ export function buildReplayFrames(replay: HandReplay): ReplayFrame[] {
     }
   }
 
+  actionIndex = undefined;
   const places = ([0, 1, 2, 3] as Seat[]).filter(s => out[s] !== 0).sort((a, b) => out[a] - out[b]);
   push('end', null, places.length
     ? `Hand over: ${places.map(s => `${name(s)} ${ORDINAL[out[s]]}`).join(', ')}`

@@ -23,6 +23,14 @@ bot's model files are there, and `pm2 startOrRestart scripts/live.config.js`
 A bot failure is reported after the server is already up. Setup:
 Tichu-ai's `docs/LIVE.md`.
 
+The same checkout gives hand reviews their AI suggestions: the server runs its
+`target/release/tichu analyze` (with the bot's model files, from that
+directory) once per reviewed hand that someone asks about. The boot banner's
+`ai review` line says whether it found the binary; without it the review's
+"AI suggestions" button is disabled. `TICHU_AI`, `AI_REVIEW_BOT` and
+`AI_REVIEW_THREADS` in `server/.env` override the path, the bot (`best`) and
+the threads per hand (2).
+
 The server part by hand:
 
 ```sh

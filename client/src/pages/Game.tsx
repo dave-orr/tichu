@@ -711,6 +711,8 @@ export default function Game({ socket, auth }: Props) {
           mirrored={mirroredTable}
           isOrganizer={socket.isOrganizer}
           onStep={socket.reviewStep}
+          aiAvailable={!!gameState.reviewAiAvailable}
+          onRequestAi={socket.requestReviewAi}
           onEnd={socket.endReview}
           onShowResults={() => setReviewHidden(true)}
         />

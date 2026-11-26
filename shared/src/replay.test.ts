@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildReplayFrames, comboLabel, handReplayFromLog, type HandReplay } from './replay.js';
+import { aiAgrees, aiPassAgrees, aiSuggestionLabel, buildReplayFrames, comboLabel, engineRoundLog, handReplayFromLog, type HandReplay } from './replay.js';
 import { cardId, type Card, type NormalCard, type RoundLog, type Seat } from './types.js';
 import { toClientState, createInitialState } from './engine.js';
 
@@ -139,5 +139,51 @@ describe('comboLabel', () => {
   it('names a lone Phoenix instead of its half rank', () => {
     expect(comboLabel({ type: 'single', cards: [{ type: 'special', name: 'phoenix' }], rank: 14.5, length: 1 })).toBe('Single, Phoenix');
     expect(comboLabel({ type: 'pair', cards: [c(7), c(7, 'star')], rank: 7, length: 2 })).toBe('Pair, 7s');
+  });
+});
+
+describe('AI suggestions', () => {
+  it('numbers each action frame by its action', () => {
+    const frames = buildReplayFrames(sample());
+    expect(frames.map(f => f.action)).toEqual([undefined, undefined, 0, 1, 2, 3, 4, 5, undefined]);
+  });
+
+  it('writes the hand as a round log the engine can replay', () => {
+    const r = { ...sample(), scoresBefore: [120, 380] as [number, number], clockwise: true };
+    r.dealt = r.dealt.map(h => [...h, ...Array.from({ length: 10 }, (_, i) => c(i + 2, 'pagoda'))]);
+    const log = engineRoundLog(r) as any;
+    expect(log.scoresBeforeRound).toEqual([120, 380]);
+    expect(log.clockwise).toBe(true);
+    expect(log.players.map((p: any) => p.tichuCall)).toEqual(['small', 'grand', 'none', 'none']);
+    expect(log.players.map((p: any) => p.outOrder)).toEqual([1, 2, 3, 4]);
+    expect(log.players[3].passedRight).toEqual(c(4, 'star'));
+    expect(log.actions).toBe(r.actions);
+    // A hand missing a pass (or short of 14 cards) can't be replayed.
+    expect(engineRoundLog(sample())).toBeNull();
+    expect(engineRoundLog({ ...r, passes: [null, ...r.passes.slice(1)] })).toBeNull();
+  });
+
+  it('compares what was done with the suggestion', () => {
+    const play = { type: 'play' as const, at: 1, seat: 0 as Seat, cards: [c(9), c(9, 'star')], trick: 0 };
+    expect(aiAgrees(play, { type: 'play', cards: [c(9, 'star'), c(9)] })).toBe(true);
+    expect(aiAgrees(play, { type: 'play', cards: [c(9, 'star')] })).toBe(false);
+    expect(aiAgrees(play, { type: 'pass' })).toBe(false);
+    expect(aiAgrees({ type: 'pass', at: 1, seat: 1 }, { type: 'pass' })).toBe(true);
+    expect(aiAgrees({ type: 'wish', at: 1, seat: 1, rank: 8 }, { type: 'wish', rank: 8 })).toBe(true);
+    expect(aiAgrees({ type: 'wish', at: 1, seat: 1, rank: null }, { type: 'wish', rank: 8 })).toBe(false);
+    expect(aiAgrees({ type: 'dragon', at: 1, seat: 1, to: 2 }, { type: 'dragon', to: 0 })).toBe(false);
+    const pass = { left: c(2), partner: c(3), right: c(4) };
+    expect(aiPassAgrees(pass, { seat: 0, ...pass })).toBe(true);
+    expect(aiPassAgrees(pass, { seat: 0, ...pass, left: c(4), right: c(2) })).toBe(false);
+    expect(aiPassAgrees(null, { seat: 0, ...pass })).toBe(false);
+  });
+
+  it('labels suggestions for players', () => {
+    const names = ['Ann', 'Ben', 'Cat', 'Dan'];
+    expect(aiSuggestionLabel({ type: 'play', cards: [c(9), c(9, 'star')] }, names)).toBe('Pair, 9s');
+    expect(aiSuggestionLabel({ type: 'pass' }, names)).toBe('Pass');
+    expect(aiSuggestionLabel({ type: 'wish', rank: 11 }, names)).toBe('Wish for J');
+    expect(aiSuggestionLabel({ type: 'wish', rank: null }, names)).toBe('No wish');
+    expect(aiSuggestionLabel({ type: 'dragon', to: 1 }, names)).toBe('Dragon to Ben');
   });
 });

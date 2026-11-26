@@ -34,6 +34,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
+  { pr: 156, mergedAt: '2026-11-26', kind: 'new', summary: 'Hand review: turn on AI suggestions to see what the AI would have passed and played at each turn, and how often each player matched it' },
   { pr: 155, mergedAt: '2026-11-25', kind: 'improved', summary: 'Learning mode: a Grand Tichu caller is marked by their name and face-up hand while cards are passed' },
   { pr: 154, mergedAt: '2026-11-25', kind: 'fixed', summary: 'Computer players no longer freeze when random partners moves them to another seat' },
   { pr: 153, mergedAt: '2026-11-25', kind: 'new', summary: 'Computer players now take the name of a famous science-fiction AI' },

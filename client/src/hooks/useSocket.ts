@@ -375,6 +375,10 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     socketRef.current?.emit('end-review');
   }, []);
 
+  const requestReviewAi = useCallback(() => {
+    socketRef.current?.emit('review-ai');
+  }, []);
+
   // Acknowledged requests never hang forever: a rate-limited or dropped event
   // produces no ack at all, which used to leave "Loading…" panels stuck.
   const ACK_TIMEOUT_MS = 10000;
@@ -527,6 +531,7 @@ export function useSocket(idToken: string | null, refreshToken?: () => Promise<s
     setMirrorTable,
     startReview,
     reviewStep,
+    requestReviewAi,
     endReview,
     concede: concedeAction,
     respondConcede,

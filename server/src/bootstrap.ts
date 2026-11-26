@@ -12,6 +12,7 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { describeAiEngine } from './aiEngine.js';
 
 // Keep in sync with `.nvmrc` and `engines.node` in the root package.json.
 const MIN_NODE_MAJOR = 22;
@@ -66,6 +67,7 @@ export function describeStartup(clientDist: string, port: string | number): stri
       : `  env file    NOT FOUND at ${p} — using defaults only`,
     `  port        ${port} (from ${portSource})`,
     `  firebase    ${firebase}`,
+    `  ai review   ${describeAiEngine()}`,
     `  client      ${clientDist}${fs.existsSync(clientDist) ? '' : ' — MISSING, run npm run build'}`,
   ].join('\n');
 }
