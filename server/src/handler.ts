@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement, forcedDragonRecipient, handReplayFromLog } from '@tichu/shared';
+import { toClientState, Seat, Card, NormalRank, GameSettings, RoundResult, InvitablePlayer, PartnerStats, RoomElos, PlayResult, GameSummary, GameHistoryRound, UserStats, TeamStats, Comeback, RoundLog, AchievementEvent, GameOutcome, achievementEvents, isThemeAchievement, forcedDragonRecipient, handReplayFromLog, engineRoundLog, type ReviewAi } from '@tichu/shared';
 import {
   createRoom, joinRoom, reconnectToRoom, getDisconnectedSeats, getRoom, getRoomBySocket, removePlayer,
   leaveRoom, clearSocketUid, setRoomChangedCallback,
@@ -16,6 +16,7 @@ import {
   setRoomGoneCallback, registerRestoredRoom, waitingRooms,
 } from './rooms.js';
 import { isBotAvailable } from './botPresence.js';
+import { aiEngineAvailable, analyzeHand } from './aiEngine.js';
 import { persistRoom, deletePersistedRoom, loadPersistedRooms } from './persistence.js';
 import { verifyIdToken, firebaseAdmin } from './firebase.js';
 import { recordPlayedWith, buildRoundLog, saveRoundLog, saveGameSummary, fetchRecentGames, fetchGameHistory, fetchInvitableUsers, fetchPartnerStats, fetchTeamStats, fetchUserStats, fetchComebackRecord, fetchRoomElos, fetchHeadToHead, fetchHistoryAchievements, updateEloForGameEnd } from './stats.js';
@@ -602,8 +603,34 @@ export function setupHandlers(io: Server): Promise<void> {
         return;
       }
       if ((room.state.phase !== 'roundEnd' && room.state.phase !== 'gameEnd') || !room.lastReplay) return;
-      if (!room.review) room.review = { replay: room.lastReplay, step: 0, by: null };
+      if (!room.review) room.review = { replay: room.lastReplay, step: 0, by: null, ai: room.lastReplayAi };
       broadcastState(io, room);
+    });
+
+    // AI suggestions for the reviewed hand: anyone seated can ask; the engine
+    // runs once per hand and the answer goes to the whole table (each player
+    // chooses whether to show it).
+    guarded(socket, 'review-ai', () => {
+      const found = getRoomBySocket(socket.id);
+      if (!found) return;
+      const { room } = found;
+      const review = room.review;
+      if (!review || review.replay !== room.lastReplay) return;
+      if (room.lastReplayAi && room.lastReplayAi.status !== 'error') return;
+      const replay = review.replay;
+      const log = engineRoundLog(replay);
+      const settle = (ai: ReviewAi) => {
+        if (room.lastReplay !== replay) return; // the table moved on to the next hand
+        room.lastReplayAi = ai;
+        if (room.review?.replay === replay) room.review.ai = ai;
+        broadcastState(io, room);
+      };
+      if (!log) {
+        settle({ status: 'error', message: 'This hand is missing a pass, so the AI cannot replay it' });
+        return;
+      }
+      settle({ status: 'working' });
+      analyzeHand(log).then(settle, (e: Error) => settle({ status: 'error', message: e.message }));
     });
 
     guarded(socket, 'review-step', ({ step }: { step: unknown }) => {
@@ -1141,7 +1168,7 @@ export function broadcastState(io: Server, room: Room): void {
     // a not-yet-authenticated socket must not wipe a previously-known uid.
     const uid = getSocketUid(socketId);
     if (uid) room.seatUids.set(seat, uid);
-    const clientState = { ...toClientState(room.state, seat), review: room.review, reviewAvailable: !!room.lastReplay };
+    const clientState = { ...toClientState(room.state, seat), review: room.review, reviewAvailable: !!room.lastReplay, reviewAiAvailable: aiEngineAvailable() };
     io.to(socketId).emit('game-state', { state: clientState, aiOpenSeats, disconnectedSeats, organizerSeat, botAvailable });
   }
   sseBroadcastCallback?.(room);
@@ -1293,6 +1320,7 @@ function handleRoundResult(io: Server, room: Room, engineResult: RoundResult): v
   // Keep the hand so the table can review it face up.
   room.lastReplay = log ? handReplayFromLog(log) : null;
   room.review = null;
+  room.lastReplayAi = null;
   io.to(room.code).emit('round-result', { result: roundResult });
   sseNotifyCallback?.(room.code, -1 as Seat, 'round-result', { result: roundResult });
   if (!log || practice) return;

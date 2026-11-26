@@ -4,7 +4,7 @@ import {
   callGrandTichu, callSmallTichu, passCards as passCardsEngine, undoPassCards,
   applyPasses, playCards, passTurn, playBomb, awardTrick,
   giveDragonTrick, setMahJongWish, toClientState, offerConcede, respondToConcede, withdrawConcede,
-  Card, NormalRank, PlayResult, HandReplay, ReviewSession, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, RoundAction, cardId, identifyCombo, isBomb,
+  Card, NormalRank, PlayResult, HandReplay, ReviewSession, ReviewAi, RoundResult, RoundLog, AchievementEvent, PassInfo, RoundPlay, RoundAction, cardId, identifyCombo, isBomb,
   pickBotName,
 } from '@tichu/shared';
 
@@ -63,6 +63,8 @@ export type Room = {
   lastReplay: HandReplay | null;
   /** The review the table is in, if any (see start-review). */
   review: ReviewSession | null;
+  /** The AI engine's suggestions for `lastReplay`, once asked (kept if the review is closed and reopened). */
+  lastReplayAi: ReviewAi | null;
 };
 
 /** Live human sockets in a room (API/AI players are excluded). */
@@ -331,6 +333,7 @@ export function createRoom(socketId: string, playerName: string, randomPartners:
     lastActivityAt: Date.now(),
     lastReplay: null,
     review: null,
+    lastReplayAi: null,
   };
 
   rooms.set(code, room);
@@ -539,6 +542,9 @@ export function registerRestoredRoom(room: Room): boolean {
   if (!room.accumulator.actions) room.accumulator.actions = [];
   if (room.lastReplay === undefined) room.lastReplay = null;
   if (room.review === undefined) room.review = null;
+  // An analysis in flight died with the old process.
+  if (!room.lastReplayAi || room.lastReplayAi.status === 'working') room.lastReplayAi = null;
+  if (room.review) room.review.ai = room.lastReplayAi;
   // gameId is `${code}_${startMs}`, the best stand-in for snapshots that
   // predate these timestamps.
   if (!room.createdAt) room.createdAt = Number(room.gameId.split('_')[1]) || Date.now();
@@ -1000,6 +1006,7 @@ export function resetRoomForNewGame(room: Room): boolean {
   room.lastRoundResult = null;
   room.lastReplay = null;
   room.review = null;
+  room.lastReplayAi = null;
   room.gameId = `${room.code}_${Date.now()}`;
   room.accumulator = createAccumulator(room.gameId, [0, 0]);
   room.gameRoundLogs = [];
@@ -1016,6 +1023,7 @@ export function startNextRound(room: Room): void {
   room.accumulator = createAccumulator(room.gameId, scores, prevWasDown300);
   room.lastReplay = null;
   room.review = null;
+  room.lastReplayAi = null;
   room.passes.clear();
   room.lastRoundResult = null;
 }

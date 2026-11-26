@@ -290,6 +290,8 @@ export type ClientGameState = Omit<GameState, 'players' | 'deck' | 'receivedCard
   review?: ReviewSession | null;
   /** True when the hand that just ended can be reviewed (roundEnd / gameEnd). */
   reviewAvailable?: boolean;
+  /** True when the server can ask the AI engine (dave-orr/tichu-ai) about a reviewed hand. */
+  reviewAiAvailable?: boolean;
 };
 
 /**
@@ -300,7 +302,32 @@ export type ReviewSession = {
   replay: import('./replay.js').HandReplay;
   step: number;
   by: Seat | null;
+  /** The AI engine's suggestions for this hand, once someone asked (`review-ai`). */
+  ai?: ReviewAi | null;
 };
+
+/** What the AI engine would have done at one decision (`tichu analyze` in dave-orr/tichu-ai). */
+export type AiSuggestion =
+  | { type: 'play'; cards: Card[]; phoenixAs?: NormalRank }
+  | { type: 'pass' }
+  | { type: 'wish'; rank: NormalRank | null }
+  | { type: 'dragon'; to: Seat };
+
+/** The engine's choice at the decision behind `HandReplay.actions[action]`. */
+export type AiDecision = { action: number; seat: Seat; suggestion: AiSuggestion };
+
+/** What the engine would have passed from a seat's dealt hand. */
+export type AiPass = { seat: Seat; left: Card; partner: Card; right: Card };
+
+/**
+ * The engine's second opinion on a reviewed hand: every seat's pass, each
+ * on-turn play or pass that had a choice, the wish and the Dragon gift, each
+ * decided from that seat's own view (its hand and what had been played).
+ */
+export type ReviewAi =
+  | { status: 'working' }
+  | { status: 'ready'; passes: AiPass[]; decisions: AiDecision[] }
+  | { status: 'error'; message: string };
 
 export type ClientPlayer = Omit<Player, 'hand' | 'tricksWon'> & {
   cardCount: number;       // how many cards they hold
